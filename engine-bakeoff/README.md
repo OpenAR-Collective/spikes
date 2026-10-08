@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax command workload in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push commands through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: setting up. The method below is a draft, and no results have been recorded.
+Status: setting up. The Python side is imported from Andy's prototype and its retained tests pass; the C# side is not started. The method below is a draft, and no results have been recorded.
 
 ## Background
 
@@ -43,9 +43,13 @@ Every measured command does all of the following. A run that skips any of them d
 
 The workload is a payment file: one payment for each of one million accounts in a seeded database. Andy's prototype already implements payment posting, so both sides start from the same business rule. A second, contended workload sends several payments to the same accounts at once, to measure lock waits.
 
-Each workload runs with 1, 2, 4, 8, 16, and 32 workers, so the results show how each stack scales and where it stops scaling. Each runs twice: once with the read model updated inside the command's own transaction, which WAX-0002 permits in v1, and once with a separate reader catching up afterward.
+Each workload runs with 1, 2, 4, 8, 16, and 32 workers, so the results show how each stack scales and where it stops scaling.
 
-Both stacks run on one named machine against the same PostgreSQL 17 container with the same configuration, one stack at a time. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
+Read models are updated by a separate reader that catches up after the commands commit, the design WAX-0002 describes, because both stacks already have one: Marten's asynchronous projection daemon and Andy's projection reader. WAX-0002 also lets v1 update read models inside the command's own transaction. That mode is measured only on a side that implements it. On the Python side it would be new engine code rather than tuning, so it counts only if the Python side's advocate wrote it or reviewed it.
+
+One harness drives both sides. It measures from outside the process under test, reading container CPU from the kernel's cgroup counters and statements per command from PostgreSQL's `pg_stat_statements`, so neither side reports its own numbers. Each side supplies only a small driver that loads the workload and calls its own command handler in process.
+
+Both stacks run on one named machine against the same PostgreSQL 17 container with the same configuration, one stack at a time. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
 
 The measurements are these:
 
@@ -54,7 +58,7 @@ The measurements are these:
 - Command latency at the 50th and 99th percentiles.
 - How far the read model falls behind, in the separate-reader mode.
 
-After every run, three correctness gates are checked: every payment was applied exactly once, every hash chain verifies, and the read-model balances match the authoritative balances.
+After every run, three correctness gates are checked: every payment was applied exactly once, every hash chain verifies, and once the reader has caught up, the read-model balances match the authoritative balances.
 
 ## Rules
 
@@ -69,6 +73,7 @@ After every run, three correctness gates are checked: every payment was applied 
 
 - The pass threshold, which needs the largest target agency's account count and nightly window.
 - Whether to add a second business command, such as interest accrual, alongside payment posting.
+- Whether to measure the in-transaction read-model mode, and if so, who writes it for the Python side.
 - The benchmark machine.
 - Andy Troiano's agreement to the method, and whether he wants to tune the Python side.
 
