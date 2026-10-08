@@ -1,42 +1,36 @@
-# Single-node blue-green topology (SHARED-0008 v1 tier, SHARED-0010): two
-# application stacks, one PostgreSQL, pgBouncer, and a TLS reverse proxy that
-# sends user traffic to one color and exposes the other on a preview port.
-# deploy/bluegreen.sh drives it; see README.md.
-name: hivear-draft
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/docker-compose.yml), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: one PostgreSQL 17 and the engine, replacing the blue-green pair,
+# pgBouncer, and the Caddy proxy. A one-shot migrate service applies the
+# schema as the owner, the worker runs the projection reader as the runtime
+# role, and a tools service runs the tests and one-off commands.
+# No ports are published to the host.
+name: hivear-bakeoff-python
 
-x-common-env: &common-env
+x-engine: &engine
+  image: ${IMAGE:-hivear-bakeoff-python:local}
+  build: .
+
+# The schema owner, used for migrations, tests, and verify_chain.
+x-owner-env: &owner-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
-  DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-  HIVEAR_DEV_API_KEY: ${HIVEAR_DEV_API_KEY:-local-evaluation-only}
   DATABASE_NAME: hivear
+  DATABASE_USER: hivear
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
+  DATABASE_HOST: db
+  DATABASE_PORT: "5432"
 
-# The application connects through pgBouncer as the runtime role, which
-# cannot alter the schema or change history.
+# The application connects as the runtime role, which cannot alter the
+# schema or change history.
 x-runtime-env: &runtime-env
-  <<: *common-env
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
+  DATABASE_NAME: hivear
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
-  DATABASE_HOST: pgbouncer
-  DATABASE_PORT: "6432"
-  DATABASE_POOLED: "1"
-
-x-app: &app
-  restart: unless-stopped
-  depends_on:
-    pgbouncer:
-      condition: service_started
-  healthcheck:
-    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
-    interval: 3s
-    timeout: 5s
-    retries: 20
-
-x-worker: &worker
-  restart: unless-stopped
-  command: python manage.py run_projections
-  depends_on:
-    pgbouncer:
-      condition: service_started
+  DATABASE_HOST: db
+  DATABASE_PORT: "5432"
 
 services:
   db:
@@ -59,86 +53,34 @@ services:
       timeout: 3s
       retries: 20
 
-  pgbouncer:
-    image: edoburu/pgbouncer@sha256:9c78945868a6a142c7fc40ccd843bbe5a606df163c7ffce4de70e0d628d696a2  # PgBouncer 1.26.0
-    restart: unless-stopped
-    environment:
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_NAME: hivear
-      DB_USER: hivear_app
-      DB_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
-      AUTH_TYPE: scram-sha-256
-      POOL_MODE: transaction
-      LISTEN_PORT: "6432"
-      MAX_CLIENT_CONN: "400"
-      DEFAULT_POOL_SIZE: "20"
+  # Applies the migrations and loads the sample bucket registry, then exits.
+  migrate:
+    <<: *engine
+    environment: *owner-env
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo"]
     depends_on:
       db:
         condition: service_healthy
 
-  # Release tooling: migrations and deployment state. The only service that
-  # holds the owner's credentials, and it runs the image being deployed.
-  release:
-    image: ${TARGET_IMAGE:-hivear-draft:local}
+  # The projection reader (WAX-0001).
+  worker:
+    <<: *engine
+    restart: unless-stopped
+    environment: *runtime-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Tests by default; also verify_chain and other one-off commands, for example:
+  #   docker compose run --rm tools python manage.py verify_chain
+  tools:
+    <<: *engine
     profiles: ["tools"]
-    environment:
-      <<: *common-env
-      DATABASE_USER: hivear
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
-      DATABASE_HOST: db
-      DATABASE_PORT: "5432"
-      # A migration that cannot get its lock fails fast and is retried,
-      # instead of queuing every request on the table behind it.
-      PGOPTIONS: "-c lock_timeout=5s"
+    environment: *owner-env
+    command: ["pytest", "-q"]
     depends_on:
       db:
         condition: service_healthy
-
-  app_blue:
-    <<: *app
-    image: ${BLUE_IMAGE:-hivear-draft:local}
-    profiles: ["blue"]
-    environment:
-      <<: *runtime-env
-      DEPLOYMENT_COLOR: blue
-
-  worker_blue:
-    <<: *worker
-    image: ${BLUE_IMAGE:-hivear-draft:local}
-    profiles: ["blue"]
-    environment:
-      <<: *runtime-env
-      DEPLOYMENT_COLOR: blue
-
-  app_green:
-    <<: *app
-    image: ${GREEN_IMAGE:-hivear-draft:local}
-    profiles: ["green"]
-    environment:
-      <<: *runtime-env
-      DEPLOYMENT_COLOR: green
-
-  worker_green:
-    <<: *worker
-    image: ${GREEN_IMAGE:-hivear-draft:local}
-    profiles: ["green"]
-    environment:
-      <<: *runtime-env
-      DEPLOYMENT_COLOR: green
-
-  proxy:
-    image: caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f  # caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "${HIVEAR_HTTP_PORT:-8580}:80"        # live, HTTP
-      - "${HIVEAR_HTTPS_PORT:-8543}:443"      # live, HTTPS
-      - "${HIVEAR_PREVIEW_PORT:-8581}:8081"   # preview: the color that is not live, read-only
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ${HIVEAR_PROXY_DIR:-./deploy/proxy}:/etc/caddy/routes:ro
-      - proxy_data:/data
 
 volumes:
   database_data:
-  proxy_data:
