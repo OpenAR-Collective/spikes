@@ -2,7 +2,7 @@
 
 This folder holds the champion side of the [engine bake-off](../README.md): the Wax command path written in C# on .NET 10, the current LTS release, with Marten 9 as the event store on PostgreSQL, the stack [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) adopts.
 
-Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, and the driver that the workloads need. Its 32 tests pass in both append modes. No measured runs have been made.
+Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, the set-based bulk writer, and the driver that the workloads need. Its 32 tests pass in both append modes. The first measured pass is summarized in the [bake-off README](../README.md#results).
 
 ## What it is
 
