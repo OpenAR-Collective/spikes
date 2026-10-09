@@ -1,3 +1,9 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/hivear/models.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: Account gains interest_accrued_through and queue_code, and Task is
+# added, for the engine bake-off (Foundation-written, WORKLOADS.md).
 """ar schema (WAX-0004). Names follow WAX-0005: singular tables, <table>_pk
 UUID keys, <root>_fk foreign keys, no abbreviations. Money is an integer
 count of minor currency units.
@@ -45,6 +51,10 @@ class Account(AggregateRoot):
     is_disputed = models.BooleanField(default=False)
     list_date = models.DateField()
     itemization_date = models.DateField()
+    # Foundation-written for the engine bake-off: the last day interest has
+    # been accrued for, and the work queue the account is assigned to.
+    interest_accrued_through = models.DateField()
+    queue_code = models.TextField(null=True)
 
     class Meta:
         db_table = 'ar"."account'
@@ -77,6 +87,20 @@ class AccountBalanceBucket(GuardedModel):
                 name="account_balance_bucket_not_negative",
             ),
         ]
+
+
+class Task(GuardedModel):
+    """A unit of human work raised against an account (WAX-0029), created by
+    the CreateTask command. Foundation-written for the engine bake-off."""
+
+    task_pk = models.UUIDField(primary_key=True)
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, db_column="account_fk", related_name="tasks")
+    task_type = models.TextField()
+    status = models.TextField()
+    created_at = models.DateTimeField()
+
+    class Meta:
+        db_table = 'ar"."task'
 
 
 class Payment(AggregateRoot):

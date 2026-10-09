@@ -1,10 +1,21 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/hivear/handlers.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: place_account records interest_accrued_through, and six handlers
+# are added for the engine bake-off (Foundation-written, WORKLOADS.md, "New
+# commands"). Andy's other handlers are unchanged.
+from datetime import UTC
+
+from django.db import connection
 from django.utils import timezone
 
 from hivear import commands
 from hivear.allocation import AccountPosition, allocate_across_accounts, run_waterfall
-from hivear.models import Account, AccountBalanceBucket, BalanceBucketDefinition, Payment
+from hivear.models import Account, AccountBalanceBucket, BalanceBucketDefinition, Payment, Task
 from wax import store
 from wax.commands import AlreadyApplied, CommandRejected, handles
+from wax.models import PendingEvent
 
 
 def _lock_accounts(account_pks):
@@ -31,6 +42,7 @@ def place_account(command, context):
     """HIVE-0005: an account needs an itemization date and a balance made of
     registered buckets. The responsible party is not modeled in this draft.
     """
+    accrued_through = command.interest_accrued_through or command.itemization_date
     placed = {
         "client_account_number": command.client_account_number,
         "debt_type": command.debt_type,
@@ -41,6 +53,7 @@ def place_account(command, context):
         "list_date": command.list_date.isoformat(),
         "itemization_date": command.itemization_date.isoformat(),
         "balance_buckets": dict(command.opening_balances),
+        "interest_accrued_through": accrued_through.isoformat(),
     }
     if Account.objects.filter(pk=command.account_pk).exists():
         first = store.load_stream(command.account_pk).first()
@@ -63,6 +76,7 @@ def place_account(command, context):
         currency_code=command.currency_code,
         list_date=command.list_date,
         itemization_date=command.itemization_date,
+        interest_accrued_through=accrued_through,
     )
     context.record(account, "account.placed", prior=None, new=placed, reason="account_placed")
     AccountBalanceBucket.objects.bulk_create(
@@ -285,4 +299,169 @@ def _post_to_buckets(context, account, bucket_rows, amounts, sign, event_type, r
             "received_at": payment.received_at.isoformat(),
             "bucket_amounts": amounts,
         },
+    )
+
+
+# Foundation-written for the engine bake-off (WORKLOADS.md, "New commands").
+# Each handler takes the account's row lock first, decides under that lock,
+# and writes its event and state in the command's one transaction. A command
+# that would change nothing returns without writing, which dispatch answers
+# as success: that is how a retried or redelivered command stays harmless.
+
+
+def _instant(value):
+    return value.astimezone(UTC).isoformat(timespec="microseconds")
+
+
+@handles(commands.AccrueInterest)
+def accrue_interest(command, context):
+    (account,) = _lock_accounts([command.account_pk])
+    if account.status != "active" or command.accrual_date <= account.interest_accrued_through:
+        return
+    rows = _bucket_rows([account])[account.pk]
+    principal = rows["principal"].balance_minor_units if "principal" in rows else 0
+    days = (command.accrual_date - account.interest_accrued_through).days
+    amount = principal * command.annual_rate_basis_points * days // (10000 * 365)
+    interest = rows.get("interest")
+    if interest is None:
+        interest = AccountBalanceBucket(
+            account=account,
+            balance_bucket_definition=BalanceBucketDefinition.objects.get(code="interest"),
+            balance_minor_units=0,
+        )
+    prior = {
+        "balance_buckets": {"interest": interest.balance_minor_units},
+        "interest_accrued_through": account.interest_accrued_through.isoformat(),
+    }
+    interest.balance_minor_units += amount
+    interest.save()
+    account.interest_accrued_through = command.accrual_date
+    context.record(
+        account,
+        "account.interest_accrued",
+        prior=prior,
+        new={
+            "balance_buckets": {"interest": interest.balance_minor_units},
+            "interest_accrued_through": command.accrual_date.isoformat(),
+        },
+        reason="interest_accrued",
+        metadata={
+            "days": days,
+            "annual_rate_basis_points": command.annual_rate_basis_points,
+            "amount_minor_units": amount,
+        },
+    )
+
+
+@handles(commands.ChangeAccountStatus)
+def change_account_status(command, context):
+    (account,) = _lock_accounts([command.account_pk])
+    if account.status == command.status:
+        return
+    prior = {"status": account.status}
+    account.status = command.status
+    context.record(account, "account.status_changed", prior=prior, new={"status": command.status}, reason=command.reason_code)
+
+
+@handles(commands.AssignToQueue)
+def assign_to_queue(command, context):
+    (account,) = _lock_accounts([command.account_pk])
+    if account.queue_code == command.queue_code:
+        return
+    prior = {"queue_code": account.queue_code}
+    account.queue_code = command.queue_code
+    context.record(account, "account.queue_assigned", prior=prior, new={"queue_code": command.queue_code}, reason="queue_assigned")
+
+
+@handles(commands.ScheduleFutureEvent)
+def schedule_future_event(command, context):
+    """WAX-0027: write the scheduling event and the register row together."""
+    (account,) = _lock_accounts([command.account_pk])
+    existing = PendingEvent.objects.filter(pk=command.pending_event_pk).first()
+    if existing is not None:
+        same = (
+            existing.aggregate_pk_ref == account.pk
+            and existing.target_event_type == command.target_event_type
+            and existing.scheduled_by_event == command.scheduled_by_event
+            and existing.due_at == command.due_at
+        )
+        if same:
+            raise AlreadyApplied()
+        raise CommandRejected("A different pending event already exists under this key", "key_reused")
+    context.record(
+        account,
+        "pending_event.scheduled",
+        prior=None,
+        new={
+            "pending_event_pk": str(command.pending_event_pk),
+            "target_event_type": command.target_event_type,
+            "due_at": _instant(command.due_at),
+            "scheduled_by_event": str(command.scheduled_by_event),
+        },
+        reason="pending_event_scheduled",
+    )
+    PendingEvent(
+        pending_event_pk=command.pending_event_pk,
+        aggregate_pk_ref=account.pk,
+        aggregate_type=account.aggregate_type,
+        target_event_type=command.target_event_type,
+        due_at=command.due_at,
+        status="pending",
+        scheduled_by_event=command.scheduled_by_event,
+    ).save(force_insert=True)
+
+
+@handles(commands.FirePendingEvent)
+def fire_pending_event(command, context):
+    """WAX-0027: claim the register row, write its target event on the account,
+    and mark the row fired, all in one transaction. A row another poller is
+    firing is locked and passed over; a row already fired is left alone."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT aggregate_pk_ref, target_event_type, due_at, status FROM core.pending_event"
+            " WHERE pending_event_pk = %s FOR UPDATE SKIP LOCKED",
+            [command.pending_event_pk],
+        )
+        row = cursor.fetchone()
+        if row is None:
+            cursor.execute("SELECT 1 FROM core.pending_event WHERE pending_event_pk = %s", [command.pending_event_pk])
+            if cursor.fetchone() is None:
+                raise CommandRejected("Pending event does not exist", "pending_event_not_found")
+            return
+    aggregate_pk, target_event_type, due_at, status = row
+    if status != "pending":
+        return
+    (account,) = _lock_accounts([aggregate_pk])
+    context.record(
+        account,
+        target_event_type,
+        prior=None,
+        new={"due_at": _instant(due_at)},
+        reason="pending_event_fired",
+        metadata={"pending_event_pk": str(command.pending_event_pk)},
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE core.pending_event SET status = 'fired', fired_at = clock_timestamp() WHERE pending_event_pk = %s",
+            [command.pending_event_pk],
+        )
+
+
+@handles(commands.CreateTask)
+def create_task(command, context):
+    (account,) = _lock_accounts([command.account_pk])
+    existing = Task.objects.filter(pk=command.task_pk).first()
+    if existing is not None:
+        if existing.account_id == account.pk and existing.task_type == command.task_type:
+            raise AlreadyApplied()
+        raise CommandRejected("A different task already exists under this key", "key_reused")
+    Task(
+        task_pk=command.task_pk, account=account, task_type=command.task_type, status="open", created_at=context.occurred_at
+    ).save(force_insert=True)
+    context.record(
+        account,
+        "task.created",
+        prior=None,
+        new={"task_pk": str(command.task_pk), "task_type": command.task_type, "status": "open"},
+        reason="task_created",
     )

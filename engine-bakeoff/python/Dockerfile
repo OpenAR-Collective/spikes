@@ -4,7 +4,8 @@
 # Modified by The OpenAR Collective contributors.
 # Changes: one Python stage. The frontend build, the OpenAPI export, the
 # static files, and the gunicorn web server are removed with the HTTP layer,
-# and the default process is the projection reader.
+# the default process is the projection reader, and the image carries the
+# bake-off's own package, bakeoff (Foundation-written).
 
 # Base images are pinned by digest so that a rebuild starts from the same bytes.
 # python:3.13-slim
@@ -18,6 +19,7 @@ COPY manage.py pytest.ini ./
 COPY config/ config/
 COPY wax/ wax/
 COPY hivear/ hivear/
+COPY bakeoff/ bakeoff/
 COPY tests/ tests/
 ARG RELEASE=0.2.0
 # Empty means the previous minor release, which is the rule. A build states

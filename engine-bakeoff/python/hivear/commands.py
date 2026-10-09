@@ -1,3 +1,11 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/hivear/commands.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: PlaceAccount takes an optional interest_accrued_through, and six
+# commands are added for the engine bake-off (Foundation-written,
+# WORKLOADS.md): AccrueInterest, ChangeAccountStatus, ScheduleFutureEvent,
+# FirePendingEvent, CreateTask, and AssignToQueue.
 """HiveAR commands (WAX-0002). Each carries the primary key of what it
 creates, so a handler returns nothing and a retried request cannot post twice.
 Every input is bounded and strict: a browser or a script sending the wrong
@@ -68,6 +76,8 @@ class PlaceAccount(Command):
     list_date: CalendarDate
     itemization_date: CalendarDate
     opening_balances: dict[BucketCode, Amount] = Field(min_length=1, max_length=50)
+    # Foundation-written for the bake-off: defaults to the itemization date.
+    interest_accrued_through: CalendarDate | None = None
 
 
 class OpenDispute(Command):
@@ -93,3 +103,51 @@ class PostPayment(Command):
 
 class ReversePayment(Command):
     payment_pk: UUID
+
+
+# Foundation-written for the engine bake-off (WORKLOADS.md, "New commands").
+
+Code = Annotated[str, Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_.]*$")]
+BasisPoints = Annotated[int, Field(strict=True, ge=0, le=100_000)]
+
+
+def _utc(value: datetime) -> datetime:
+    return value.astimezone(UTC)
+
+
+UtcInstant = Annotated[AwareDatetime, AfterValidator(_utc)]
+
+
+class AccrueInterest(Command):
+    account_pk: UUID
+    accrual_date: CalendarDate
+    annual_rate_basis_points: BasisPoints
+
+
+class ChangeAccountStatus(Command):
+    account_pk: UUID
+    status: Code
+    reason_code: Code
+
+
+class ScheduleFutureEvent(Command):
+    pending_event_pk: UUID
+    account_pk: UUID
+    target_event_type: Code
+    due_at: UtcInstant
+    scheduled_by_event: UUID
+
+
+class FirePendingEvent(Command):
+    pending_event_pk: UUID
+
+
+class CreateTask(Command):
+    task_pk: UUID
+    account_pk: UUID
+    task_type: Code
+
+
+class AssignToQueue(Command):
+    account_pk: UUID
+    queue_code: Code

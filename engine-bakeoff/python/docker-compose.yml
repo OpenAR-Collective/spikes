@@ -6,8 +6,11 @@
 # pgBouncer, and the Caddy proxy. A one-shot migrate service applies the
 # schema as the owner, the worker runs the projection reader as the runtime
 # role, and a tools service runs the tests and one-off commands, with the
-# bake-off's shared hash vectors mounted read-only. No ports are published
-# to the host.
+# bake-off's shared hash vectors mounted read-only. The engine and bench
+# services are the bake-off's (WORKLOADS.md): engine runs run-engine, and
+# bench stays up so the harness can run seed, bench, and verify-chain in it.
+# CPU and memory limits and the database's settings come from the harness's
+# override, never from this file. No ports are published to the host.
 name: hivear-bakeoff-python
 
 x-engine: &engine
@@ -71,6 +74,28 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  # The bake-off's long-running services: projections, rules, and the
+  # register poller (python -m bakeoff run-engine).
+  engine:
+    <<: *engine
+    profiles: ["bakeoff"]
+    environment: *runtime-env
+    command: ["python", "-m", "bakeoff", "run-engine"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The bake-off's driver. It stays up so the harness can run
+  # python -m bakeoff seed, bench, and verify-chain inside it.
+  bench:
+    <<: *engine
+    profiles: ["bakeoff"]
+    environment: *runtime-env
+    command: ["sleep", "infinity"]
+    depends_on:
+      db:
+        condition: service_healthy
 
   # Tests by default; also verify_chain and other one-off commands, for example:
   #   docker compose run --rm tools python manage.py verify_chain

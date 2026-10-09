@@ -1,3 +1,9 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/wax/models.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: added PendingEvent, the Pending Event Register row of WAX-0027,
+# for the engine bake-off (Foundation-written). Andy's classes are unchanged.
 from django.db import models
 
 from wax.commands import require_command
@@ -85,3 +91,23 @@ class AggregateRoot(GuardedModel):
 
     class Meta:
         abstract = True
+
+
+# Foundation-written for the engine bake-off (WORKLOADS.md, "Schema additions").
+class PendingEvent(GuardedModel):
+    """One entry in the Pending Event Register (WAX-0027): a future-dated
+    event scheduled against one aggregate. Written only by the commands that
+    schedule and fire it; the table is created by wax migration 0003."""
+
+    pending_event_pk = models.UUIDField(primary_key=True)
+    aggregate_pk_ref = models.UUIDField()
+    aggregate_type = models.TextField()
+    target_event_type = models.TextField()
+    due_at = models.DateTimeField()
+    status = models.TextField(default="pending")
+    scheduled_by_event = models.UUIDField()
+    fired_at = models.DateTimeField(null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'core"."pending_event'

@@ -4,7 +4,8 @@
 # Modified by The OpenAR Collective contributors.
 # Changes: removed the settings for the HTTP API, the frontend, the preview
 # port, and the migration compatibility checker, which the engine bake-off
-# does not use. The database, logging, and time settings are unchanged.
+# does not use, and installed the bake-off's own app, bakeoff
+# (Foundation-written). The database, logging, and time settings are unchanged.
 import os
 from pathlib import Path
 
@@ -17,7 +18,7 @@ ALLOWED_HOSTS = []
 # wax is the domain-agnostic framework, hivear the AR layer built on it
 # (SHARED-0001). The bake-off drives the command handlers directly, so there
 # is no web layer here: no API, no admin, no sessions, and no URL routes.
-INSTALLED_APPS = ["wax", "hivear"]
+INSTALLED_APPS = ["wax", "hivear", "bakeoff"]
 
 MIDDLEWARE = []
 

@@ -1,9 +1,30 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/hivear/projections.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: for the engine bake-off (Foundation-written, WORKLOADS.md), the
+# account summary also handles account.interest_accrued and
+# account.status_changed, and declares the bake-off's other account events
+# ignored, since the reader stops on an event type it neither handles nor
+# ignores. Changed in place rather than as a new version, as the bake-off's
+# specification directs.
 from datetime import datetime
 
 from hivear.models import AccountPaymentLine, AccountSummaryReadModel, PaymentReadModel
 from wax.projections import projection
 
-account_summary = projection("ar.account_summary_read_model", version=1, aggregate_types=["account"])
+account_summary = projection(
+    "ar.account_summary_read_model",
+    version=1,
+    aggregate_types=["account"],
+    ignores=[
+        "pending_event.scheduled",
+        "account.queue_assigned",
+        "task.created",
+        "account.dispute_review_due",
+        "account.first_contact_due",
+    ],
+)
 
 
 @account_summary.on("account.placed")
@@ -33,7 +54,14 @@ def _disputed(event):
     )
 
 
-@account_summary.on("account.payment_applied", "account.payment_reversed")
+@account_summary.on("account.status_changed")
+def _status_changed(event):
+    AccountSummaryReadModel.objects.filter(pk=event.aggregate_pk_ref).update(
+        status=event.new_value["status"], last_global_sequence_number=event.global_sequence_number
+    )
+
+
+@account_summary.on("account.payment_applied", "account.payment_reversed", "account.interest_accrued")
 def _balance_moved(event):
     summary = AccountSummaryReadModel.objects.get(pk=event.aggregate_pk_ref)
     summary.balance_buckets.update(event.new_value["balance_buckets"])
