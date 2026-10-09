@@ -62,6 +62,8 @@ One harness drives both sides. It measures from outside the process under test, 
 
 The benchmark machine is a laptop: an Intel Core i7-13620H with 10 cores and 16 threads, 64 GB of memory, and Windows 11 with Docker Desktop. Runs happen only when the laptop is otherwise idle, one side at a time and never in parallel, against the same PostgreSQL 17 container with the same configuration. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
 
+**The first side-by-side pass.** Measuring every worker count three times at 500,000 accounts would take days on the benchmark laptop, so the first pass is narrower, and its results say so. Each workload runs at 4 and at 16 workers, once each, with no separate warm-up run, because a batch over 500,000 accounts runs for many minutes and that swamps any start-up effect. The real-time workload warms up for 60 seconds and is measured for 180. Every side runs its engine with `--rule-workers 4`, the same value on each. The sides run one after another, never at once: C# through Marten, then C# with direct append, then Python. More worker counts, repeats, or larger sizes are decided after this pass.
+
 The measurements are these:
 
 - Sustained commands per second over the measured run.

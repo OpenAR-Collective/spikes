@@ -54,13 +54,20 @@ switch (args.FirstOrDefault() ?? "run-projections")
     }
     case "verify-chain":
     {
+        // One line of JSON, in the shape the Python side prints, for the harness.
         await using var dataSource = NpgsqlDataSource.Create(connectionString);
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         var report = await ChainVerifier.VerifyAllAsync(dataSource);
-        foreach (var problem in report.Problems.Take(50))
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
         {
-            Console.WriteLine($"{problem.StreamId}: {problem.Problem}");
-        }
-        Console.WriteLine($"{report.Streams} streams and {report.Events} events checked; {report.Problems.Count} problems.");
+            workload = "verify-chain",
+            aggregates = report.Streams,
+            events = report.Events,
+            problems = report.Problems.Count,
+            ok = report.Problems.Count == 0,
+            first_problems = report.Problems.Take(20).Select(problem => $"{problem.StreamId}: {problem.Problem}"),
+            elapsed_s = Math.Round(clock.Elapsed.TotalSeconds, 3),
+        }));
         return report.Problems.Count == 0 ? 0 : 1;
     }
     case "projections":
