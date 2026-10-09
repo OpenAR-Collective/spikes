@@ -1,0 +1,114 @@
+[
+  {
+    "name": "first event of an account",
+    "aggregate_type": "account",
+    "aggregate_pk_ref": "3f2b8c1e-5d4a-4e6f-9a1b-2c3d4e5f6a7b",
+    "event_type": "account.placed",
+    "schema_version": 1,
+    "prior_value": null,
+    "new_value": {
+      "client_account_number": "A-1",
+      "status": "active",
+      "is_disputed": false,
+      "list_date": "2026-01-15",
+      "balance_buckets": {
+        "principal": 100000,
+        "interest": 5000
+      }
+    },
+    "occurred_at": "2026-10-08T14:03:05.123456+00:00",
+    "actor_pk_ref": "00000000-0000-4000-8000-000000000001",
+    "actor_type": "user",
+    "reason_code_fk": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+    "prior_event_hash": null,
+    "expected_hash": "242fd1a37d1c41bc1a3678521a6c455e439cbc0c038eef2c4ecc94636c63b462"
+  },
+  {
+    "name": "a later event, an offset time, and whole seconds",
+    "aggregate_type": "account",
+    "aggregate_pk_ref": "3f2b8c1e-5d4a-4e6f-9a1b-2c3d4e5f6a7b",
+    "event_type": "account.payment_applied",
+    "schema_version": 1,
+    "prior_value": {
+      "balance_buckets": {
+        "interest": 5000,
+        "fee": 2000,
+        "principal": 100000
+      }
+    },
+    "new_value": {
+      "balance_buckets": {
+        "interest": 0,
+        "fee": 0,
+        "principal": 99000
+      }
+    },
+    "occurred_at": "2026-10-08T09:03:05-05:00",
+    "actor_pk_ref": "00000000-0000-4000-8000-000000000001",
+    "actor_type": "batch",
+    "reason_code_fk": null,
+    "prior_event_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "expected_hash": "202505327f2144615f08d3f8968a11395ae999f9ebb235a46636f0e3955ca846"
+  },
+  {
+    "name": "text that needs escaping",
+    "aggregate_type": "account",
+    "aggregate_pk_ref": "3f2b8c1e-5d4a-4e6f-9a1b-2c3d4e5f6a7b",
+    "event_type": "account.noted",
+    "schema_version": 2,
+    "prior_value": {
+      "note": "plain"
+    },
+    "new_value": {
+      "note": "Zo\u00eb said \"hi\" \\ then\ttabbed\nand left / \u007f \u0001",
+      "cjk": "\u65e5\u672c",
+      "astral": "\ud83d\ude00",
+      "empty": ""
+    },
+    "occurred_at": "1999-12-31T23:59:59.000001+00:00",
+    "actor_pk_ref": "00000000-0000-4000-8000-000000000001",
+    "actor_type": "system",
+    "reason_code_fk": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+    "prior_event_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expected_hash": "89a4644d7060025e2ff2368f1679c1763e375634131cd80d3a1f5b5daa37384d"
+  },
+  {
+    "name": "nesting, ordering, and the edges of numbers",
+    "aggregate_type": "payment",
+    "aggregate_pk_ref": "3f2b8c1e-5d4a-4e6f-9a1b-2c3d4e5f6a7b",
+    "event_type": "payment.posted",
+    "schema_version": 1,
+    "prior_value": null,
+    "new_value": {
+      "b": [
+        3,
+        1,
+        2,
+        [],
+        {},
+        null,
+        true,
+        false
+      ],
+      "a": {
+        "z": 1,
+        "Z": 2,
+        "_": 3,
+        "aa": 4,
+        "a": 5,
+        "\u00e9": 6,
+        "\ud83d\ude00": 7,
+        "\uff5e": 8
+      },
+      "A": 1000000000000000,
+      "negative": -42,
+      "zero": 0
+    },
+    "occurred_at": "2026-02-28T23:30:00.500000-08:00",
+    "actor_pk_ref": "00000000-0000-4000-8000-000000000001",
+    "actor_type": "integration",
+    "reason_code_fk": null,
+    "prior_event_hash": null,
+    "expected_hash": "5dc8fcd514d9a35764d4fe175e2c3cce5a5dc434c47c2222f2ab642d3a9cf3b9"
+  }
+]

@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: setting up. The Python side is imported from Andy's prototype and its retained tests pass; the C# side is in progress. The method below is a draft, and no results have been recorded.
+Status: setting up. Both sides are built: the Python side is adapted from Andy's prototype and its 23 retained tests pass, and the C# side matches it rule for rule, hashes identically, and passes 24 tests. The harness and the workloads come next. The method below is a draft, and no results have been recorded.
 
 ## Background
 
