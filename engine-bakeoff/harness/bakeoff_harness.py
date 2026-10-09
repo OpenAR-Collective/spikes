@@ -641,6 +641,9 @@ def environment(side):
     return {
         "host": platform.platform(),
         "host_machine": host_machine(),
+        "python_version": platform.python_version(),
+        # Raw and unparsed, so no change in its format can break the harness.
+        "compose_version": sh(["docker", "compose", "version"], check=False).stdout.strip() or None,
         "docker": {k: info.get(k) for k in ("ServerVersion", "OperatingSystem", "KernelVersion", "NCPU", "MemTotal")},
         "docker_platform": sh(["docker", "version", "--format", "{{.Server.Platform.Name}}"],
                               check=False).stdout.strip() or None,
