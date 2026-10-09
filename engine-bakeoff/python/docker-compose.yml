@@ -20,7 +20,7 @@ x-engine: &engine
 # The schema owner, used for migrations, tests, and verify_chain.
 x-owner-env: &owner-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
-  DATABASE_NAME: hivear
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear
   DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
   DATABASE_HOST: db
@@ -30,7 +30,7 @@ x-owner-env: &owner-env
 # schema or change history.
 x-runtime-env: &runtime-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
-  DATABASE_NAME: hivear
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
   DATABASE_HOST: db

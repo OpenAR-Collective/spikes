@@ -38,7 +38,7 @@ python -m bakeoff run-engine --seconds-per-day 2 --poll-interval-ms 250 --rule-w
 python -m bakeoff verify-chain
 ```
 
-`run-engine` starts J projection workers (Andy's own reader loop), K rule runner partitions, and one register poller, each in its own process. The rule runner and the projection reader sleep the poll interval when they find nothing to do.
+`run-engine` starts J projection workers (Andy's own reader loop), K rule runner partitions, and K register poller partitions, each in its own process; K sets both, as on the C# side. The rule runners, pollers, and projection reader sleep the poll interval when they find nothing to do. The database name comes from `BAKEOFF_DATABASE` (default `hivear`), as on the C# side.
 
 ## What was kept, changed, and left out of the prototype
 

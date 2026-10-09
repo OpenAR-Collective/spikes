@@ -2,8 +2,9 @@
 side provides"). Foundation-written.
 
 It starts J projection workers (the prototype's own reader loop), K rule
-runner partitions, and one register poller, each in its own process, and
-stops them all when it is stopped. Idle readers sleep the poll interval.
+runner partitions, and K register poller partitions, each in its own
+process, and stops them all when it is stopped. K sets both, as on the C#
+side. Idle readers and pollers sleep the poll interval.
 """
 
 import logging
@@ -34,7 +35,7 @@ def _rule_runner(partition, partitions, idle_seconds, seconds_per_day):
     RuleRunner(actor_pk=RULE_RUNNER, partition=partition, partitions=partitions).loop(idle_seconds)
 
 
-def _register_poller(poll_seconds):
+def _register_poller(partition, partitions, poll_seconds):
     setup(count_retries=False)
     from hivear.commands import FirePendingEvent
     from wax import register
@@ -46,7 +47,7 @@ def _register_poller(poll_seconds):
         except CommandRejected as exc:
             logger.warning("fire %s refused: %s", key, exc)
 
-    register.loop(fire, poll_seconds)
+    register.loop(fire, poll_seconds, partition=partition, partitions=partitions)
 
 
 def run_engine(seconds_per_day, poll_interval_ms, rule_workers, projection_workers):
@@ -57,7 +58,10 @@ def run_engine(seconds_per_day, poll_interval_ms, rule_workers, projection_worke
         ctx.Process(target=_rule_runner, args=(k, rule_workers, poll_seconds, seconds_per_day), name=f"rules-{k}")
         for k in range(rule_workers)
     ]
-    procs.append(ctx.Process(target=_register_poller, args=(poll_seconds,), name="register"))
+    procs += [
+        ctx.Process(target=_register_poller, args=(k, rule_workers, poll_seconds), name=f"register-{k}")
+        for k in range(rule_workers)
+    ]
     for proc in procs:
         proc.start()
     print(f"[run-engine] {len(procs)} processes started", file=sys.stderr, flush=True)
