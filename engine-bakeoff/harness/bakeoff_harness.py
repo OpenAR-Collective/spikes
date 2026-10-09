@@ -41,6 +41,7 @@ writes to ../results/ and is for runs Rob has approved.
 """
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -585,6 +586,52 @@ def run_one(side, args, workers, index, raw_dir):
     return record
 
 
+# The host under Docker, read on Windows with one PowerShell call. Docker's
+# NCPU and MemTotal are what Docker may use; these are the machine itself.
+HOST_PROBE = r"""
+$ErrorActionPreference = 'SilentlyContinue'
+$processors = @(Get-CimInstance Win32_Processor)
+$system = Get-CimInstance Win32_ComputerSystem
+$disks = @(Get-PhysicalDisk | ForEach-Object {
+    [pscustomobject]@{ name = $_.FriendlyName; media_type = [string]$_.MediaType; bus_type = [string]$_.BusType; size_bytes = [int64]$_.Size }
+})
+$batteries = @(Get-CimInstance Win32_Battery)
+$online = @(Get-CimInstance -Namespace root/WMI -ClassName BatteryStatus | ForEach-Object { $_.PowerOnline })
+if ($batteries.Count -eq 0) { $ac = $true }
+elseif ($online.Count -gt 0) { $ac = [bool]($online -contains $true) }
+else { $ac = [bool]($batteries | Where-Object { $_.BatteryStatus -ne 1 }) }
+[pscustomobject]@{
+    cpu_model = ($processors | Select-Object -First 1).Name.Trim()
+    logical_cores = [int](($processors | Measure-Object NumberOfLogicalProcessors -Sum).Sum)
+    ram_bytes = [int64]$system.TotalPhysicalMemory
+    disks = $disks
+    power_plan = ((powercfg /getactivescheme) -join ' ').Trim()
+    has_battery = $batteries.Count -gt 0
+    on_ac_power = $ac
+} | ConvertTo-Json -Depth 4 -Compress
+"""
+
+
+def host_machine():
+    """CPU model, logical cores, RAM, physical disks, power plan, and power
+    source. Windows only; every value is null elsewhere or if the probe fails."""
+    host = dict.fromkeys(("cpu_model", "logical_cores", "ram_bytes", "disks", "power_plan", "power_plan_name",
+                          "has_battery", "on_ac_power"))
+    if platform.system() == "Windows":
+        encoded = base64.b64encode(HOST_PROBE.encode("utf-16-le")).decode("ascii")
+        result = sh(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], check=False, timeout=120)
+        try:
+            host.update(json.loads(result.stdout.strip().splitlines()[-1]))
+        except (IndexError, json.JSONDecodeError):
+            pass
+    if isinstance(host["disks"], dict):
+        host["disks"] = [host["disks"]]  # ConvertTo-Json unwraps a one-item list
+    if host["power_plan"]:
+        name = re.search(r"\(([^()]*)\)\s*$", host["power_plan"])
+        host["power_plan_name"] = name.group(1) if name else None
+    return host
+
+
 def environment(side):
     info = json.loads(sh(["docker", "info", "--format", "{{json .}}"]).stdout)
     others = sh(["docker", "ps", "--format", "{{.Names}}"], check=False).stdout.split()
@@ -593,7 +640,10 @@ def environment(side):
     side_dir = side.compose.parent
     return {
         "host": platform.platform(),
+        "host_machine": host_machine(),
         "docker": {k: info.get(k) for k in ("ServerVersion", "OperatingSystem", "KernelVersion", "NCPU", "MemTotal")},
+        "docker_platform": sh(["docker", "version", "--format", "{{.Server.Platform.Name}}"],
+                              check=False).stdout.strip() or None,
         "postgres": side.psql("postgres", "SELECT version()"),
         "postgres_settings": settings.splitlines() if settings else [],
         "repository_commit": sh(["git", "-C", str(BAKEOFF), "rev-parse", "HEAD"], check=False).stdout.strip(),
@@ -641,6 +691,19 @@ def summarize(records):
     return rows
 
 
+def host_line(env):
+    """The host machine, for run.md: empty when the probe found nothing."""
+    host = env.get("host_machine") or {}
+    platform_name = f" {env['docker_platform']}." if env.get("docker_platform") else ""
+    if not host.get("cpu_model"):
+        return platform_name
+    disks = ", ".join(f"{d.get('name')} ({d.get('bus_type')} {d.get('media_type')})" for d in host.get("disks") or [])
+    power = {True: "on AC power", False: "on battery"}.get(host.get("on_ac_power"), "power source unknown")
+    return (f" Host: {host['cpu_model']}, {host.get('logical_cores')} logical cores,"
+            f" {round((host.get('ram_bytes') or 0) / 2**30)} GiB RAM; disks: {disks or 'unknown'};"
+            f" power plan {host.get('power_plan_name') or host.get('power_plan')}, {power}.{platform_name}")
+
+
 def render(meta, env, rows, records):
     lines = [
         f"# {meta['label']}",
@@ -658,6 +721,7 @@ def render(meta, env, rows, records):
         "",
         f"Machine: {env['host']}; Docker {env['docker']['ServerVersion']} on {env['docker']['OperatingSystem']},"
         f" {env['docker']['NCPU']} CPUs, {round((env['docker']['MemTotal'] or 0) / 2**30)} GiB."
+        f"{host_line(env)}"
         f" PostgreSQL: {env['postgres']}. Repository commit {env['repository_commit']}"
         f"{' with uncommitted changes in this side or the harness' if env['side_uncommitted_changes'] else ''}."
         f" Other containers running: {len(env['other_containers'])}.",
