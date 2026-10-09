@@ -25,7 +25,9 @@ public static class ChainVerifier
 
     public static async Task<ChainReport> VerifyAllAsync(NpgsqlDataSource dataSource, CancellationToken cancellation = default)
     {
+        // One pass over every event; at bake-off sizes it runs for minutes.
         await using var command = dataSource.CreateCommand(AllSql);
+        command.CommandTimeout = 0;
         return await VerifyAsync(command, cancellation);
     }
 

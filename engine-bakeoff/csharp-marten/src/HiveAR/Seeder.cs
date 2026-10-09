@@ -80,7 +80,7 @@ public static class Seeder
 
         await Task.Run(() =>
         {
-            using (var account = connection.BeginBinaryImport(
+            using (var account = Import(connection, 
                 "COPY ar.account (aggregate_sequence_number, account_pk, client_account_number, debt_type, contract_type, " +
                 "currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through) FROM STDIN (FORMAT BINARY)"))
             {
@@ -103,7 +103,7 @@ public static class Seeder
                 account.Complete();
             }
 
-            using (var buckets = connection.BeginBinaryImport(
+            using (var buckets = Import(connection, 
                 "COPY ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) " +
                 "FROM STDIN (FORMAT BINARY)"))
             {
@@ -122,7 +122,7 @@ public static class Seeder
                 buckets.Complete();
             }
 
-            using (var streams = connection.BeginBinaryImport(
+            using (var streams = Import(connection, 
                 "COPY core.mt_streams (id, version, timestamp, created, tenant_id, compacted_version, is_archived) FROM STDIN (FORMAT BINARY)"))
             {
                 for (long i = 0; i < accounts; i++)
@@ -139,7 +139,7 @@ public static class Seeder
                 streams.Complete();
             }
 
-            using (var events = connection.BeginBinaryImport(
+            using (var events = Import(connection, 
                 "COPY core.mt_events (seq_id, id, stream_id, version, data, type, timestamp, tenant_id, mt_dotnet_type, headers, is_archived) " +
                 "FROM STDIN (FORMAT BINARY)"))
             {
@@ -175,7 +175,7 @@ public static class Seeder
                 events.Complete();
             }
 
-            using (var summary = connection.BeginBinaryImport(
+            using (var summary = Import(connection, 
                 "COPY ar.account_summary_read_model (account_summary_read_model_pk, client_account_number, status, is_disputed, " +
                 "currency_code, balance_minor_units, balance_buckets, last_global_sequence_number, contract_type, debt_type, list_date) " +
                 "FROM STDIN (FORMAT BINARY)"))
@@ -215,6 +215,17 @@ public static class Seeder
         return clock.Elapsed;
     }
 
+    // A load of millions of rows, and the deferred foreign-key checks at its
+    // end, run far past Npgsql's default 30-second timeout.
+    static readonly TimeSpan LongTimeout = TimeSpan.FromHours(2);
+
+    static NpgsqlBinaryImporter Import(NpgsqlConnection connection, string copy)
+    {
+        var importer = connection.BeginBinaryImport(copy);
+        importer.Timeout = LongTimeout;
+        return importer;
+    }
+
     /// <summary>The account.placed new_value PlaceAccount writes for a seed account.</summary>
     public static JsonObject Placed(SeedAccount seed) => new()
     {
@@ -235,13 +246,13 @@ public static class Seeder
 
     static async Task<T> Scalar<T>(NpgsqlConnection connection, string sql, CancellationToken cancellation)
     {
-        await using var command = new NpgsqlCommand(sql, connection);
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = (int)LongTimeout.TotalSeconds };
         return (T)(await command.ExecuteScalarAsync(cancellation))!;
     }
 
     static async Task Execute(NpgsqlConnection connection, string sql, CancellationToken cancellation)
     {
-        await using var command = new NpgsqlCommand(sql, connection);
+        await using var command = new NpgsqlCommand(sql, connection) { CommandTimeout = (int)LongTimeout.TotalSeconds };
         await command.ExecuteNonQueryAsync(cancellation);
     }
 }

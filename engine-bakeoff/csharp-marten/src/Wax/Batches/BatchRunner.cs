@@ -33,6 +33,8 @@ public sealed class BatchRunner(NpgsqlDataSource dataSource, string table, strin
             $"GROUP BY chunk",
             connection, transaction))
         {
+            // Ordering every key in a large table can outrun the default 30 seconds.
+            chunks.CommandTimeout = 0;
             chunks.Parameters.AddWithValue(runPk);
             chunks.Parameters.AddWithValue((long)chunkSize);
             await chunks.ExecuteNonQueryAsync(cancellation);
