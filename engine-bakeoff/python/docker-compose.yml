@@ -5,8 +5,9 @@
 # Changes: one PostgreSQL 17 and the engine, replacing the blue-green pair,
 # pgBouncer, and the Caddy proxy. A one-shot migrate service applies the
 # schema as the owner, the worker runs the projection reader as the runtime
-# role, and a tools service runs the tests and one-off commands.
-# No ports are published to the host.
+# role, and a tools service runs the tests and one-off commands, with the
+# bake-off's shared hash vectors mounted read-only. No ports are published
+# to the host.
 name: hivear-bakeoff-python
 
 x-engine: &engine
@@ -78,6 +79,9 @@ services:
     profiles: ["tools"]
     environment: *owner-env
     command: ["pytest", "-q"]
+    # tests/test_hash_vectors.py reads the vectors both sides are pinned to.
+    volumes:
+      - ../shared:/shared:ro
     depends_on:
       db:
         condition: service_healthy

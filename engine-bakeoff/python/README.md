@@ -2,7 +2,7 @@
 
 This folder holds the challenger side of the [engine bake-off](../README.md): the Wax command path in Python, adapted from the HiveAR prototype Andy Troiano published with his proposal to build Wax in Python on Django.
 
-Status: imported and trimmed. It builds, its 23 retained tests pass, and `verify_chain` verifies the chains it writes. The throughput harness comes after the method is agreed.
+Status: imported and trimmed. It builds, its 23 retained tests and the 4 shared hash vectors pass, and `verify_chain` verifies the chains it writes. The throughput harness comes after the method is agreed.
 
 ## Provenance
 
@@ -38,6 +38,10 @@ Each of these six files carries a header comment naming its source and its chang
 | `constraints.txt` | Removed the pins for the same three packages. | Every other pin is unchanged. |
 | `docker-compose.yml` | One PostgreSQL 17, a one-shot `migrate` service, the projection `worker`, and a `tools` service for tests and one-off commands. | Replaces the blue-green pair, pgBouncer, and the Caddy proxy. No ports are published to the host. |
 
+### Added
+
+- `tests/test_hash_vectors.py` checks `wax/hashing.py` against [`../shared/hash-vectors.json`](../shared/README.md), the vectors the C# side's tests also require, so both sides stay pinned to one canonical hash form. A missing vectors file fails the test rather than skipping it. The `tools` service in `docker-compose.yml` mounts `../shared` read-only for it.
+
 ### Left out
 
 These stay in Andy's fork at commit 361b6aa.
@@ -64,7 +68,7 @@ docker compose up -d db
 docker compose run --rm tools
 ```
 
-That runs the 23 retained tests. To run the engine against a real database:
+That runs the 23 retained tests and the 4 shared hash vectors. To run the engine against a real database:
 
 ```
 docker compose up -d migrate worker
@@ -75,4 +79,4 @@ docker compose down -v
 
 On Windows, run these from WSL or set `MSYS_NO_PATHCONV=1` in Git Bash, so container paths are not rewritten.
 
-Checked on 2026-10-08 with Docker Desktop: the image builds, all 23 retained tests pass, and after 50 accounts and 51 payments were dispatched through `manage.py shell`, `verify_chain` verified all 101 aggregate chains and the worker, running as the runtime role, had brought all three read models up to the head of the stream.
+Checked on 2026-10-08 with Docker Desktop: the image builds, all 27 tests pass (and the hash test fails, as it should, against a tampered or missing vectors file), and after 50 accounts and 51 payments were dispatched through `manage.py shell`, `verify_chain` verified all 101 aggregate chains and the worker, running as the runtime role, had brought all three read models up to the head of the stream.
