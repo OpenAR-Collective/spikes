@@ -1,0 +1,24 @@
+{
+  "python": {
+    "compose": "../python/docker-compose.yml",
+    "project": "hivear-bakeoff-python",
+    "profile": "bakeoff",
+    "cli": ["python", "-m", "bakeoff"]
+  },
+  "csharp": {
+    "compose": "../csharp-marten/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "compose_env": {"BAKEOFF_APPEND": "marten"},
+    "container_env": {"WAX_APPEND": "marten"}
+  },
+  "csharp-direct": {
+    "compose": "../csharp-marten/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "compose_env": {"BAKEOFF_APPEND": "direct"},
+    "container_env": {"WAX_APPEND": "direct"}
+  }
+}

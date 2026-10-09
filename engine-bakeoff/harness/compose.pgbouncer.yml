@@ -1,0 +1,39 @@
+# Optional tuning, available to either side: put pgBouncer in transaction
+# pooling mode between the engine and bench services and PostgreSQL. The
+# harness adds this file only with --pgbouncer, and the result records it.
+# Owner connections (migrate, seed) still go straight to the database.
+# Leaving DB_NAME unset makes pgBouncer route every database name, so each
+# run's copy of the seed is reachable under its own name.
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer@sha256:9c78945868a6a142c7fc40ccd843bbe5a606df163c7ffce4de70e0d628d696a2  # PgBouncer 1.26.0
+    cpus: 1
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: hivear_app
+      DB_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      LISTEN_PORT: "6432"
+      MAX_CLIENT_CONN: "500"
+      DEFAULT_POOL_SIZE: "60"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  engine:
+    environment:
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_POOLED: "1"
+    depends_on:
+      - pgbouncer
+
+  bench:
+    environment:
+      DATABASE_HOST: pgbouncer
+      DATABASE_PORT: "6432"
+      DATABASE_POOLED: "1"
+    depends_on:
+      - pgbouncer
