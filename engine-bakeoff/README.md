@@ -106,7 +106,7 @@ CPU per command at 16 workers, in milliseconds, from each container's cgroup cou
 | --- | --- | --- | --- |
 | Payment file | 1.7 / 6.8 | 1.3 / 5.7 | 15.7 / 9.5 |
 | Interest accrual | 1.1 / 4.4 | 0.9 / 3.8 | 9.7 / 5.7 |
-| Real time | 3.5 / 12.1 | 2.9 / 10.4 | 26.6 / 14.8 |
+| Real time, read about a third high (see the limits below) | 3.5 / 12.1 | 2.9 / 10.4 | 26.6 / 14.8 |
 
 What the pass shows:
 
@@ -118,7 +118,7 @@ What the pass shows:
 - **The database sets the ceiling.** Database CPU per command, 3.8 to 6.8 ms on the C# sides and 5.7 to 9.5 ms on Python, is what limits every side: a 6-core database caps the C# sides near 900 to 1,600 commands per second. At the same cost per command, 6,900 per second on one primary would take roughly 26 to 47 cores of comparable CPU for the C# sides, and 39 to 66 for Python as written. That is a question about the design's one-transaction-per-command write path more than about the language; the language mostly decides how many application servers the same load needs.
 - **The threshold.** No side came near 6,900 commands per second on this laptop. The best was 1,287, the direct append's accrual at 16 workers. The laptop runs say how the stacks compare, not whether either clears the threshold on server hardware.
 
-Limits of this pass: the catch-up time that each real-time run's record reports is not comparable across sides, because dispute reviews scheduled near the end of a run keep firing for up to 60 seconds afterward and keep moving the head; batch catch-up times are unaffected. One run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions.
+Limits of this pass: the catch-up time that each real-time run's record reports is not comparable across sides, because dispute reviews scheduled near the end of a run keep firing for up to 60 seconds afterward and keep moving the head; batch catch-up times are unaffected. The real-time CPU figures include the warm-up's CPU but are divided only by the commands of the measured window, so they read about a third high, by the ratio of 240 seconds to 180; the ratios between the sides hold, and the batch figures and the database ceiling, which use batch runs, are unaffected. One run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions.
 
 ## Attribution
 
