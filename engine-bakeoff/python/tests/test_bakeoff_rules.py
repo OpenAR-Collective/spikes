@@ -81,6 +81,28 @@ def test_a_new_account_gets_one_first_contact_task(at_head, place):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_partitioned_runners_and_pollers_split_the_work_without_overlap(at_head, place):
+    runners = [RuleRunner(actor_pk=RULE_RUNNER, partition=p, partitions=3) for p in range(3)]
+    for runner in runners:
+        runner.position()
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE core.projection_checkpoint SET last_global_sequence_number = %s WHERE projection_name = ANY(%s)",
+            [store.current_position(), [runner.name for runner in runners]],
+        )
+    accounts = [place() for _ in range(12)]
+    for runner in runners:
+        drain(runner)
+    assert sum(runner.counts["delivered"] for runner in runners) == 12
+    entries = set(PendingEvent.objects.filter(aggregate_pk_ref__in=accounts).values_list("pk", flat=True))
+    assert len(entries) == 12
+
+    time.sleep(0.05)
+    due = [set(register.due_keys(10_000, p, 3)) & entries for p in range(3)]
+    assert set().union(*due) == entries and sum(len(keys) for keys in due) == 12
+
+
+@pytest.mark.django_db(transaction=True)
 def test_a_dispute_is_queued_for_review_when_its_review_comes_due(at_head, place, run):
     account_pk = place()
     run(commands.OpenDispute(account_pk=account_pk))

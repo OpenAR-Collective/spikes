@@ -22,7 +22,8 @@ def due_keys(limit, partition=0, partitions=1):
     sql = "SELECT pending_event_pk FROM core.pending_event WHERE status = 'pending' AND due_at <= clock_timestamp()"
     params = []
     if partitions > 1:
-        sql += " AND abs(hashtext(pending_event_pk::text)) %% %s = %s"
+        # Masked rather than abs(), which overflows for a hash of -2**31.
+        sql += " AND (hashtext(pending_event_pk::text) & 2147483647) %% %s = %s"
         params += [partitions, partition]
     sql += " ORDER BY due_at LIMIT %s"
     params.append(limit)

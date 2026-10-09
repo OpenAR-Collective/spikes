@@ -106,7 +106,8 @@ class RuleRunner:
         )
         params = [position, safe, registered_event_types()]
         if self.partitions > 1:
-            sql += " AND abs(hashtext(aggregate_pk_ref::text)) %% %s = %s"
+            # Masked rather than abs(), which overflows for a hash of -2**31.
+            sql += " AND (hashtext(aggregate_pk_ref::text) & 2147483647) %% %s = %s"
             params += [self.partitions, self.partition]
         sql += " ORDER BY global_sequence_number LIMIT %s"
         params.append(self.batch_size)
