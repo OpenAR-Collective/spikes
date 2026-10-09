@@ -54,11 +54,11 @@ public sealed class EventStoreTests(DatabaseFixture db) : IClassFixture<Database
         var accountPk = await scenario.Place();
         await using var connection = await db.Engine.DataSource.OpenConnectionAsync();
         await using var transaction = await connection.BeginTransactionAsync();
-        await using var session = db.Engine.Store.LightweightSession(SessionOptions.ForTransaction(transaction, shouldAutoCommit: false));
+        await using var writes = IWriteQueue.Create(db.Engine.Commands.AppendMode, connection, transaction, db.Engine.Store);
         var context = new CommandContext(
             connection,
             transaction,
-            session,
+            writes,
             new Attribution(Scenario.Actor, "system", DateTimeOffset.UtcNow, null, null, null),
             await ReasonCodes.LoadAsync(db.Engine.DataSource));
         var stale = new AccountState

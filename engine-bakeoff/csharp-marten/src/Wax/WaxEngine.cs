@@ -30,6 +30,7 @@ public sealed class WaxEngine : IAsyncDisposable
         string connectionString,
         IReadOnlyList<IWaxModule> modules,
         bool migrate = false,
+        AppendMode? appendMode = null,
         CancellationToken cancellation = default)
     {
         var dataSource = NpgsqlDataSource.Create(connectionString);
@@ -39,7 +40,7 @@ public sealed class WaxEngine : IAsyncDisposable
             await WaxMigrator.MigrateAsync(dataSource, store, modules, cancellation);
         }
         var reasons = await ReasonCodes.LoadAsync(dataSource, cancellation);
-        var commands = new CommandDispatcher(dataSource, store, reasons);
+        var commands = new CommandDispatcher(dataSource, store, reasons, appendMode ?? WaxSettings.AppendModeFromEnvironment());
         foreach (var module in modules)
         {
             module.RegisterHandlers(commands);
@@ -56,6 +57,12 @@ public sealed class WaxEngine : IAsyncDisposable
 
 public static class WaxSettings
 {
+    /// <summary>WAX_APPEND=direct selects the direct append; anything else, Marten's.</summary>
+    public static AppendMode AppendModeFromEnvironment() =>
+        string.Equals(Environment.GetEnvironmentVariable("WAX_APPEND"), "direct", StringComparison.OrdinalIgnoreCase)
+            ? AppendMode.Direct
+            : AppendMode.Marten;
+
     /// <summary>The connection named by the same DATABASE_* variables the Python side reads.</summary>
     public static string ConnectionStringFromEnvironment(string? databaseOverride = null)
     {

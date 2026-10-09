@@ -81,7 +81,7 @@ switch (args.FirstOrDefault() ?? "run-projections")
         var storeOptions = engine.Store.Options;
         Console.WriteLine($".NET {Environment.Version}, {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
         Console.WriteLine($"Marten {typeof(DocumentStore).Assembly.GetName().Version}, Npgsql {typeof(NpgsqlConnection).Assembly.GetName().Version}");
-        Console.WriteLine($"event append mode: {storeOptions.Events.AppendMode}");
+        Console.WriteLine($"event append mode: {storeOptions.Events.AppendMode}; commands append through: {engine.Commands.AppendMode}");
         Console.WriteLine($"server GC: {System.Runtime.GCSettings.IsServerGC}, processors: {Environment.ProcessorCount}");
         return 0;
     }
@@ -110,7 +110,7 @@ switch (args.FirstOrDefault() ?? "run-projections")
             parallelism: ruleWorkers,
             pollInterval: pollInterval,
             logger: services.GetRequiredService<ILogger<PendingEventPoller>>()));
-        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}");
+        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}, append {engine.Commands.AppendMode}");
         await builder.Build().RunAsync();
         await engine.DisposeAsync();
         return 0;

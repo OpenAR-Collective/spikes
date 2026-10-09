@@ -6,6 +6,7 @@ using Marten;
 using Marten.Events.Projections;
 using Marten.Services;
 using Npgsql;
+using Wax.Commands;
 using Wax.Events;
 using Wax.Store;
 using Xunit;
@@ -90,6 +91,31 @@ public sealed class ReaderTests(DatabaseFixture db) : IClassFixture<DatabaseFixt
             ActorPkRef = Scenario.Actor,
             ActorType = "system",
         };
+        if (db.Engine.Commands.AppendMode == AppendMode.Direct)
+        {
+            // The same plain SQL the direct append writes, so the daemon's gap
+            // handling is tested against it too. No hash: the reader ignores it.
+            var connection = open?.Connection ?? await db.Engine.DataSource.OpenConnectionAsync();
+            var transaction = open ?? await connection.BeginTransactionAsync();
+            long priorVersion = 0;
+            if (!start)
+            {
+                await using var version = new NpgsqlCommand("SELECT version FROM core.mt_streams WHERE id = $1", connection, transaction);
+                version.Parameters.AddWithValue(aggregate);
+                priorVersion = (long)(await version.ExecuteScalarAsync())!;
+            }
+            await using (var writes = IWriteQueue.Create(AppendMode.Direct, connection, transaction, store))
+            {
+                writes.Append(aggregate, priorVersion, body, "not-checked", null);
+                await writes.FlushAsync(CancellationToken.None);
+            }
+            if (open is null)
+            {
+                await transaction.CommitAsync();
+                await connection.DisposeAsync();
+            }
+            return;
+        }
         await using var session = open is null
             ? store.LightweightSession()
             : store.LightweightSession(SessionOptions.ForTransaction(open, shouldAutoCommit: false));

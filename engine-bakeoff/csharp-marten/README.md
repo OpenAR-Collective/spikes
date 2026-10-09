@@ -53,6 +53,17 @@ Everything in this section was written by the Foundation for the bake-off, not p
 - **The driver** (`src/Bakeoff.Host/Bench.cs`) answers `seed`, `bench batch-payments`, `bench batch-accrual`, and `bench realtime`, and prints one line of JSON. `run-engine` runs the projection daemon, the rule runner, and the poller in one process. `--rule-workers` sets both the rule runner's and the poller's parallelism. Marten runs one agent per projection, so `--projection-workers` does not apply here.
 - **The Compose file** adds an `engine` service and a `bench` service. Both take their database from `BAKEOFF_DATABASE`, so the harness can point a run at a copy of the seed. The seed runs as the owner, so that it can ANALYZE.
 
+## Two ways to append
+
+The C# side can append a command's events in either of two ways, chosen by the environment variable `WAX_APPEND` (in Compose, `BAKEOFF_APPEND`). Everything else is the same in both: the handlers, the row locks, the version check, the hashes, the state writes, the tables, and Marten's daemon, which keeps the read models and runs the rules either way.
+
+- **`marten`, the default.** Events go through a Marten session and Marten's `mt_quick_append_events` function, in one batch with the state writes. This is the stack WAX-0025 adopts.
+- **`direct`.** Events go into the same `mt_events` and `mt_streams` tables as plain SQL, in the same single batch, numbered from the same sequence inside the same transaction, as the Python side's own event store does. Marten's session and its append function are not used, though its JSON serializer still writes the bodies, so the stored events are identical.
+
+The direct mode exists to separate the language from the library. Marten's append function re-reads the stream's version, checks the stream's tenant in a separate query, and inserts each event in a loop, much of which repeats the lock and version check the command has already made. In a smoke check on 5,000 accounts, which is not a result, the database spent about 1.6 ms per payment in Marten mode, 1.2 ms of it appending, against about 0.8 ms in direct mode, 0.4 ms of it appending. At 8 workers that showed up as about 455 against 590 payments per second; at 4 workers the two were the same, because commit latency, not database work, set the pace.
+
+The whole test suite passes in both modes, including the reader tests, which in direct mode write through the direct append so that Marten's gap handling is tested against it: `WAX_APPEND=direct NETWORK=hivear-bakeoff-csharp_default ./build.sh dotnet test`.
+
 ## How it matches the Python side
 
 - **The same rules.** The handlers, the allocation, and the waterfall are ports of the prototype's code, and the payment tests are ports of its tests.

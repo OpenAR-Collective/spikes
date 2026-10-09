@@ -11,6 +11,6 @@ network=""
 if [ -n "$NETWORK" ]; then network="--network $NETWORK"; fi
 exec docker run --rm $network \
   -e DATABASE_HOST=db -e DATABASE_NAME=hivear -e DATABASE_USER=hivear \
-  -e DATABASE_PASSWORD="${POSTGRES_PASSWORD:-local-evaluation-only}" \
+  -e DATABASE_PASSWORD="${POSTGRES_PASSWORD:-local-evaluation-only}" -e WAX_APPEND="${WAX_APPEND:-}" \
   -v "$here:/work" -v wax-bakeoff-nuget:/root/.nuget/packages -w /work/csharp-marten \
   mcr.microsoft.com/dotnet/sdk@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 "$@"

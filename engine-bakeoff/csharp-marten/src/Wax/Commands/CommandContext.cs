@@ -1,9 +1,4 @@
-using System.Collections.Concurrent;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Text.Json.Nodes;
-using JasperFx.Events;
-using Marten;
 using Npgsql;
 using Wax.Events;
 using Wax.Hashing;
@@ -14,39 +9,25 @@ namespace Wax.Commands;
 /// <summary>
 /// What a command handler works through: the command's one connection and
 /// transaction for its reads and row locks, and a queue of writes (events and
-/// state) that Marten sends in a single batch when the handler returns.
+/// state) that go out in a single batch when the handler returns: through
+/// Marten, or as plain SQL (see <see cref="AppendMode"/>).
 /// </summary>
 public sealed class CommandContext
 {
-    readonly IDocumentSession session;
+    readonly IWriteQueue writes;
     readonly ReasonCodes reasons;
     readonly Dictionary<Guid, StreamHead> heads = [];
-
-    // Marten names an event after the static type it is wrapped as, so each
-    // body is wrapped as its own concrete type, never as WaxEvent.
-    static readonly ConcurrentDictionary<Type, Func<WaxEvent, IEvent>> Wrappers = new();
-
-    static IEvent Wrap(WaxEvent body) => Wrappers.GetOrAdd(body.GetType(), static type =>
-    {
-        var asEvent = typeof(Event).GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .Single(method => method.Name == nameof(Event.AsEvent) && method.IsGenericMethodDefinition && method.GetParameters().Length == 1)
-            .MakeGenericMethod(type);
-        var parameter = Expression.Parameter(typeof(WaxEvent));
-        return Expression.Lambda<Func<WaxEvent, IEvent>>(
-            Expression.Convert(Expression.Call(asEvent, Expression.Convert(parameter, type)), typeof(IEvent)),
-            parameter).Compile();
-    })(body);
 
     internal CommandContext(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
-        IDocumentSession session,
+        IWriteQueue writes,
         Attribution attribution,
         ReasonCodes reasons)
     {
         Connection = connection;
         Transaction = transaction;
-        this.session = session;
+        this.writes = writes;
         Attribution = attribution;
         this.reasons = reasons;
     }
@@ -64,7 +45,7 @@ public sealed class CommandContext
     public NpgsqlCommand CreateCommand(string sql) => new(sql, Connection, Transaction);
 
     /// <summary>Queue a state write. It runs in the save batch, inside this transaction.</summary>
-    public void QueueSql(string sql, params object[] values) => session.QueueSqlCommand(sql, values);
+    public void QueueSql(string sql, params object[] values) => writes.Sql(sql, values);
 
     /// <summary>A batch command that reads the head of each named stream, so a
     /// handler can fetch heads in the same round trip as its row locks.</summary>
@@ -166,19 +147,7 @@ public sealed class CommandContext
             reasonCode,
             head.EventHash));
 
-        var wrapped = Wrap(body).WithHeader(StreamHeads.EventHashHeader, eventHash);
-        if (head.EventHash is not null)
-        {
-            wrapped = wrapped.WithHeader(StreamHeads.PriorEventHashHeader, head.EventHash);
-        }
-        if (head.Version == 0)
-        {
-            session.Events.StartStream(aggregate.Pk, wrapped);
-        }
-        else
-        {
-            session.Events.Append(aggregate.Pk, wrapped);
-        }
+        writes.Append(aggregate.Pk, head.Version, body, eventHash, head.EventHash);
 
         heads[aggregate.Pk] = new StreamHead(head.Version + 1, eventHash);
         aggregate.AggregateSequenceNumber = checked((int)(head.Version + 1));

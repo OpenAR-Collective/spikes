@@ -10,13 +10,20 @@ namespace Wax.Commands;
 /// <summary>
 /// The command path (WAX-0002 CQRS Model). Each command runs in one
 /// transaction: the handler reads and locks what it needs, queues its events
-/// and state writes, and Marten sends them in one batch before the commit. A
+/// and state writes, and they go out in one batch before the commit. A
 /// conflict with a concurrent writer is retried from the start, up to three
 /// attempts, as on the Python side.
 /// </summary>
-public sealed class CommandDispatcher(NpgsqlDataSource dataSource, IDocumentStore store, ReasonCodes reasons, TimeProvider? clock = null)
+public sealed class CommandDispatcher(
+    NpgsqlDataSource dataSource,
+    IDocumentStore store,
+    ReasonCodes reasons,
+    AppendMode appendMode = AppendMode.Marten,
+    TimeProvider? clock = null)
 {
     public const int MaxAttempts = 3;
+
+    public AppendMode AppendMode => appendMode;
 
     static readonly HashSet<string> ActorTypes = ["user", "system", "integration", "batch"];
 
@@ -64,12 +71,12 @@ public sealed class CommandDispatcher(NpgsqlDataSource dataSource, IDocumentStor
                 actorPk, actorType, IsoFormat.UtcNowMicroseconds(clock), source, correlationPk, correlationType);
             await using var connection = await dataSource.OpenConnectionAsync(cancellation);
             await using var transaction = await connection.BeginTransactionAsync(cancellation);
-            await using var session = store.LightweightSession(SessionOptions.ForTransaction(transaction, shouldAutoCommit: false));
-            var context = new CommandContext(connection, transaction, session, attribution, reasons);
+            await using var writes = IWriteQueue.Create(appendMode, connection, transaction, store);
+            var context = new CommandContext(connection, transaction, writes, attribution, reasons);
             try
             {
                 await handler(command, context, cancellation);
-                await session.SaveChangesAsync(cancellation);
+                await writes.FlushAsync(cancellation);
                 await transaction.CommitAsync(cancellation);
                 return;
             }

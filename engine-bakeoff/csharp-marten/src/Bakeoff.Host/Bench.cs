@@ -93,6 +93,7 @@ static class Bench
             elapsed_s = Math.Round((measuredWindow ?? clock.Elapsed).TotalSeconds, 3),
             latency_ms = tally.Percentiles(),
             run_pk = runPk,
+            append = engine.Commands.AppendMode.ToString().ToLowerInvariant(),
         });
         return tally.Failed == 0 ? 0 : 1;
     }
