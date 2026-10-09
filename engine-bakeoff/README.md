@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: the first measured pass is complete. Three sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; and C# with a direct append. All 18 runs of the first pass, at 500,000 accounts, passed every correctness gate, and their results are below.
+Status: a first pass on the development laptop is complete, and the first pass on the benchmark PC is planned. Four sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; C# with a direct append; and C# without Marten. All 18 runs of the laptop pass, at 500,000 accounts, passed every correctness gate, and their results are below.
 
 ## Background
 
@@ -27,9 +27,9 @@ Wax v1 defers hash computation, multi-instance batch work, and the Pending Event
 | [csharp-marten](csharp-marten/README.md), direct append | Variant | C# on the current .NET LTS release | Marten's tables, appended with plain SQL; Marten's daemon for read models and rules |
 | [csharp-wax](csharp-wax/README.md) | Variant | C# on the current .NET LTS release | No Marten: WAX-0001's `core.event`, with a reader ported from Andy Troiano's prototype for read models and rules |
 
-The variant runs the champion's code with one change: it appends events with plain SQL instead of through Marten, as the Python side's own event store does. It separates the cost of the language from the cost of the library on the write path, which bears on whether Wax should use Marten for its event store at all.
+The two variants separate the cost of the language from the cost of the library. The direct-append variant runs the champion's code with one change: it appends events with plain SQL instead of through Marten, as the Python side's own event store does, while Marten's daemon still runs the read models and rules. The variant without Marten drops it altogether: events go to WAX-0001's `core.event`, and a reader ported from Andy's prototype runs the read models and rules. Together they bear on whether Wax should use Marten for its event store at all.
 
-The Foundation builds and tunes both sides to the best of its ability. When the results are published, Andy Troiano and anyone else is invited to review either side and submit improvements; an accepted improvement means the affected runs are repeated and the results updated.
+The Foundation builds and tunes every side to the best of its ability. When the results are published, Andy Troiano and anyone else is invited to review any side and submit improvements; an accepted improvement means the affected runs are repeated and the results updated.
 
 ## Where Django fits
 
@@ -47,6 +47,8 @@ Every measured command does all of the following. A run that skips any of them d
 4. It writes the event and updates the authoritative state in one atomic transaction, as [WAX-0002 CQRS Model](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0002-cqrs-model.md) requires.
 5. It hashes every event individually and chains it to its own aggregate's previous event. The single-command workloads write one command per transaction through the command handler, as WAX-0024 requires of batch work today. The bulk workloads write a chunk of aggregates per transaction with set-based statements, a change to WAX-0024 being drafted for designated bulk operations; their events are still hashed and chained one by one. A bulk insert that bypasses the per-event hash is not allowed.
 
+Every side hashes the list of fields that WAX-0013 named until 2026-10-08, when it moved to a hash over the event's full payload, including `recorded_at` and the two sequence numbers, which the store assigns and the hashing code must read inside the transaction before it computes the hash. No side does that yet, so the comparison between the sides holds, but the cost of the chain is understated by whatever that read adds to each write.
+
 ## Method (draft)
 
 [WORKLOADS.md](WORKLOADS.md) specifies exactly what runs, so that both sides do the same work: the seed, the commands added for the test, the batch jobs, the real-time mix and its rules, the command each side's runtime answers to, and the correctness gates. In outline, two kinds of workload are measured.
@@ -63,9 +65,20 @@ Read models are updated by a separate reader that catches up after the commands 
 
 One harness drives both sides. It measures from outside the process under test, reading container CPU from the kernel's cgroup counters and statements per command from PostgreSQL's `pg_stat_statements`, so neither side reports its own numbers. Each side supplies only a small driver that runs the workload in process against its own command handler.
 
-The benchmark machine is a laptop: an Intel Core i7-13620H with 10 cores and 16 threads, 64 GB of memory, and Windows 11 with Docker Desktop. Runs happen only when the laptop is otherwise idle, one side at a time and never in parallel, against the same PostgreSQL 17 container with the same configuration. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
+The first pass ran on Rob's laptop, the development machine: an Intel Core i7-13620H with 10 cores and 16 threads, 64 GB of memory, and Windows 11 with Docker Desktop. Measured passes since then run on a separate PC, the benchmark machine, whose hardware every result records; [RUNBOOK-PC.md](RUNBOOK-PC.md) says how a pass is run there. Runs happen only when the machine is otherwise idle, one side at a time and never in parallel, against the same PostgreSQL 17 container with the same configuration. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
 
-**The first side-by-side pass.** Measuring every worker count three times at 500,000 accounts would take days on the benchmark laptop, so the first pass is narrower, and its results say so. Each workload runs at 4 and at 16 workers, once each, with no separate warm-up run, because a batch over 500,000 accounts runs for many minutes and that swamps any start-up effect. The real-time workload warms up for 60 seconds and is measured for 180. Every side runs its engine with `--rule-workers 4`, the same value on each. The sides run one after another, never at once: C# through Marten, then C# with direct append, then Python. More worker counts, repeats, or larger sizes are decided after this pass.
+**The development-machine pass.** Measuring every worker count three times at 500,000 accounts would take days on the laptop, so the first pass is narrower, and its results say so. Each workload runs at 4 and at 16 workers, once each, with no separate warm-up run, because a batch over 500,000 accounts runs for many minutes and that swamps any start-up effect. The real-time workload warms up for 60 seconds and is measured for 180. Every side runs its engine with `--rule-workers 4`, the same value on each. The sides run one after another, never at once: C# through Marten, then C# with direct append, then Python. More worker counts, repeats, or larger sizes are decided after this pass.
+
+**The benchmark passes.** After the development-machine pass, Rob asked for the remaining worker counts, repeats in a shuffled order, tuned engines, three diagnostics, and the bulk workloads; the side without Marten joined; and the measured runs moved to a dedicated PC. Each benchmark pass runs under the corrected method described with the measurements below, one measured run per configuration at 500,000 accounts, and the next pass repeats it in a different order. Its runs fall into four groups, in priority order:
+
+1. The core comparison. On all four sides, both batch jobs and the real-time mix run at 4, 8, 16, and 32 workers.
+2. Three diagnostics, on the payment file at 16 workers on every side. With the engine paused, nothing reads the stream while the commands run, which shows what the readers cost the write path; the read-model and rule gates are skipped. With hashing off, every event carries a placeholder hash, the stream's head is not read, and the version check trusts the locked state row, with the unique index on stream and version as the backstop; that shows what the chain costs, and the chain gate is skipped. Neither diagnostic is a contestant. The third diagnostic, the statements that took the most database time, is recorded for every run and needs no runs of its own.
+3. The bulk workloads, at 4 and 16 workers: the bulk payment file over all 500,000 accounts, and a placement of 100,000 new accounts, one command per transaction and in bulk. They run on the direct-append side, the side without Marten, and Python. The side through Marten does not run them, because Marten has no set-based append inside a caller's transaction, so it would run the direct-append side's writer again.
+4. The real-time mix at 4 and 16 workers with every engine untuned, at the development-machine pass's `--rule-workers 4`, to show what tuning changed. This group waits for Rob's approval.
+
+Within each group the order is shuffled from a recorded seed, so that a side's place in the pass is not mixed with its result. The [passes](passes/) folder holds the generator, the seed, and the run list, committed before the pass started. A run that would not finish before the window ends is skipped, so the lowest group drops first. Before each run every bake-off database container is stopped, so each run starts with only its own side's database up, freshly started. A run's read models may take up to an hour to catch up before the run fails. No other containers run on the benchmark machine during a pass.
+
+Each engine runs with the settings its tuning trial chose, which the plan file records. The trials ran on the development laptop at 50,000 accounts and are confirmed on the benchmark PC before its first pass; neither is recorded. Marten's daemon runs each projection as its own agent, so the two sides through Marten have no projection-worker setting. On the other two sides, one reader advances all three projections in turn, as Andy's prototype does, and `--projection-workers` sets how many workers share that reading.
 
 The measurements are these:
 
@@ -89,9 +102,9 @@ After every run, the correctness gates in WORKLOADS.md are checked. In short: ev
 
 ## Results
 
-### First side-by-side pass, 2026-10-08 and 2026-10-09
+### Development-machine pass, 2026-10-08 and 2026-10-09
 
-The pass ran overnight from 23:46 to 06:17 under the scope above: 500,000 accounts, 4 and 16 workers, one run of each configuration, `--rule-workers 4` on every side, on the benchmark laptop with no other work running, though 13 idle containers from an unrelated stack were up. All 18 runs passed every correctness gate. Each run's full record, with its raw output, is in [results](results/README.md); the folder names begin `2026-10-08-first-pass` or `2026-10-09-first-pass`.
+The pass ran overnight from 23:46 to 06:17 under the scope above: 500,000 accounts, 4 and 16 workers, one run of each configuration, `--rule-workers 4` on every side, on the laptop with no other work running, though 13 idle containers from an unrelated stack were up. All 18 runs passed every correctness gate. Each run's full record, with its raw output, is in [results](results/README.md); the folder names begin `2026-10-08-first-pass` or `2026-10-09-first-pass`.
 
 Throughput, in commands per second over the measured run:
 
