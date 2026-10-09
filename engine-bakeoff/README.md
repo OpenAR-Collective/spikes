@@ -87,7 +87,7 @@ After every run, the correctness gates in WORKLOADS.md are checked. In short: ev
 
 ### First side-by-side pass, 2026-10-08 and 2026-10-09
 
-The pass ran overnight from 23:46 to 06:17 under the scope above: 500,000 accounts, 4 and 16 workers, one run of each configuration, `--rule-workers 4` on every side, on the benchmark laptop with nothing else in use. All 18 runs passed every correctness gate. Each run's full record, with its raw output, is in [results](results/README.md); the folder names begin `2026-10-08-first-pass` or `2026-10-09-first-pass`.
+The pass ran overnight from 23:46 to 06:17 under the scope above: 500,000 accounts, 4 and 16 workers, one run of each configuration, `--rule-workers 4` on every side, on the benchmark laptop with no other work running, though 13 idle containers from an unrelated stack were up. All 18 runs passed every correctness gate. Each run's full record, with its raw output, is in [results](results/README.md); the folder names begin `2026-10-08-first-pass` or `2026-10-09-first-pass`.
 
 Throughput, in commands per second over the measured run:
 
@@ -115,9 +115,10 @@ What the pass shows:
 - **Read models.** After the payment file, the C# read models were caught up within two seconds; Python's took 31 minutes after the 4-worker run and 46 minutes after the 16-worker run, because one projection worker on 2 CPUs could not keep pace. Its engine was not tuned for this pass, and a second projection worker is allowed tuning.
 - **Rules under load.** At 4 workers the rule delay was about 0.24 seconds on both C# sides and 0.70 seconds on Python. At 16 workers the C# rule runner fell behind, with a median delay of about 14 seconds, while Python's held near 1 second, but at less than half the inbound rate. Neither side's rule runner was tuned beyond four workers.
 - **Marten's append.** At 16 workers the direct append was faster than Marten's by 16 percent on the payment file, 10 percent on the accrual, and 16 percent on the real-time mix, with less database CPU each time. At 4 workers it was slower on the payment file, 321 against 425, with about the same database CPU; one run cannot say whether that is real or noise.
+- **The database sets the ceiling.** Database CPU per command, 3.8 to 6.8 ms on the C# sides and 5.7 to 9.5 ms on Python, is what limits every side: a 6-core database caps the C# sides near 900 to 1,600 commands per second. At the same cost per command, 6,900 per second on one primary would take roughly 26 to 47 cores of comparable CPU for the C# sides, and 39 to 66 for Python as written. That is a question about the design's one-transaction-per-command write path more than about the language; the language mostly decides how many application servers the same load needs.
 - **The threshold.** No side came near 6,900 commands per second on this laptop. The best was 1,287, the direct append's accrual at 16 workers. The laptop runs say how the stacks compare, not whether either clears the threshold on server hardware.
 
-Limits of this pass: one run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions.
+Limits of this pass: the catch-up time that each real-time run's record reports is not comparable across sides, because dispute reviews scheduled near the end of a run keep firing for up to 60 seconds afterward and keep moving the head; batch catch-up times are unaffected. One run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions.
 
 ## Attribution
 
