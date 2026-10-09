@@ -79,6 +79,25 @@ A batch runs as WAX-0024 describes. A coordinator creates the run and divides th
 
 **Interest accrual.** One AccrueInterest per account: `accrual_date` 2026-10-01 and 1,800 basis points.
 
+## Bulk workloads
+
+The first pass showed that database CPU per command sets every side's ceiling, and one transaction per command is part of that cost. The bulk workloads test how much: they write a chunk of 1,000 aggregates in one transaction, with set-based statements, instead of 1,000 transactions of one command each. Everything else holds. Every aggregate's state row is locked and its version checked, every event is hashed individually in the application and chained to its own aggregate's previous event, events and state are written in the same transaction, and every stored event is byte for byte what the single-command path would have written, so the read models, the rules, the gates, and `verify-chain` cannot tell the difference. The hash input does not include the global sequence, and each aggregate's chain depends only on its own previous event, which is what lets events be written in sets.
+
+**Bulk payment file.** `bench batch-payments-bulk --workers W` posts the same payment file as the batch workload, with the same chunks, keys, amounts, and `received_at`. Each worker claims a chunk as before and handles it in one transaction:
+
+1. Lock the chunk's state rows with `SELECT ... FOR UPDATE`, in key order.
+2. Read each aggregate's head, its version and last hash, and check it against the state row's version.
+3. Pass over each account whose payment key for this run already exists, so a retried chunk does not post twice.
+4. Run the allocation and the waterfall for each account in the application, by the same rules as PostPayment. An account the single-command path would refuse, such as one not active, is refused here too and counted as rejected.
+5. Compute every event's hash in the application, chained per aggregate.
+6. Write every event, and every change of state (payment rows, bucket balances, aggregate versions), with set-based statements: multi-row `INSERT`, `COPY`, or `UPDATE ... FROM` a set of values.
+
+If a chunk's transaction fails, the worker runs that chunk again one command per transaction, through the normal path, and counts it as a fallback chunk.
+
+**Placement.** A mass load of M new accounts, measured two ways. `bench placement --workers W --accounts M` sends one PlaceAccount per account through the normal command path. `bench placement-bulk --workers W --accounts M` places the same accounts in chunks of 1,000, one transaction per chunk, with set-based writes, after passing over any key that already exists. Account `i`, for `i` from 0 to M minus 1, is keyed `derived_uuid("bakeoff:placement:{run_pk}:{i}")`, its client account number is `PL-` and `i` as nine digits, and its dates and balances are the seed's formulas for `i`. Workers take chunks of 1,000 consecutive `i` in order; there are no existing rows to divide, so the claiming need not go through the batch tables. The rules then schedule a first-contact entry for every placed account, as they would for any new account.
+
+On the C# side, Marten offers no set-based append inside a caller's transaction, so both C# sides would run the same set-based writer. The C# bulk workloads therefore run once, on the direct-append side.
+
 ## Real-time workload
 
 Many workers at once send inbound commands, back to back, for a fixed time after a warm-up. Each inbound command is one of these:
@@ -116,11 +135,14 @@ Each side's Compose file has the services `db`, `migrate`, `worker`, and `tools`
 | `seed --accounts N` | Loads the seed. Not measured. |
 | `bench batch-payments --workers W` | Runs the payment file to the end. |
 | `bench batch-accrual --workers W` | Runs the interest accrual to the end. |
+| `bench batch-payments-bulk --workers W` | Runs the payment file to the end, one transaction per chunk. |
+| `bench placement --workers W --accounts M` | Places M new accounts, one command per account. |
+| `bench placement-bulk --workers W --accounts M` | Places the same M accounts, one transaction per chunk. |
 | `bench realtime --workers W --warmup S --duration S --random-seed R` | Runs the inbound mix. Warm-up commands run but are not counted. |
 | `run-engine --seconds-per-day D --poll-interval-ms P --rule-workers K --projection-workers J` | The long-running services: the projection worker, the rule runner, and the register poller. K sets both the rule runner's parallelism and the register poller's. The defaults are D = 2, P = 250, K = 1, and J = 1 on both sides, and any other value is tuning that the result records. |
 | `verify-chain` | Recomputes every chain. |
 
-A `bench` command prints one line of JSON when it ends, with these keys: `workload`, `workers`, `sent`, `sent_total` (every command sent, the warm-up's included), `succeeded`, `rejected`, `failed`, `retried` (attempts started again after a conflict), `elapsed_s`, and `latency_ms` with `p50`, `p95`, `p99`, and `max`, plus `run_pk` for a batch or a real-time run. Everything else is measured by the harness from outside: CPU from each container's cgroup counters, statements and commits from PostgreSQL's statistics, read-model lag from the projection positions, rule latency, and register lateness.
+A `bench` command prints one line of JSON when it ends, with these keys: `workload`, `workers`, `sent`, `sent_total` (every command sent, the warm-up's included), `succeeded`, `rejected`, `failed`, `retried` (attempts started again after a conflict), `elapsed_s`, and `latency_ms` with `p50`, `p95`, `p99`, and `max`, plus `run_pk` for a batch or a real-time run, `transactions` (the transactions the driver committed), and `fallback_chunks` (bulk chunks that failed and were run again one command at a time; 0 elsewhere). Everything else is measured by the harness from outside: CPU from each container's cgroup counters, statements and commits from PostgreSQL's statistics, read-model lag from the projection positions, rule latency, and register lateness.
 
 To keep the harness independent of either event store's layout, each side's schema provides a view, `core.bakeoff_event_log`, with the columns `event_key`, `aggregate_pk_ref`, `event_type`, `recorded_at`, `correlation_pk_ref`, and `correlation_type`. Rule latency is the `recorded_at` of each action's event minus the `recorded_at` of the event named in its `correlation_pk_ref`. Register lateness is `fired_at` minus `due_at`. A second view, `core.bakeoff_progress`, has a row per projection and per rule runner partition, with the columns `name`, `position` (the last sequence it has handled), and `head` (the highest sequence in the event store); the harness samples it every second for lag, and to know when the engine has caught up.
 
@@ -130,5 +152,7 @@ A run counts only if all of these hold once the engine has caught up:
 
 - **Batch payment file:** exactly one payment per account exists for the run, and the total of all balances fell by exactly 2,500 times N.
 - **Interest accrual:** for every account, the interest bucket grew by exactly `principal * 1800 // 3650000`, and `interest_accrued_through` is 2026-10-01.
+- **Bulk payment file:** the batch payment file's gates, unchanged.
+- **Placement, either way:** M new accounts exist under their derived keys, each with the opening balances of its formulas and exactly one `account.placed` event.
 - **Real time:** for every account, its opening balance minus its current balance equals the amount applied to it across all payment rows. Every register entry due more than five seconds before the end has fired. Every `account.first_contact_due` event has exactly one task.
 - **Every run:** every hash chain verifies. Each account summary row's balance equals the sum of the account's buckets, and its status and dispute flag equal the account's. Each payment read model row's amount, status, and unapplied amount equal the payment's. Each payment line's applied amount equals what the payment's distribution gave that account.
