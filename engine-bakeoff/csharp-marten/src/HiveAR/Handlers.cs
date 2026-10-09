@@ -123,19 +123,7 @@ public sealed class PostPaymentHandler : ICommandHandler<PostPayment>
         var receivedAtAsked = command.ReceivedAt is { } asked ? IsoFormat.TruncateToMicroseconds(asked) : (DateTimeOffset?)null;
         // What was asked, kept in the event so the trail shows whether money
         // reached an account by the usual order or by the payer's direction.
-        var request = new JsonObject
-        {
-            ["account_pks"] = Json.SortedKeys(command.AccountPks),
-            ["allocation_method"] = command.AllocationMethod,
-            ["directed_allocations"] = new JsonObject(command.DirectedAllocations
-                .OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal)
-                .Select(pair => KeyValuePair.Create(pair.Key.ToString(), (JsonNode?)pair.Value))),
-            ["bucket_amounts"] = new JsonObject(command.BucketAmounts
-                .OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal)
-                .Select(pair => KeyValuePair.Create(pair.Key.ToString(), (JsonNode?)Json.Amounts(pair.Value)))),
-            ["consumer_directed_accounts"] = Json.SortedKeys(command.ConsumerDirectedAccounts),
-            ["received_at"] = receivedAtAsked is { } at ? IsoFormat.Default(at) : null,
-        };
+        var request = PaymentShapes.Request(command, receivedAtAsked);
 
         var wanted = command.AccountPks.Distinct().ToArray();
         var (paymentExists, accounts, rows) = await Streams.LockForPaymentAsync(context, command.PaymentPk, wanted, cancellation);
@@ -273,16 +261,7 @@ public sealed class PostPaymentHandler : ICommandHandler<PostPayment>
         await context.RecordAsync<PaymentPosted>(
             payment,
             prior: null,
-            @new: new JsonObject
-            {
-                ["status"] = "posted",
-                ["amount_minor_units"] = payment.AmountMinorUnits,
-                ["currency_code"] = payment.CurrencyCode,
-                ["received_at"] = IsoFormat.Default(receivedAt),
-                ["distribution"] = Json.Distribution(paydowns),
-                ["unapplied_minor_units"] = unapplied,
-                ["request"] = request,
-            },
+            @new: PaymentShapes.Posted(payment.AmountMinorUnits, payment.CurrencyCode, receivedAt, paydowns, unapplied, request),
             reason: "payment_received",
             cancellation: cancellation);
         foreach (var account in accounts)
@@ -358,9 +337,27 @@ static class Buckets
         CancellationToken cancellation)
         where TEvent : Wax.Events.WaxEvent, new()
     {
+        var (prior, @new, metadata, moved) = Move(rows, amounts, sign, payment.Pk, payment.ReceivedAt);
+        foreach (var row in moved)
+        {
+            context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", row.Balance, row.Pk);
+        }
+        await context.RecordAsync<TEvent>(account, prior, @new, reason, metadata, cancellation);
+    }
+
+    /// <summary>Move the balances in memory and shape the account event's values.
+    /// The single-command path and the bulk writer both use it, so their events match.</summary>
+    public static (JsonObject Prior, JsonObject New, JsonObject Metadata, List<BucketRow> Moved) Move(
+        Dictionary<string, BucketRow> rows,
+        IReadOnlyList<(string Code, long Amount)> amounts,
+        int sign,
+        Guid paymentPk,
+        DateTimeOffset receivedAt)
+    {
         var prior = new JsonObject();
         var @new = new JsonObject();
         var bucketAmounts = new JsonObject();
+        var moved = new List<BucketRow>();
         foreach (var (code, amount) in amounts)
         {
             var row = rows[code];
@@ -368,21 +365,53 @@ static class Buckets
             row.Balance += sign * amount;
             @new[code] = row.Balance;
             bucketAmounts[code] = amount;
-            context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", row.Balance, row.Pk);
+            moved.Add(row);
         }
-        await context.RecordAsync<TEvent>(
-            account,
-            prior: new JsonObject { ["balance_buckets"] = prior },
-            @new: new JsonObject { ["balance_buckets"] = @new },
-            reason: reason,
-            metadata: new JsonObject
+        return (
+            new JsonObject { ["balance_buckets"] = prior },
+            new JsonObject { ["balance_buckets"] = @new },
+            new JsonObject
             {
-                ["payment_pk"] = payment.Pk.ToString(),
-                ["received_at"] = IsoFormat.Default(payment.ReceivedAt),
+                ["payment_pk"] = paymentPk.ToString(),
+                ["received_at"] = IsoFormat.Default(receivedAt),
                 ["bucket_amounts"] = bucketAmounts,
             },
-            cancellation: cancellation);
+            moved);
     }
+}
+
+/// <summary>The values of a payment's own events, shared by the single-command
+/// path and the bulk writer so that the two write the same events.</summary>
+static class PaymentShapes
+{
+    /// <summary>What was asked, kept in the event so the trail shows whether money
+    /// reached an account by the usual order or by the payer's direction.</summary>
+    public static JsonObject Request(PostPayment command, DateTimeOffset? receivedAtAsked) => new()
+    {
+        ["account_pks"] = Json.SortedKeys(command.AccountPks),
+        ["allocation_method"] = command.AllocationMethod,
+        ["directed_allocations"] = new JsonObject(command.DirectedAllocations
+            .OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal)
+            .Select(pair => KeyValuePair.Create(pair.Key.ToString(), (JsonNode?)pair.Value))),
+        ["bucket_amounts"] = new JsonObject(command.BucketAmounts
+            .OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal)
+            .Select(pair => KeyValuePair.Create(pair.Key.ToString(), (JsonNode?)Json.Amounts(pair.Value)))),
+        ["consumer_directed_accounts"] = Json.SortedKeys(command.ConsumerDirectedAccounts),
+        ["received_at"] = receivedAtAsked is { } at ? IsoFormat.Default(at) : null,
+    };
+
+    public static JsonObject Posted(
+        long amount, string currency, DateTimeOffset receivedAt,
+        Dictionary<Guid, List<(string Code, long Amount)>> paydowns, long unapplied, JsonObject request) => new()
+    {
+        ["status"] = "posted",
+        ["amount_minor_units"] = amount,
+        ["currency_code"] = currency,
+        ["received_at"] = IsoFormat.Default(receivedAt),
+        ["distribution"] = Json.Distribution(paydowns),
+        ["unapplied_minor_units"] = unapplied,
+        ["request"] = request,
+    };
 }
 
 static class Streams

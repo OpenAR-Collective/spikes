@@ -96,17 +96,25 @@ public sealed class BatchRunner(NpgsqlDataSource dataSource, string table, strin
 
     /// <summary>Run every chunk of a run with the given number of workers, calling
     /// work for each key. Returns when no pending chunk is left.</summary>
-    public async Task RunAsync(Guid runPk, int workers, string instance, Func<Guid, Task> work, CancellationToken cancellation = default)
+    public Task RunAsync(Guid runPk, int workers, string instance, Func<Guid, Task> work, CancellationToken cancellation = default) =>
+        RunChunksAsync(runPk, workers, instance, async keys =>
+        {
+            foreach (var key in keys)
+            {
+                await work(key);
+            }
+        }, cancellation);
+
+    /// <summary>The same, calling work once per chunk with all of its keys, for
+    /// work that handles a chunk as a whole.</summary>
+    public async Task RunChunksAsync(Guid runPk, int workers, string instance, Func<List<Guid>, Task> work, CancellationToken cancellation = default)
     {
         await Task.WhenAll(Enumerable.Range(0, workers).Select(worker => Task.Run(async () =>
         {
             var name = $"{instance}/{worker}";
             while (await ClaimAsync(runPk, name, cancellation) is { } chunk)
             {
-                foreach (var key in await KeysAsync(chunk, cancellation))
-                {
-                    await work(key);
-                }
+                await work(await KeysAsync(chunk, cancellation));
                 await CompleteAsync(chunk, cancellation: cancellation);
             }
         }, cancellation)));

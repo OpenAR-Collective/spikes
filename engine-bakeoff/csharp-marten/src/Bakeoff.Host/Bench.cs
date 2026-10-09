@@ -72,6 +72,77 @@ static class Bench
                     }, BatchActor, "batch", "batch")));
                 break;
             }
+            case "batch-payments-bulk":
+            {
+                var runner = new BatchRunner(engine.DataSource, "ar.account", "account_pk");
+                runPk = await runner.CreateRunAsync("payment_file_bulk", chunkSize: 1_000);
+                var receivedAt = new DateTimeOffset(2026, 10, 1, 6, 0, 0, TimeSpan.Zero);
+                var bulk = new BulkWriter(engine.DataSource, engine.Store, await ReasonCodes.LoadAsync(engine.DataSource));
+                var run = runPk;
+                await runner.RunChunksAsync(runPk, workers, Environment.MachineName, keys => tally.MeasureChunk(
+                    () => bulk.PostPaymentsAsync(keys, run, 2_500, receivedAt, BatchActor, CancellationToken.None),
+                    keys.Select(accountPk => (Func<Task>)(() => engine.Commands.DispatchAsync(new PostPayment
+                    {
+                        PaymentPk = DerivedUuid.From($"bakeoff:payment:{run}:{accountPk}"),
+                        AccountPks = [accountPk],
+                        AmountMinorUnits = 2_500,
+                        CurrencyCode = "USD",
+                        AllocationMethod = "oldest_first",
+                        ReceivedAt = receivedAt,
+                    }, BatchActor, "batch", "batch"))).ToList()));
+                break;
+            }
+            case "placement":
+            case "placement-bulk":
+            {
+                var placements = options.Long("accounts", 100_000);
+                runPk = Guid.NewGuid();
+                var run = runPk;
+                var bulk = workload == "placement-bulk"
+                    ? new BulkWriter(engine.DataSource, engine.Store, await ReasonCodes.LoadAsync(engine.DataSource))
+                    : null;
+                long nextChunk = -1;
+                await Task.WhenAll(Enumerable.Range(0, workers).Select(_ => Task.Run(async () =>
+                {
+                    // Chunks of 1,000 consecutive i, taken in order. There are
+                    // no existing rows to divide, so no batch tables are needed.
+                    while (true)
+                    {
+                        var start = Interlocked.Increment(ref nextChunk) * 1_000;
+                        if (start >= placements)
+                        {
+                            return;
+                        }
+                        var chunk = Enumerable.Range(0, (int)Math.Min(1_000, placements - start))
+                            .Select(offset => Placement(run, start + offset))
+                            .ToList();
+                        var singles = chunk.Select(account => (Func<Task>)(() => engine.Commands.DispatchAsync(new PlaceAccount
+                        {
+                            AccountPk = account.Pk,
+                            ClientAccountNumber = account.ClientAccountNumber,
+                            DebtType = "personal_loan",
+                            ContractType = "third_party_contingency",
+                            CurrencyCode = "USD",
+                            ListDate = account.ListDate,
+                            ItemizationDate = account.ItemizationDate,
+                            InterestAccruedThrough = SeedAccount.AccruedThrough,
+                            OpeningBalances = account.Balances,
+                        }, BatchActor, "batch", "batch"))).ToList();
+                        if (bulk is null)
+                        {
+                            foreach (var single in singles)
+                            {
+                                await tally.Measure(single);
+                            }
+                        }
+                        else
+                        {
+                            await tally.MeasureChunk(() => bulk.PlaceAccountsAsync(chunk, BatchActor, CancellationToken.None), singles);
+                        }
+                    }
+                })));
+                break;
+            }
             case "realtime":
                 (runPk, measuredWindow) = await RealtimeAsync(engine, workers, options, tally);
                 break;
@@ -94,6 +165,8 @@ static class Bench
             elapsed_s = Math.Round((measuredWindow ?? clock.Elapsed).TotalSeconds, 3),
             latency_ms = tally.Percentiles(),
             run_pk = runPk,
+            transactions = tally.Transactions,
+            fallback_chunks = tally.FallbackChunks,
             append = engine.Commands.AppendMode.ToString().ToLowerInvariant(),
         });
         return tally.Failed == 0 ? 0 : 1;
@@ -166,17 +239,30 @@ static class Bench
         return (runPk, duration);
     }
 
+    /// <summary>Placement account i of a run, as WORKLOADS.md defines it.</summary>
+    static SeedAccount Placement(Guid runPk, long i) => SeedAccount.For(i) with
+    {
+        Pk = DerivedUuid.From($"bakeoff:placement:{runPk}:{i}"),
+        ClientAccountNumber = $"PL-{i:D9}",
+    };
+
     static void Print(object value) => Console.WriteLine(JsonSerializer.Serialize(value));
 
     /// <summary>Counts outcomes and keeps every latency, per thread, without contention.</summary>
     sealed class Tally
     {
         readonly ThreadLocal<List<double>> latencies = new(() => [], trackAllValues: true);
-        long sent, succeeded, rejected, failed, sentTotal;
+        long sent, succeeded, rejected, failed, sentTotal, transactions, fallbackChunks;
 
         public long MeasureFrom { get; set; }
 
         public long Sent => sent;
+
+        /// <summary>Transactions the driver committed: one per succeeded command, or one per bulk chunk.</summary>
+        public long Transactions => transactions;
+
+        /// <summary>Bulk chunks that failed and were run again one command at a time.</summary>
+        public long FallbackChunks => fallbackChunks;
 
         /// <summary>Every command sent, the warm-up's included, for CPU per command over the whole run.</summary>
         public long SentTotal => sentTotal;
@@ -214,10 +300,43 @@ static class Bench
             Interlocked.Increment(ref sent);
             switch (outcome)
             {
-                case 0: Interlocked.Increment(ref succeeded); break;
+                case 0: Interlocked.Increment(ref succeeded); Interlocked.Increment(ref transactions); break;
                 case 1: Interlocked.Increment(ref rejected); break;
                 default: Interlocked.Increment(ref failed); break;
             }
+        }
+
+        /// <summary>One bulk chunk: a single transaction for many commands. Its
+        /// latency is the transaction's, and each account counts as one command.
+        /// A chunk that fails is run again one command at a time.</summary>
+        public async Task MeasureChunk(Func<Task<BulkOutcome>> bulk, IReadOnlyList<Func<Task>> singles)
+        {
+            var started = Stopwatch.GetTimestamp();
+            BulkOutcome outcome;
+            try
+            {
+                outcome = await bulk();
+            }
+            catch (Exception error)
+            {
+                if (Interlocked.Increment(ref fallbackChunks) <= 3)
+                {
+                    Console.Error.WriteLine($"bulk chunk failed, running it one command at a time: {error.Message}");
+                }
+                foreach (var single in singles)
+                {
+                    await Measure(single);
+                }
+                return;
+            }
+            latencies.Value!.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            var commands = outcome.Succeeded + outcome.Rejected + outcome.Skipped;
+            Interlocked.Add(ref sentTotal, commands);
+            Interlocked.Add(ref sent, commands);
+            // A key that already took effect is answered as success, as on the single-command path.
+            Interlocked.Add(ref succeeded, outcome.Succeeded + outcome.Skipped);
+            Interlocked.Add(ref rejected, outcome.Rejected);
+            Interlocked.Increment(ref transactions);
         }
 
         public object Percentiles()

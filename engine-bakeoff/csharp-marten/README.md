@@ -2,7 +2,7 @@
 
 This folder holds the champion side of the [engine bake-off](../README.md): the Wax command path written in C# on .NET 10, the current LTS release, with Marten 9 as the event store on PostgreSQL, the stack [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) adopts.
 
-Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, and the driver that the workloads need. Its 31 tests pass. No measured runs have been made.
+Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, and the driver that the workloads need. Its 32 tests pass in both append modes. No measured runs have been made.
 
 ## What it is
 
@@ -64,6 +64,10 @@ The direct mode exists to separate the language from the library. Marten's appen
 
 The whole test suite passes in both modes, including the reader tests, which in direct mode write through the direct append so that Marten's gap handling is tested against it: `WAX_APPEND=direct NETWORK=hivear-bakeoff-csharp_default ./build.sh dotnet test`.
 
+## The bulk workloads
+
+`src/HiveAR/Bulk.cs` writes a chunk of aggregates in one transaction, with set-based statements, for the bulk payment file and the bulk placement in [WORKLOADS.md](../WORKLOADS.md). It locks the chunk's state rows in key order and reads their buckets, stream heads, and existing payments in one round trip, checks each aggregate's version, runs the same allocation and waterfall, hashes every event in the application and chains it to its own aggregate's previous event, and then writes all of it in one batch of `INSERT ... SELECT FROM unnest(...)` and `UPDATE ... FROM unnest(...)` statements. The event values come from the same shaping code the single-command path uses, and a test pays a twin account each way and requires identical events. A chunk whose transaction fails is run again one command at a time. Marten has no set-based append inside a caller's transaction, so the writer is the same in both append modes, and the C# bulk workloads run once, on the direct-append side.
+
 ## How it matches the Python side
 
 - **The same rules.** The handlers, the allocation, and the waterfall are ports of the prototype's code, and the payment tests are ports of its tests.
@@ -83,7 +87,7 @@ The whole test suite passes in both modes, including the reader tests, which in 
 
 ## Tests
 
-The 31 tests run against a real PostgreSQL, each test class in a fresh database:
+The 32 tests run against a real PostgreSQL, each test class in a fresh database:
 
 - **Event store (7):** an account's first event and its state row are written together, state cannot be written outside a command, events cannot be updated or deleted, a stale expected version is refused, a forged link in the chain is detected, and the hashes match the Python side's vectors.
 - **Payments (10):** the nine payment tests of the prototype, plus one showing that a retried command is answered as success and that a different command under the same key is refused.
@@ -92,6 +96,7 @@ The 31 tests run against a real PostgreSQL, each test class in a fresh database:
 - **Reader (4):** the reader behaviors listed above.
 - **Workload commands (5):** the derived keys match the Python side's vectors, interest accrues once per day, status and queue changes are idempotent, a scheduled event fires once, and a task is created once per key.
 - **Seed and batches (1):** 2,500 seeded accounts, then the payment file and the interest accrual with four workers, each passing its gate from WORKLOADS.md, then the read models catching up from the seed's position and agreeing.
+- **Bulk (1):** the bulk payment file over 2,500 seeded accounts in three chunks passes the payment file's gates, a chunk run again posts nothing twice, a twin account paid through the single-command path gets identical events, bulk placement places and skips by key, and every chain verifies and every read model agrees.
 - **Rules (1):** the rule runner and the poller, end to end: new accounts get a first-contact task, a dispute reaches the review queue, a payoff marks the account paid in full, and every action names the event that triggered it.
 
 These prototype reader tests have no counterpart here: the reader refusing to run inside another transaction, and its high-water mark resetting after a restore. Both test the prototype's own reader, and Marten manages its own connections and marks.
@@ -107,7 +112,7 @@ docker compose run --rm --entrypoint "dotnet Bakeoff.Host.dll" worker verify-cha
 docker compose down -v
 ```
 
-The second command builds the test image and runs the 31 tests. For a faster loop while editing, `build.sh` runs any `dotnet` command in the pinned SDK container. Set `NETWORK` to reach the Compose database:
+The second command builds the test image and runs the 32 tests. For a faster loop while editing, `build.sh` runs any `dotnet` command in the pinned SDK container. Set `NETWORK` to reach the Compose database:
 
 ```
 ./build.sh dotnet build
