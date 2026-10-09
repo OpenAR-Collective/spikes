@@ -22,6 +22,10 @@ public sealed class CommandDispatcher(NpgsqlDataSource dataSource, IDocumentStor
 
     readonly Dictionary<Type, Func<ICommand, CommandContext, CancellationToken, Task>> handlers = [];
     readonly TimeProvider clock = clock ?? TimeProvider.System;
+    long conflictRetries;
+
+    /// <summary>How many attempts were started again after a conflict, since this dispatcher was made.</summary>
+    public long ConflictRetries => Interlocked.Read(ref conflictRetries);
 
     public void Register<TCommand>(ICommandHandler<TCommand> handler) where TCommand : ICommand
     {
@@ -77,6 +81,7 @@ public sealed class CommandDispatcher(NpgsqlDataSource dataSource, IDocumentStor
             catch (Exception error) when (attempt < MaxAttempts && IsConflict(error))
             {
                 // Another writer got there first. Start again from fresh state.
+                Interlocked.Increment(ref conflictRetries);
             }
         }
     }

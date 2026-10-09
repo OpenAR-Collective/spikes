@@ -122,7 +122,7 @@ Each side's Compose file has the services `db`, `migrate`, `worker`, and `tools`
 
 A `bench` command prints one line of JSON when it ends, with these keys: `workload`, `workers`, `sent`, `succeeded`, `rejected`, `failed`, `retried` (attempts started again after a conflict), `elapsed_s`, and `latency_ms` with `p50`, `p95`, `p99`, and `max`, plus `run_pk` for a batch or a real-time run. Everything else is measured by the harness from outside: CPU from each container's cgroup counters, statements and commits from PostgreSQL's statistics, read-model lag from the projection positions, rule latency, and register lateness.
 
-So that the harness never needs to know either event store's layout, each side's schema provides a view, `core.bakeoff_event_log`, with the columns `event_key`, `aggregate_pk_ref`, `event_type`, `recorded_at`, `correlation_pk_ref`, and `correlation_type`. Rule latency is the `recorded_at` of each action's event minus the `recorded_at` of the event named in its `correlation_pk_ref`. Register lateness is `fired_at` minus `due_at`.
+To keep the harness independent of either event store's layout, each side's schema provides a view, `core.bakeoff_event_log`, with the columns `event_key`, `aggregate_pk_ref`, `event_type`, `recorded_at`, `correlation_pk_ref`, and `correlation_type`. Rule latency is the `recorded_at` of each action's event minus the `recorded_at` of the event named in its `correlation_pk_ref`. Register lateness is `fired_at` minus `due_at`.
 
 ## Correctness gates
 

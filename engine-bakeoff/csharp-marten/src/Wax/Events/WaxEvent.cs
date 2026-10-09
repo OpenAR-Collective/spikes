@@ -37,10 +37,22 @@ public sealed class WaxEventTypeAttribute(string name) : Attribute
 public static class WaxEventTypes
 {
     static readonly ConcurrentDictionary<Type, string> Names = new();
+    static readonly ConcurrentDictionary<string, Type> Types = new();
 
     public static string NameOf(Type type) => Names.GetOrAdd(type, static t =>
-        t.GetCustomAttribute<WaxEventTypeAttribute>()?.Name
-        ?? throw new InvalidOperationException($"{t.Name} has no [WaxEventType]"));
+    {
+        var name = t.GetCustomAttribute<WaxEventTypeAttribute>()?.Name
+            ?? throw new InvalidOperationException($"{t.Name} has no [WaxEventType]");
+        Types.TryAdd(name, t);
+        return name;
+    });
+
+    /// <summary>The event type stored under a name, for an event chosen at run
+    /// time, such as the target of a Pending Event Register entry.</summary>
+    public static Type TypeOf(string name) =>
+        Types.TryGetValue(name, out var type) ? type : throw new InvalidOperationException($"No event type is registered as {name}");
+
+    public static bool IsKnown(string name) => Types.ContainsKey(name);
 
     public static string NameOf<TEvent>() where TEvent : WaxEvent => NameOf(typeof(TEvent));
 

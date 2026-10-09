@@ -80,14 +80,25 @@ public sealed class CommandContext
     /// invariant in WAX-0001; the hash is computed here, before the write, as
     /// WAX-0013 requires. The caller holds the row lock on the state row.
     /// </summary>
-    public async ValueTask RecordAsync<TEvent>(
+    public ValueTask RecordAsync<TEvent>(
         AggregateRoot aggregate,
         JsonObject? prior,
         JsonObject? @new,
         string reason,
         JsonObject? metadata = null,
         CancellationToken cancellation = default)
-        where TEvent : WaxEvent, new()
+        where TEvent : WaxEvent, new() =>
+        RecordAsync(typeof(TEvent), aggregate, prior, @new, reason, metadata, cancellation);
+
+    /// <summary>The same, for an event type chosen at run time.</summary>
+    public async ValueTask RecordAsync(
+        Type eventType,
+        AggregateRoot aggregate,
+        JsonObject? prior,
+        JsonObject? @new,
+        string reason,
+        JsonObject? metadata = null,
+        CancellationToken cancellation = default)
     {
         if (!heads.TryGetValue(aggregate.Pk, out var head))
         {
@@ -110,7 +121,7 @@ public sealed class CommandContext
         }
 
         var reasonCode = await reasons.ResolveAsync(reason, cancellation);
-        var body = new TEvent
+        var body = ((WaxEvent)Activator.CreateInstance(eventType)!) with
         {
             AggregateType = aggregate.AggregateType,
             PriorValue = prior,
@@ -127,7 +138,7 @@ public sealed class CommandContext
         var eventHash = EventHasher.Compute(new EventHashInput(
             aggregate.AggregateType,
             aggregate.Pk,
-            WaxEventTypes.NameOf<TEvent>(),
+            WaxEventTypes.NameOf(eventType),
             body.SchemaVersion,
             prior,
             @new,
