@@ -5,9 +5,9 @@ One harness drives both sides of the [engine bake-off](../README.md), only throu
 ## What it measures
 
 - **Throughput and command latency**, from the bench command's own JSON line.
-- **CPU per command** for the database, the engine, and the bench driver, from each container's cgroup counter (`cpu.stat`, `usage_usec`), read before and after the bench command. The engine's CPU while it catches up afterward is recorded separately.
-- **Statements and commits per command**, from `pg_stat_statements` and `pg_stat_database`, for the run's database only.
-- **Read-model and rule lag**, from `core.bakeoff_progress`, sampled every second, and the time the engine takes to catch up after the bench command ends.
+- **CPU per command** for the database, the engine, and the bench driver, from each container's cgroup counter (`cpu.stat`, `usage_usec`), read before and after the whole bench command and divided by `sent_total`, every command the bench sent, the warm-up's included. A run whose bench JSON lacks `sent_total` fails rather than falling back to `sent`. The engine's CPU while it catches up afterward is recorded separately.
+- **Statements and commits per command**, from `pg_stat_statements` and `pg_stat_database`, for the run's database only, divided by `sent_total` in the same way.
+- **Read-model and rule lag**, from `core.bakeoff_progress`, sampled every second, and catch-up: the time from the end of the bench command until every reader has reached the head as it stood at that end. Events written afterward, such as scheduled reviews still firing, do not count. The harness then waits, unmeasured, until nothing is left and every register entry due five seconds before the end has fired, so the gates see a finished state.
 - **Rule latency**, from `core.bakeoff_event_log`: each action event's `recorded_at` minus its triggering event's.
 - **Register lateness**, from `core.pending_event`: `fired_at` minus `due_at`.
 - **The correctness gates** in WORKLOADS.md, in SQL over the tables both sides share, plus the side's own `verify-chain`. The batch payment gate recomputes every payment key with WORKLOADS.md's `derived_uuid`, written in SQL, so it also checks that the side derives keys as specified.

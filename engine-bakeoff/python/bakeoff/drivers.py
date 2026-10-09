@@ -162,6 +162,7 @@ def run_batch(workload, workers):
         "workers": workers,
         "run_pk": str(run_pk),
         **totals,
+        "sent_total": totals["sent"],
         "elapsed_s": round(elapsed, 3),
         "latency_ms": percentiles(latencies),
         "chunks": chunk_count,
@@ -188,11 +189,17 @@ def _realtime_worker(w, run_pk, seed_accounts, random_seed, warmup, duration, ba
     rng = random.Random(f"{random_seed}:{w}")
     counters = {"payment": 0, "dispute": 0, "account": 0}
     measured = Tally()
+    warmup_sent = 0
     barrier.wait()
     begin = time.monotonic()
     warm_end, end = begin + warmup, begin + warmup + duration
     while (now := time.monotonic()) < end:
-        tally = measured if now >= warm_end else Tally()
+        if now >= warm_end:
+            tally = measured
+        else:
+            # Warm-up commands run but are not counted, except in sent_total.
+            tally = Tally()
+            warmup_sent += 1
         draw = rng.random()
         if draw < 0.85:
             i = rng.randrange(seed_accounts)
@@ -225,7 +232,7 @@ def _realtime_worker(w, run_pk, seed_accounts, random_seed, warmup, duration, ba
                 opening_balances=balances(n),
             )
         send(command, INBOUND, "integration", "inbound", tally)
-    results.put(measured.as_dict())
+    results.put({**measured.as_dict(), "warmup_sent": warmup_sent})
 
 
 def run_realtime(workers, warmup, duration, random_seed):
@@ -260,6 +267,9 @@ def run_realtime(workers, warmup, duration, random_seed):
         "workers": workers,
         "run_pk": str(run_pk),
         **totals,
+        # Every command sent, the warm-up's included: the harness divides the
+        # whole bench command's CPU by this (WORKLOADS.md).
+        "sent_total": totals["sent"] + sum(out["warmup_sent"] for out in outputs),
         "elapsed_s": round(elapsed, 3),
         "latency_ms": percentiles(latencies),
         "warmup_s": warmup,

@@ -13,10 +13,14 @@ measured from outside the process under test:
 
 - CPU from each container's cgroup counter (cpu.stat usage_usec), read
   before and after the bench command, for the database, the engine, and the
-  bench driver, and again for the engine once it has caught up.
+  bench driver, and again for the engine once it has caught up. Per-command
+  figures divide by the bench JSON's sent_total, every command sent with
+  the warm-up's included, and a run without it fails.
 - Statements and commits from PostgreSQL's pg_stat_statements and
   pg_stat_database, for the run's database only.
-- Read-model and rule lag from core.bakeoff_progress, sampled every second.
+- Read-model and rule lag from core.bakeoff_progress, sampled every second,
+  and catch-up: the time until every reader reaches the head recorded when
+  the bench command ended.
 - Rule latency from core.bakeoff_event_log and register lateness from
   core.pending_event.
 - The correctness gates, in SQL over the tables both sides share, plus the
@@ -250,6 +254,14 @@ class LagSampler(threading.Thread):
         lag, head = out.split("|")
         return int(lag), int(head or 0)
 
+    def positions(self):
+        """(slowest reader's position, current head), or (None, None)."""
+        out = self.side.psql(self.database, "SELECT min(position), max(head) FROM core.bakeoff_progress", check=False)
+        if not out or "|" not in out or out.startswith("|"):
+            return None, None
+        low, head = out.split("|")
+        return int(low), int(head or 0)
+
     def run(self):
         started = time.perf_counter()
         while not self._stop.is_set():
@@ -387,28 +399,53 @@ def run_one(side, args, workers, index, raw_dir):
     log(f"run {index}: {side.name} {args.workload} with {workers} workers")
     result = sh(["docker", "exec", bench, *command], check=False, timeout=args.timeout)
     after = counters(side, database, containers)
+    _, end_head = sampler.positions()
     statements = int(side.psql(database, """SELECT coalesce(sum(calls), 0) FROM pg_stat_statements
         WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())""") or 0)
     (raw_dir / f"{stem}.stdout.txt").write_text(result.stdout, encoding="utf-8")
     (raw_dir / f"{stem}.stderr.txt").write_text(result.stderr, encoding="utf-8")
     bench_json = last_json(result.stdout) or {}
 
-    # Let the engine finish what the run produced.
-    caught_up_at = None
+    def finish():
+        sh(["docker", "stop", "-t", "15", engine], check=False)
+        sh(["docker", "rm", "-f", engine, bench], check=False)
+        if not args.keep:
+            side.psql("postgres", f"DROP DATABASE IF EXISTS {database} WITH (FORCE)")
+
+    # Per-command figures divide the whole bench command's counters by every
+    # command it sent, the warm-up's included (WORKLOADS.md). A side that
+    # does not report sent_total cannot be measured, so stop here.
+    if "sent_total" not in bench_json:
+        sampler.stop()
+        finish()
+        raise RuntimeError(f"run {index}: the bench JSON has no sent_total, which WORKLOADS.md requires;"
+                           f" exit code {result.returncode}. Output is in {raw_dir / (stem + '.stdout.txt')}")
+
+    # Catch-up (measured): until every reader has reached the head as it stood
+    # when the bench command ended; events written after that, such as
+    # scheduled reviews still firing, do not count. Settle (not measured):
+    # then until nothing is left and, in real time, every entry due five
+    # seconds before the end has fired, so the gates see a finished state.
+    caught_up_at = settled_at = catchup_cpu = None
     wait_started = time.perf_counter()
     while time.perf_counter() - wait_started < args.catchup_timeout:
-        lag, _ = sampler.lag()
+        low, head = sampler.positions()
+        if low is None:
+            if time.perf_counter() - wait_started > 30:
+                break  # no progress view on this side; give the engine 30 s
+            time.sleep(1)
+            continue
+        if caught_up_at is None and end_head is not None and low >= end_head:
+            caught_up_at = time.perf_counter()
+            catchup_cpu = cpu_usec(engine)
         overdue = 0
         if args.workload == "realtime":
             overdue = int(side.psql(database, f"""SELECT count(*) FROM core.pending_event WHERE status <> 'fired'
                 AND due_at < '{after['clock']}'::timestamptz - interval '5 seconds'""") or 0)
-        if lag is not None and lag <= 0 and overdue == 0:
-            caught_up_at = time.perf_counter()
+        if caught_up_at is not None and low >= head and overdue == 0:
+            settled_at = time.perf_counter()
             break
-        if lag is None and time.perf_counter() - wait_started > 30:
-            break  # no progress view on this side; give the engine 30 s
-        time.sleep(1)
-    caught = counters(side, database, containers)
+        time.sleep(0.5)
     sampler.stop()
 
     verify_result = sh(["docker", "exec", bench, *side.cli, "verify-chain"], check=False, timeout=6 * 3600)
@@ -421,19 +458,18 @@ def run_one(side, args, workers, index, raw_dir):
     images = {k: sh(["docker", "inspect", "-f", "{{.Image}}", v], check=False).stdout.strip() for k, v in containers.items()}
     container_limits = {k: limits(v) for k, v in containers.items()}
 
-    sh(["docker", "stop", "-t", "15", engine], check=False)
-    sh(["docker", "rm", "-f", engine, bench], check=False)
-    if not args.keep:
-        side.psql("postgres", f"DROP DATABASE IF EXISTS {database} WITH (FORCE)")
+    finish()
 
     window = after["t"] - before["t"]
     sent = bench_json.get("sent") or 0
+    sent_total = bench_json["sent_total"]
 
     def cpu(phase_from, phase_to, key):
         a, b = phase_from["cpu"].get(key), phase_to["cpu"].get(key)
         return round((b - a) / 1e6, 3) if a is not None and b is not None else None
 
     cpu_window = {k: cpu(before, after, k) for k in containers}
+    engine_after = after["cpu"].get("engine")
     record = {
         "index": index,
         "side": side.name,
@@ -445,16 +481,21 @@ def run_one(side, args, workers, index, raw_dir):
         "bench": bench_json,
         "bench_exit_code": result.returncode,
         "window_s": round(window, 3),
+        "sent_total": sent_total,
         "cpu_s": cpu_window,
-        "cpu_ms_per_command": {k: (round(v * 1000 / sent, 3) if v is not None and sent else None) for k, v in cpu_window.items()},
-        "engine_catchup_cpu_s": cpu(after, caught, "engine"),
+        "cpu_ms_per_command": {k: (round(v * 1000 / sent_total, 3) if v is not None and sent_total else None)
+                               for k, v in cpu_window.items()},
+        "engine_catchup_cpu_s": (round((catchup_cpu - engine_after) / 1e6, 3)
+                                 if catchup_cpu is not None and engine_after is not None else None),
         "statements": statements,
-        "statements_per_command": round(statements / sent, 2) if sent else None,
-        "commits_per_command": round((after["commits"] - before["commits"]) / sent, 2) if sent else None,
+        "statements_per_command": round(statements / sent_total, 2) if sent_total else None,
+        "commits_per_command": round((after["commits"] - before["commits"]) / sent_total, 2) if sent_total else None,
         "rollbacks": after["rollbacks"] - before["rollbacks"],
         "lag_samples": sampler.samples,
         "max_lag_events": max((lag for _, lag in sampler.samples), default=None) if sampler.available else None,
+        "end_head": end_head,
         "catchup_s": round(caught_up_at - after["t"], 1) if caught_up_at else None,
+        "settle_s": round(settled_at - after["t"], 1) if settled_at else None,
         "verify": verify,
         "gates": checks,
         "gates_pass": all(checks.values()),
@@ -540,10 +581,12 @@ def render(meta, env, rows, records):
         f"{' with uncommitted changes in this side or the harness' if env['side_uncommitted_changes'] else ''}."
         f" Other containers running: {len(env['other_containers'])}.",
         "",
-        "Medians of the measured runs. CPU is milliseconds per command sent, from each container's cgroup counter over the"
-        " bench command's run; engine CPU spent catching up afterward is in the raw results. Statements per command count"
-        " everything the run's database executed in that window, the engine's reads and rules included. Rule latency and"
-        " register lateness are in milliseconds.",
+        "Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole"
+        " bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up"
+        " afterward is in the raw results. Statements and commits per command are divided the same way, and count everything"
+        " the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the"
+        " end of the bench command until every reader reached the head as it stood at that end; events written afterward do"
+        " not count. Rule latency and register lateness are in milliseconds.",
         "",
         "| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Max lag (events) |"
         " Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |",
