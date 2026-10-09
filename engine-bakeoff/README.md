@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: setting up. Both sides are built: the Python side is adapted from Andy's prototype and its 23 retained tests pass, and the C# side matches it rule for rule, hashes identically, and passes 24 tests. The harness and the workloads come next. The method below is a draft, and no results have been recorded.
+Status: setting up. Both sides are built: the Python side is adapted from Andy's prototype and its 27 tests pass, and the C# side matches it rule for rule, hashes identically, and passes 24 tests. The workloads in WORKLOADS.md and the harness come next. The method below is a draft, and no results have been recorded.
 
 ## Background
 
@@ -14,7 +14,7 @@ On 2026-10-08 Andy Troiano proposed replacing that decision with Python on Djang
 
 [WAX-0024 High Availability, Disaster Recovery, and Distributed Workloads](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0024-high-availability-disaster-recovery-and-distributed-workloads.md) requires batch jobs to run through the normal command handler path, spread across instances and threads. Every command in a batch therefore does the full work of a single write: it locks the aggregate's state row, checks the aggregate's version, computes the event's hash and links it to the prior event, writes the event, and updates the authoritative state, all in one transaction. The same path carries the daytime load: payments and disputes arriving from people and files, and the workflow rules and scheduled events that react to them.
 
-The largest collection database seen in practice holds 200 million accounts. One pass over all of them in an eight-hour window is about 6,900 commands per second, sustained; in six hours, about 9,300. How many of those accounts the heaviest nightly job actually touches is still open, and it sets the pass threshold.
+The largest collection database seen in practice holds 200 million accounts, and the heaviest nightly job touches every one of them. One pass over 200 million accounts in an eight-hour overnight window is about 6,900 commands per second, sustained, which is the pass threshold for the batch workloads. A six-hour window would make it about 9,300.
 
 Wax v1 defers hash computation, multi-instance batch work, and the Pending Event Register to v2. The bake-off includes them anyway, because the language has to carry the full design, not only the first release.
 
@@ -45,29 +45,29 @@ Every measured command does all of the following. A run that skips any of them d
 
 ## Method (draft)
 
-Two kinds of workload are measured.
+[WORKLOADS.md](WORKLOADS.md) specifies exactly what runs, so that both sides do the same work: the seed, the commands added for the test, the batch jobs, the real-time mix and its rules, the command each side's runtime answers to, and the correctness gates. In outline, two kinds of workload are measured.
 
-**Batch.** A nightly job runs one command against every account in the database, split into chunks that workers claim with `SELECT FOR UPDATE SKIP LOCKED`, as WAX-0024 describes. Two batch commands are measured: a payment file, which Andy's prototype already implements, and interest accrual, which both sides gain for this test. A contended variant sends several payments to the same accounts at once, to measure lock waits.
+**Batch.** A nightly job runs one command against every account in the database, split into chunks of 1,000 that workers claim with `SELECT FOR UPDATE SKIP LOCKED`, as WAX-0024 describes. Two batch jobs are measured: a payment file, which Andy's prototype already implements, and interest accrual, which both sides gain for this test.
 
-**Real time.** Many threads at once simulate a working day. Payments and disputes arrive as commands, as they would from collectors, a payment portal, and inbound files. Each committed event is offered to event-triggered workflow rules, the "when X happens, do Y" rules of [WAX-0023 Workflow Automation Engine](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0023-workflow-automation-engine.md), and a rule that matches performs its action as a new command. Some actions schedule a future-dated event in the Pending Event Register of [WAX-0027 Pending Event Register](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0027-pending-event-register.md); workers claim entries as they come due, fire them, and run their rules in turn. The rule set is the same on both sides.
+**Real time.** Many workers at once simulate a working day. Payments, disputes, and new accounts arrive as commands, as they would from collectors, a payment portal, and inbound files. Each committed event is offered to event-triggered workflow rules, the "when X happens, do Y" rules of [WAX-0023 Workflow Automation Engine](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0023-workflow-automation-engine.md), and a rule that matches performs its action as a new command. Some actions schedule a future-dated event in the Pending Event Register of [WAX-0027 Pending Event Register](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0027-pending-event-register.md); workers claim entries as they come due, fire them, and run their rules in turn. The rule set is the same on both sides.
 
-Each workload runs with 1, 2, 4, 8, 16, and 32 workers, so the results show how each stack scales and where it stops scaling. Measured runs use the largest database the benchmark machine can hold, up to 200 million accounts, because an index that no longer fits in memory changes the result. Smaller sizes are for development, and every result records its data size.
+Each workload runs with 1, 2, 4, 8, 16, and 32 workers, so the results show how each stack scales and where it stops scaling. The first measured runs use a seed of 500,000 accounts, and whether larger sizes are needed is decided after the first side-by-side comparison. A result at 500,000 accounts shows how fast each stack runs the command path while its working set fits in memory; it does not show what happens at 200 million, where it would not. Every result records its data size. The seed is loaded by each side's own bulk loader, in its own event store format, with valid hash chains, and loading it is not measured.
 
 Read models are updated by a separate reader that catches up after the commands commit, the design WAX-0002 describes. Both stacks already have one: Marten's asynchronous projection daemon and Andy's projection reader. The in-transaction mode that WAX-0002 also allows in v1 is not measured.
 
-One harness drives both sides. It measures from outside the process under test, reading container CPU from the kernel's cgroup counters and statements per command from PostgreSQL's `pg_stat_statements`, so neither side reports its own numbers. Each side supplies only a small driver that loads the workload and calls its own command handler in process.
+One harness drives both sides. It measures from outside the process under test, reading container CPU from the kernel's cgroup counters and statements per command from PostgreSQL's `pg_stat_statements`, so neither side reports its own numbers. Each side supplies only a small driver that runs the workload in process against its own command handler.
 
-Both stacks run on one named machine against the same PostgreSQL 17 container with the same configuration, one stack at a time. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
+The benchmark machine is a laptop: an Intel Core i7-13620H with 10 cores and 16 threads, 64 GB of memory, and Windows 11 with Docker Desktop. Runs happen only when the laptop is otherwise idle, one side at a time and never in parallel, against the same PostgreSQL 17 container with the same configuration. Connection pooling is available to both: each side may use its driver's own pool, and either may put pgBouncer in front of PostgreSQL, as tuning that the result records. Each configuration gets a warm-up pass and then three measured runs, and the median is reported.
 
 The measurements are these:
 
 - Sustained commands per second over the measured run.
 - Application CPU time and database CPU time per thousand commands.
-- Command latency at the 50th and 99th percentiles.
+- Command latency at the 50th, 95th, and 99th percentiles.
 - In the real-time workload, the time from an event committing to its rule's action committing, and from a scheduled event coming due to its firing.
-- How far the read models fall behind.
+- How far the read models fall behind, and how long they take to catch up once a batch ends.
 
-After every run, three correctness gates are checked: every command was applied exactly once, every hash chain verifies, and once the reader has caught up, the read-model balances match the authoritative balances.
+After every run, the correctness gates in WORKLOADS.md are checked. In short: every command was applied exactly once, every hash chain verifies, and once the reader has caught up, every read model agrees with the authoritative state.
 
 ## Rules
 
@@ -76,13 +76,7 @@ After every run, three correctness gates are checked: every command was applied 
 3. Database tuning applies to both sides or to neither.
 4. Every result records the machine, the operating system, the PostgreSQL version and settings, the data size, the commit of each side, and the raw harness output, unedited, in [results](results/README.md).
 5. A run that fails a correctness gate is recorded as failed and does not count.
-6. The pass threshold is set before the first measured run. If both stacks clear it, throughput does not decide the question, and the decision rests on the other grounds in WAX-0025 and the proposal.
-
-## Open before the first run
-
-- The nightly window, and whether the heaviest nightly job touches every account or only the active ones. Together they set the pass threshold.
-- The rule set for the real-time workload.
-- The benchmark machine, and the largest data size it can hold.
+6. If both stacks clear the pass threshold, throughput does not decide the question, and the decision rests on the other grounds in WAX-0025 and the proposal.
 
 ## Results
 
