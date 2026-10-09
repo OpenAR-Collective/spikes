@@ -8,6 +8,11 @@ own command path, wax.commands.dispatch. The driver makes dispatch try once
 per call and retries a version conflict itself, so that every retry is
 counted, as the specification's "retried" key requires; the behavior is the
 same as dispatch's own retry loop.
+
+The bulk workloads (WORKLOADS.md, "Bulk workloads") send a chunk of the same
+commands to bakeoff.bulk in one transaction instead. A chunk counts each of
+its commands as sent, and its latency is the transaction's. A chunk that
+fails is sent again one command per transaction and counted as a fallback.
 """
 
 import logging
@@ -16,12 +21,14 @@ import os
 import random
 import socket
 import time
-from datetime import UTC, date, datetime
+import uuid
+from datetime import UTC, date, datetime, timedelta
 
-from bakeoff.keys import BATCH, INBOUND, account_pk, balances, derived_uuid
+from bakeoff.keys import BATCH, INBOUND, INTEREST_ACCRUED_THROUGH, account_pk, balances, derived_uuid, seed_list_date
 
 logger = logging.getLogger("bakeoff.drivers")
 MAX_CONFLICT_RETRIES = 10
+COUNTS = ("sent", "succeeded", "rejected", "failed", "retried", "transactions", "fallback_chunks")
 
 
 def setup(count_retries=True):
@@ -36,7 +43,7 @@ def setup(count_retries=True):
 
 class Tally:
     def __init__(self):
-        self.counts = {"sent": 0, "succeeded": 0, "rejected": 0, "failed": 0, "retried": 0}
+        self.counts = dict.fromkeys(COUNTS, 0)
         self.latencies = []
 
     def as_dict(self):
@@ -67,11 +74,37 @@ def send(command, actor_pk, actor_type, source, tally):
             outcome = "failed"
         break
     tally.counts[outcome] += 1
+    if outcome == "succeeded":
+        # One command, one transaction. A key that already took effect is
+        # answered as success and counted the same way, as on the C# side.
+        tally.counts["transactions"] += 1
     tally.latencies.append(time.perf_counter() - started)
 
 
+def send_chunk(write, commands, actor_pk, actor_type, source, tally):
+    """One bulk chunk through write (a bakeoff.bulk function), in one
+    transaction. Its latency is the transaction's, and each command in it
+    counts as one command sent. A chunk that fails runs again one command
+    per transaction, through the normal path."""
+    started = time.perf_counter()
+    try:
+        outcome = write(commands, actor_pk=actor_pk, actor_type=actor_type, source=source)
+    except Exception as exc:
+        tally.counts["fallback_chunks"] += 1
+        if tally.counts["fallback_chunks"] <= 3:
+            logger.warning("bulk chunk failed, running it one command at a time: %s", exc)
+        for command in commands:
+            send(command, actor_pk, actor_type, source, tally)
+        return
+    tally.latencies.append(time.perf_counter() - started)
+    tally.counts["sent"] += len(commands)
+    tally.counts["succeeded"] += outcome.succeeded + outcome.skipped
+    tally.counts["rejected"] += outcome.rejected
+    tally.counts["transactions"] += 1
+
+
 def merge(outputs):
-    totals = {"sent": 0, "succeeded": 0, "rejected": 0, "failed": 0, "retried": 0}
+    totals = dict.fromkeys(COUNTS, 0)
     latencies = []
     for out in outputs:
         for key in totals:
@@ -100,7 +133,7 @@ ACCRUAL_DATE = date(2026, 10, 1)
 def _batch_command(workload, run_pk, key):
     from hivear.commands import AccrueInterest, PostPayment
 
-    if workload == "batch-payments":
+    if workload in ("batch-payments", "batch-payments-bulk"):
         return PostPayment(
             payment_pk=derived_uuid(f"bakeoff:payment:{run_pk}:{key}"),
             account_pks=[key],
@@ -116,6 +149,7 @@ def _batch_worker(workload, run_pk, barrier, results):
     setup()
     from django.db import connection
 
+    from bakeoff import bulk
     from wax import batch
 
     connection.ensure_connection()
@@ -126,8 +160,15 @@ def _batch_worker(workload, run_pk, barrier, results):
     while (claim := batch.claim_chunk(run_pk, instance)) is not None:
         chunk_pk, range_start, range_end = claim
         failed_before = tally.counts["failed"]
-        for key in batch.chunk_keys("ar.account", "account_pk", range_start, range_end):
-            send(_batch_command(workload, run_pk, key), BATCH, "batch", "batch", tally)
+        commands = [
+            _batch_command(workload, run_pk, key)
+            for key in batch.chunk_keys("ar.account", "account_pk", range_start, range_end)
+        ]
+        if workload == "batch-payments-bulk":
+            send_chunk(bulk.post_payments, commands, BATCH, "batch", "batch", tally)
+        else:
+            for command in commands:
+                send(command, BATCH, "batch", "batch", tally)
         if tally.counts["failed"] > failed_before:
             batch.fail_chunk(chunk_pk, f"{tally.counts['failed'] - failed_before} commands failed")
             failed_chunks += 1
@@ -169,6 +210,89 @@ def run_batch(workload, workers):
         "failed_chunks": sum(out["failed_chunks"] for out in outputs),
         "coordinator_s": round(coordinator_s, 3),
         "run_complete": batch.finish_run(run_pk),
+    }
+
+
+# Placement workloads.
+
+PLACEMENT_CHUNK = 1000
+
+
+def _placement_command(run_pk, i):
+    from hivear.commands import PlaceAccount
+
+    listed = seed_list_date(i)
+    return PlaceAccount(
+        account_pk=derived_uuid(f"bakeoff:placement:{run_pk}:{i}"),
+        client_account_number=f"PL-{i:09d}",
+        debt_type="personal_loan",
+        contract_type="third_party_contingency",
+        currency_code="USD",
+        list_date=listed,
+        itemization_date=listed - timedelta(days=30),
+        interest_accrued_through=INTEREST_ACCRUED_THROUGH,
+        opening_balances=balances(i),
+    )
+
+
+def _placement_worker(workload, run_pk, placements, next_chunk, barrier, results):
+    setup()
+    from django.db import connection
+
+    from bakeoff import bulk
+
+    connection.ensure_connection()
+    tally = Tally()
+    chunks = 0
+    barrier.wait()
+    while True:
+        # Chunks of consecutive i, taken in order. There are no existing rows
+        # to divide, so the claiming does not go through the batch tables.
+        with next_chunk.get_lock():
+            start = next_chunk.value * PLACEMENT_CHUNK
+            next_chunk.value += 1
+        if start >= placements:
+            break
+        commands = [_placement_command(run_pk, i) for i in range(start, min(start + PLACEMENT_CHUNK, placements))]
+        if workload == "placement-bulk":
+            send_chunk(bulk.place_accounts, commands, BATCH, "batch", "batch", tally)
+        else:
+            for command in commands:
+                send(command, BATCH, "batch", "batch", tally)
+        chunks += 1
+    results.put({**tally.as_dict(), "chunks": chunks})
+
+
+def run_placement(workload, workers, placements):
+    setup()
+    run_pk = uuid.uuid4()
+    ctx = mp.get_context("spawn")
+    barrier = ctx.Barrier(workers + 1)
+    next_chunk = ctx.Value("q", 0)
+    results = ctx.Queue()
+    procs = [
+        ctx.Process(target=_placement_worker, args=(workload, run_pk, placements, next_chunk, barrier, results))
+        for _ in range(workers)
+    ]
+    for proc in procs:
+        proc.start()
+    barrier.wait()
+    started = time.perf_counter()
+    outputs = [results.get() for _ in procs]
+    elapsed = time.perf_counter() - started
+    for proc in procs:
+        proc.join()
+    totals, latencies = merge(outputs)
+    return {
+        "workload": workload,
+        "workers": workers,
+        "run_pk": str(run_pk),
+        **totals,
+        "sent_total": totals["sent"],
+        "elapsed_s": round(elapsed, 3),
+        "latency_ms": percentiles(latencies),
+        "placements": placements,
+        "chunks": sum(out["chunks"] for out in outputs),
     }
 
 

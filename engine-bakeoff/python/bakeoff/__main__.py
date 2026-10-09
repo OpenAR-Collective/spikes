@@ -4,6 +4,9 @@
   python -m bakeoff seed --accounts N
   python -m bakeoff bench batch-payments --workers W
   python -m bakeoff bench batch-accrual --workers W
+  python -m bakeoff bench batch-payments-bulk --workers W
+  python -m bakeoff bench placement --workers W --accounts M
+  python -m bakeoff bench placement-bulk --workers W --accounts M
   python -m bakeoff bench realtime --workers W --warmup S --duration S --random-seed R
   python -m bakeoff run-engine [--seconds-per-day D] [--poll-interval-ms P] [--rule-workers K] [--projection-workers J]
   python -m bakeoff verify-chain
@@ -27,8 +30,12 @@ def main():
     seed.add_argument("--accounts", type=int, required=True)
 
     bench = sub.add_parser("bench")
-    bench.add_argument("workload", choices=["batch-payments", "batch-accrual", "realtime"])
+    bench.add_argument(
+        "workload",
+        choices=["batch-payments", "batch-accrual", "batch-payments-bulk", "placement", "placement-bulk", "realtime"],
+    )
     bench.add_argument("--workers", type=int, required=True)
+    bench.add_argument("--accounts", type=int, default=100_000, help="new accounts to place (placement workloads)")
     bench.add_argument("--warmup", type=float, default=10)
     bench.add_argument("--duration", type=float, default=60)
     bench.add_argument("--random-seed", default="1")
@@ -48,6 +55,8 @@ def main():
 
         if args.workload == "realtime":
             result = drivers.run_realtime(args.workers, args.warmup, args.duration, args.random_seed)
+        elif args.workload in ("placement", "placement-bulk"):
+            result = drivers.run_placement(args.workload, args.workers, args.accounts)
         else:
             result = drivers.run_batch(args.workload, args.workers)
     elif args.command == "run-engine":

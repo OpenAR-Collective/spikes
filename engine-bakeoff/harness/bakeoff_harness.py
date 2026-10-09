@@ -5,6 +5,8 @@
   python bakeoff_harness.py run      --side python --workload batch-payments --workers 1,2,4,8 --accounts 500000
   python bakeoff_harness.py run      --side csharp --workload realtime --workers 8 --accounts 500000 \
                                      --warmup 15 --duration 120 --random-seed 1 --engine-args "--rule-workers 4"
+  python bakeoff_harness.py run      --side python --workload placement-bulk --workers 4 --accounts 500000 \
+                                     --placements 100000
   python bakeoff_harness.py teardown --side python
 
 It drives either side only through the commands in WORKLOADS.md, so it knows
@@ -49,6 +51,8 @@ BAKEOFF = HARNESS.parent
 OVERRIDE = HARNESS / "compose.override.yml"
 PGBOUNCER = HARNESS / "compose.pgbouncer.yml"
 SIDES = json.loads((HARNESS / "sides.json").read_text(encoding="utf-8"))
+WORKLOADS = ["batch-payments", "batch-accrual", "batch-payments-bulk", "placement", "placement-bulk", "realtime"]
+PLACEMENTS = ("placement", "placement-bulk")
 OWNER_ENV = ["-e", "DATABASE_USER=hivear", "-e", "DATABASE_PASSWORD=local-evaluation-only",
              "-e", "DATABASE_HOST=db", "-e", "DATABASE_PORT=5432", "-e", "DATABASE_POOLED=0"]
 
@@ -102,6 +106,9 @@ class Side:
         # directly. Both are recorded with every result.
         self.compose_env = spec.get("compose_env", {})
         self.container_env = spec.get("container_env", {})
+        # Workloads this side does not run, such as the bulk workloads on the
+        # Marten side, whose writer is the direct side's (WORKLOADS.md).
+        self.workloads_excluded = spec.get("workloads_excluded", [])
         self.pgbouncer = pgbouncer
 
     def env_flags(self):
@@ -311,13 +318,14 @@ def measurements(side, database, start_clock):
     return {"rule_latency_ms": rules, "register_lateness_ms": lateness, "events_written": int(events or 0)}
 
 
-def gates(side, database, workload, bench, before_total, accounts, end_clock, verify):
+def gates(side, database, workload, bench, before_total, accounts, placements, end_clock, verify):
     checks = {}
 
     def count(sql):
         return int(side.psql(database, sql).splitlines()[-1])
 
-    if workload == "batch-payments":
+    # The bulk payment file has the batch payment file's gates, unchanged.
+    if workload in ("batch-payments", "batch-payments-bulk"):
         run_pk = bench.get("run_pk")
         paid = count(f"""{DERIVED_UUID_SQL}
             SELECT count(DISTINCT a.account_pk) FROM ar.account a
@@ -334,6 +342,21 @@ def gates(side, database, workload, bench, before_total, accounts, end_clock, ve
               AND b.balance_minor_units = (100 + ({INDEX_SQL} * 104729) % 20000)
                                         + (50000 + ({INDEX_SQL} * 7919) % 950000) * 1800 / 3650000""")
         checks["every account accrued exactly principal x 1800 / 3650000, through 2026-10-01"] = good == accounts
+    elif workload in PLACEMENTS:
+        run_pk = bench.get("run_pk")
+        good = count(f"""{DERIVED_UUID_SQL}
+            SELECT count(*) FROM generate_series(0::bigint, {placements - 1}) AS g(i)
+            JOIN ar.account a ON a.account_pk = pg_temp.derived_uuid('bakeoff:placement:{run_pk}:' || g.i)
+            WHERE (SELECT jsonb_object_agg(d.code, b.balance_minor_units) FROM ar.account_balance_bucket b
+                   JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk
+                   WHERE b.account_fk = a.account_pk)
+                  = jsonb_build_object('principal', 50000 + (g.i * 7919) % 950000,
+                                       'interest', 100 + (g.i * 104729) % 20000, 'fee', 500 + (g.i % 3) * 1000)
+              AND (SELECT count(*) FROM core.bakeoff_event_log e
+                   WHERE e.aggregate_pk_ref = a.account_pk AND e.event_type = 'account.placed') = 1;""")
+        added = count("SELECT count(*) FROM ar.account") - accounts
+        checks["M new accounts under their derived keys, with the formulas' balances and one account.placed each"] = (
+            good == placements and added == placements)
     elif workload == "realtime":
         bad = count(f"""WITH opening AS (SELECT a.account_pk, {OPENING_SQL.format(i=INDEX_SQL)} AS total FROM ar.account a),
             current AS (SELECT account_fk, sum(balance_minor_units) AS total FROM ar.account_balance_bucket GROUP BY account_fk),
@@ -396,6 +419,8 @@ def run_one(side, args, workers, index, raw_dir):
     command = [*side.cli, "bench", args.workload, "--workers", str(workers)]
     if args.workload == "realtime":
         command += ["--warmup", str(args.warmup), "--duration", str(args.duration), "--random-seed", str(args.random_seed)]
+    elif args.workload in PLACEMENTS:
+        command += ["--accounts", str(args.placements)]
     log(f"run {index}: {side.name} {args.workload} with {workers} workers")
     result = sh(["docker", "exec", bench, *command], check=False, timeout=args.timeout)
     after = counters(side, database, containers)
@@ -424,8 +449,9 @@ def run_one(side, args, workers, index, raw_dir):
     # Catch-up (measured): until every reader has reached the head as it stood
     # when the bench command ended; events written after that, such as
     # scheduled reviews still firing, do not count. Settle (not measured):
-    # then until nothing is left and, in real time, every entry due five
-    # seconds before the end has fired, so the gates see a finished state.
+    # then until nothing is left and, in real time and placement, every entry
+    # due five seconds before the end has fired, so the gates see a finished
+    # state.
     caught_up_at = settled_at = catchup_cpu = None
     wait_started = time.perf_counter()
     while time.perf_counter() - wait_started < args.catchup_timeout:
@@ -439,7 +465,7 @@ def run_one(side, args, workers, index, raw_dir):
             caught_up_at = time.perf_counter()
             catchup_cpu = cpu_usec(engine)
         overdue = 0
-        if args.workload == "realtime":
+        if args.workload == "realtime" or args.workload in PLACEMENTS:
             overdue = int(side.psql(database, f"""SELECT count(*) FROM core.pending_event WHERE status <> 'fired'
                 AND due_at < '{after['clock']}'::timestamptz - interval '5 seconds'""") or 0)
         if caught_up_at is not None and low >= head and overdue == 0:
@@ -451,7 +477,8 @@ def run_one(side, args, workers, index, raw_dir):
     verify_result = sh(["docker", "exec", bench, *side.cli, "verify-chain"], check=False, timeout=6 * 3600)
     (raw_dir / f"{stem}.verify.txt").write_text(verify_result.stdout + verify_result.stderr, encoding="utf-8")
     verify = last_json(verify_result.stdout)
-    checks = gates(side, database, args.workload, bench_json, before_total, accounts, after["clock"], verify)
+    checks = gates(side, database, args.workload, bench_json, before_total, accounts, args.placements,
+                   after["clock"], verify)
     measured = measurements(side, database, before["clock"])
     engine_logs = sh(["docker", "logs", engine], check=False)
     (raw_dir / f"{stem}.engine.txt").write_text(engine_logs.stdout + engine_logs.stderr, encoding="utf-8")
@@ -476,6 +503,7 @@ def run_one(side, args, workers, index, raw_dir):
         "workload": args.workload,
         "workers": workers,
         "accounts": accounts,
+        "placements": args.placements if args.workload in PLACEMENTS else None,
         "engine_args": args.engine_args,
         "pgbouncer": side.pgbouncer,
         "bench": bench_json,
@@ -552,6 +580,9 @@ def summarize(records):
             "engine_cpu_ms": median([r["cpu_ms_per_command"]["engine"] for r in group]),
             "db_cpu_ms": median([r["cpu_ms_per_command"]["db"] for r in group]),
             "statements": median([r["statements_per_command"] for r in group]),
+            "commits": median([r["commits_per_command"] for r in group]),
+            "transactions": median([r["bench"].get("transactions") for r in group]),
+            "fallback_chunks": median([r["bench"].get("fallback_chunks") for r in group]),
             "max_lag": median([r["max_lag_events"] for r in group]),
             "catchup_s": median([r["catchup_s"] for r in group]),
             "rule_p50": median([(r["rule_latency_ms"].get("all") or {}).get("p50") for r in group]),
@@ -571,6 +602,7 @@ def render(meta, env, rows, records):
         f" Side: {meta['side']}"
         f"{' (' + ', '.join(f'{k}={v}' for k, v in meta['side_env'].items()) + ')' if meta['side_env'] else ''}."
         f" Workload: {meta['workload']}. Accounts: {meta['accounts']:,}."
+        f"{' New accounts placed per run: ' + format(meta['placements'], ',') + '.' if meta.get('placements') else ''}"
         f" Engine arguments: `{meta['engine_args'] or '(defaults)'}`. pgBouncer: {'yes' if meta['pgbouncer'] else 'no'}."
         f" Warm-up runs per worker count: {meta['warmup_runs']}; measured runs: {meta['repeat']}."
         f" Started {meta['started']}, finished {meta['finished']}.",
@@ -586,15 +618,17 @@ def render(meta, env, rows, records):
         " afterward is in the raw results. Statements and commits per command are divided the same way, and count everything"
         " the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the"
         " end of the bench command until every reader reached the head as it stood at that end; events written afterward do"
-        " not count. Rule latency and register lateness are in milliseconds.",
+        " not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver"
+        " reports committing; in a bulk workload, latency is per transaction, that is, per chunk.",
         "",
-        "| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Max lag (events) |"
-        " Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd |"
+        " Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         lines.append(f"| {r['workers']} | {r['succeeded_per_s']} | {r['p50_ms']} | {r['p99_ms']} | {r['bench_cpu_ms']} |"
-                     f" {r['engine_cpu_ms']} | {r['db_cpu_ms']} | {r['statements']} | {r['max_lag']} | {r['catchup_s']} |"
+                     f" {r['engine_cpu_ms']} | {r['db_cpu_ms']} | {r['statements']} | {r['commits']} |"
+                     f" {r['transactions']} ({r['fallback_chunks']}) | {r['max_lag']} | {r['catchup_s']} |"
                      f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} | {'pass' if r['gates'] else 'FAIL'} |")
     failed = [r for r in records if not r["gates_pass"]]
     if failed:
@@ -610,6 +644,8 @@ def render(meta, env, rows, records):
 
 def cmd_run(args):
     side = Side(args.side, args.pgbouncer)
+    if args.workload in side.workloads_excluded:
+        raise SystemExit(f"{side.name} does not run {args.workload}; see workloads_excluded in sides.json")
     side.up_db()
     label = args.label or f"{side.name}-{args.workload}"
     if not re.fullmatch(r"[a-z0-9-]+", label):
@@ -622,6 +658,7 @@ def cmd_run(args):
     (out_dir / "environment.json").write_text(json.dumps(env, indent=1), encoding="utf-8")
     meta = {"label": label, "side": side.name, "side_env": {**side.compose_env, **side.container_env},
             "workload": args.workload, "accounts": args.accounts,
+            "placements": args.placements if args.workload in PLACEMENTS else None,
             "engine_args": args.engine_args, "pgbouncer": args.pgbouncer, "repeat": args.repeat,
             "warmup_runs": args.warmup_runs, "record": args.record,
             "started": datetime.now().isoformat(timespec="seconds")}
@@ -659,8 +696,9 @@ def main():
         if name in ("prepare", "run"):
             p.add_argument("--accounts", type=int, required=True)
         if name == "run":
-            p.add_argument("--workload", choices=["batch-payments", "batch-accrual", "realtime"], required=True)
+            p.add_argument("--workload", choices=WORKLOADS, required=True)
             p.add_argument("--workers", default="1,2,4,8,16,32", help="comma-separated worker counts")
+            p.add_argument("--placements", type=int, default=100_000, help="new accounts per placement run")
             p.add_argument("--warmup", type=float, default=15, help="real-time warm-up seconds")
             p.add_argument("--duration", type=float, default=120, help="real-time measured seconds")
             p.add_argument("--random-seed", default="1")
