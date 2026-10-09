@@ -99,6 +99,12 @@ public sealed class CommandContext
         JsonObject? metadata = null,
         CancellationToken cancellation = default)
     {
+        if (!EventHashing.Enabled)
+        {
+            // The hashing-off diagnostic: no head was read, so the locked state
+            // row's version is trusted; the unique index is the backstop.
+            heads[aggregate.Pk] = new StreamHead(aggregate.AggregateSequenceNumber, null);
+        }
         if (!heads.TryGetValue(aggregate.Pk, out var head))
         {
             if (aggregate.IsNew && aggregate.AggregateSequenceNumber == 0)
@@ -134,7 +140,7 @@ public sealed class CommandContext
             CorrelationType = Attribution.CorrelationType,
             Metadata = metadata,
         };
-        var eventHash = EventHasher.Compute(new EventHashInput(
+        var eventHash = !EventHashing.Enabled ? EventHashing.Placeholder : EventHasher.Compute(new EventHashInput(
             aggregate.AggregateType,
             aggregate.Pk,
             WaxEventTypes.NameOf(eventType),
@@ -147,7 +153,8 @@ public sealed class CommandContext
             reasonCode,
             head.EventHash));
 
-        writes.Append(aggregate.Pk, head.Version, body, eventHash, head.EventHash);
+        var priorHash = EventHashing.Enabled ? head.EventHash : head.Version > 0 ? EventHashing.Placeholder : null;
+        writes.Append(aggregate.Pk, head.Version, body, eventHash, priorHash);
 
         heads[aggregate.Pk] = new StreamHead(head.Version + 1, eventHash);
         aggregate.AggregateSequenceNumber = checked((int)(head.Version + 1));

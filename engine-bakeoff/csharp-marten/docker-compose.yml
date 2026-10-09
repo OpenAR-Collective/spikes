@@ -15,6 +15,7 @@ x-engine: &engine
 # The schema owner, used for migrations, tests, and verify-chain.
 x-owner-env: &owner-env
   WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  WAX_HASH: ${BAKEOFF_HASH:-on}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear
   DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
@@ -26,6 +27,7 @@ x-owner-env: &owner-env
 x-runtime-env: &runtime-env
   # marten (the default) or direct: how commands append events (see the README).
   WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  WAX_HASH: ${BAKEOFF_HASH:-on}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}

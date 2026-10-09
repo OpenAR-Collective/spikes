@@ -27,7 +27,11 @@ public static class StreamHeads
         "JOIN core.mt_events e ON e.stream_id = s.id AND e.version = s.version " +
         "WHERE s.id = ANY($1)";
 
-    public static NpgsqlBatchCommand Command(Guid[] streamIds) => new(Sql)
+    // With hashing off (the bake-off's diagnostic), the head is not read at all;
+    // a statement that returns nothing keeps each handler's batch shape.
+    const string NothingSql = "SELECT NULL::uuid, NULL::bigint, NULL::text WHERE $1::uuid[] IS NULL";
+
+    public static NpgsqlBatchCommand Command(Guid[] streamIds) => new(Wax.Hashing.EventHashing.Enabled ? Sql : NothingSql)
     {
         Parameters = { new NpgsqlParameter { Value = streamIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Uuid } },
     };

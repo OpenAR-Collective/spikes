@@ -168,6 +168,7 @@ static class Bench
             transactions = tally.Transactions,
             fallback_chunks = tally.FallbackChunks,
             append = engine.Commands.AppendMode.ToString().ToLowerInvariant(),
+            hashing = Wax.Hashing.EventHashing.Enabled ? "on" : "off",
         });
         return tally.Failed == 0 ? 0 : 1;
     }

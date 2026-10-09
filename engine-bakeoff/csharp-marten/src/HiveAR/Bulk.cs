@@ -83,7 +83,9 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
                 skipped++;
                 continue;
             }
-            var head = heads.GetValueOrDefault(account.Pk, StreamHead.Empty);
+            var head = EventHashing.Enabled
+                ? heads.GetValueOrDefault(account.Pk, StreamHead.Empty)
+                : new StreamHead(account.AggregateSequenceNumber, EventHashing.Placeholder);
             if (head.Version != account.AggregateSequenceNumber)
             {
                 throw new WaxConcurrencyException($"account {account.Pk}: expected version {account.AggregateSequenceNumber}, found {head.Version}");
@@ -228,8 +230,12 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
                 Metadata = metadata,
             };
             var eventType = WaxEventTypes.NameOf<TEvent>();
-            var hash = EventHasher.Compute(new EventHashInput(
+            var hash = !EventHashing.Enabled ? EventHashing.Placeholder : EventHasher.Compute(new EventHashInput(
                 aggregateType, aggregatePk, eventType, body.SchemaVersion, prior, @new, occurredAt, actor, "batch", reason, priorHash));
+            if (!EventHashing.Enabled)
+            {
+                priorHash = priorVersion > 0 ? EventHashing.Placeholder : null;
+            }
             var headers = new JsonObject { [StreamHeads.EventHashHeader] = hash };
             if (priorHash is not null)
             {
