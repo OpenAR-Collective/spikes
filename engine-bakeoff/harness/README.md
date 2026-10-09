@@ -12,13 +12,23 @@ One harness drives both sides of the [engine bake-off](../README.md), only throu
 - **Register lateness**, from `core.pending_event`: `fired_at` minus `due_at`.
 - **The correctness gates** in WORKLOADS.md, in SQL over the tables both sides share, plus the side's own `verify-chain`. The batch payment gate, which the bulk payment file shares, recomputes every payment key with WORKLOADS.md's `derived_uuid`, written in SQL, so it also checks that the side derives keys as specified. The placement gate does the same for every placed account's key, from the `run_pk` in the bench JSON.
 - **Transactions and fallback chunks**, from the bench JSON, beside commits per command from `pg_stat_database`. In the bulk workloads, latency is per transaction, that is, per chunk.
+- **The top statements**, from `pg_stat_statements`: the 25 statements (`--top-statements N`) with the most total time in the run's database, each with its calls, total and mean milliseconds, rows, and the first 300 characters of its text. They are taken at the end of the bench command, with the statement count, and kept in each run's results and in `raw/`.
 
 ## What keeps the two sides equal
 
 - [compose.override.yml](compose.override.yml) is applied on top of either side's own Compose file. It sets the PostgreSQL settings, including `pg_stat_statements`, and the CPU and memory limits of the `db`, `engine`, and `bench` services. Neither side sets these in its own file. A change to it is a change to the method.
 - [compose.pgbouncer.yml](compose.pgbouncer.yml) puts pgBouncer in transaction pooling mode in front of the database, with `--pgbouncer`. It is tuning that either side may use, and the result records it.
-- [sides.json](sides.json) is the only place the harness knows anything about a side: its Compose file, project name, profile, command-line prefix, and any environment that selects a mode. There are three sides: `python`; `csharp`, which appends events through Marten; and `csharp-direct`, the same C# image appending with plain SQL into Marten's own tables (`WAX_APPEND=direct`), which separates the language from the library on the write path. The two C# sides share one Compose project and one seed template, because their storage is identical. A side's `workloads_excluded` lists workloads it does not run, and the harness refuses them. The `csharp` side excludes the bulk payment file and both placement workloads: Marten has no set-based append inside a caller's transaction, so both C# sides would run the same writer, and WORKLOADS.md runs the C# bulk workloads once, on `csharp-direct`.
+- [sides.json](sides.json) is the only place the harness knows anything about a side: its Compose file, project name, profile, command-line prefix, and any environment that selects a mode. There are four sides: `python`; `csharp`, which appends events through Marten; `csharp-direct`, the same C# image appending with plain SQL into Marten's own tables (`WAX_APPEND=direct`), which separates the language from the library on the write path; and `csharp-wax`, C# with no Marten at all, writing WAX-0001's `core.event` and reading it with a port of the Python side's reader. The `csharp` and `csharp-direct` sides share one Compose project and one seed template, because their storage is identical. The `csharp-wax` side has its own, because its storage is not. A side's `workloads_excluded` lists workloads it does not run, and the harness refuses them. The `csharp` side excludes the bulk payment file and both placement workloads: Marten has no set-based append inside a caller's transaction, so both C# sides would run the same writer, and WORKLOADS.md runs the C# bulk workloads once, on `csharp-direct`.
 - Every run starts from a fresh copy of the seed, made with `CREATE DATABASE ... TEMPLATE`, and the engine runs for the whole run in its own container.
+
+## Diagnostics
+
+Two flags change what a run does, to show where the time goes. Each is named in the run's label and in `run.md`, and neither is a result on its own.
+
+- `--no-engine` runs the bench without the engine, so no projection, rule, or register poller reads the stream while the bench writes. There is no catch-up to measure. The read-model gates are skipped, and so, for the real-time workload, are the register and first-contact gates. `verify-chain` and the workload's own data gates still run.
+- `--hash off` sets `WAX_HASH=off` on the engine and bench containers. Each side then stores a fixed placeholder hash instead of reading the aggregate's previous hash and computing a new one, and everything else stays the same. `verify-chain` does not run, and the chain gate is skipped.
+
+`run.md` lists every gate a diagnostic skipped, and `results.json` records each run's skipped gates beside the ones that ran.
 
 ## Using it
 
@@ -41,4 +51,4 @@ A placement run places `--placements` new accounts, 100,000 by default, on top o
 
 A recorded result uses one warm-up run and three measured runs per worker count, with `--warmup-runs 1 --repeat 3 --record`, and only when Rob has said the machine is idle for the night. Run one side at a time, never both at once. Without `--record`, output goes to `out/`, which git ignores.
 
-Each run directory holds `run.md` (the summary table, with medians of the measured runs), `results.json` (every measurement), `environment.json` (the machine, the PostgreSQL version and non-default settings, the repository commit, the image of every container, and any other containers running), and `raw/`, with each run's bench output, `verify-chain` output, and engine log, unedited.
+Each run directory holds `run.md` (the summary table, with medians of the measured runs), `results.json` (every measurement), `environment.json` (the machine, the PostgreSQL version and non-default settings, the repository commit, the image of every container, and any other containers running), and `raw/`, with each run's bench output, `verify-chain` output, engine log, and top statements (`.statements.json`), unedited.

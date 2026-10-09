@@ -24,7 +24,7 @@ from django.utils import timezone
 from psycopg.types.json import Jsonb
 
 from hivear.allocation import AccountPosition, allocate_across_accounts, run_waterfall
-from wax import release
+from wax import hashing, release
 from wax.commands import _reason_code_pk
 from wax.hashing import compute_event_hash
 from wax.store import ConcurrencyError
@@ -72,7 +72,7 @@ class _Writes:
 
     def event(self, aggregate_type, aggregate_pk, version, prior_hash, event_type, prior, new, reason_pk, metadata=None):
         """Hash one event, chained to its own aggregate's previous one, and queue it."""
-        event_hash = compute_event_hash(
+        event_hash = hashing.PLACEHOLDER_HASH if not hashing.HASHING else compute_event_hash(
             aggregate_type=aggregate_type,
             aggregate_pk_ref=aggregate_pk,
             event_type=event_type,
@@ -183,7 +183,10 @@ def post_payments(commands, *, actor_pk, actor_type, source) -> Outcome:
         buckets = {}
         for account_fk, code, bucket_pk, priority, balance in cursor.fetchall():
             buckets.setdefault(account_fk, {})[code] = [bucket_pk, priority, balance]
-        heads = _heads(cursor, keys)
+        # The hashing-off diagnostic skips the head read, as wax.store.append
+        # does; the row lock and the unique constraint on each aggregate's
+        # version still catch a conflict.
+        heads = _heads(cursor, keys) if hashing.HASHING else None
         cursor.execute(
             "SELECT payment_pk FROM ar.payment WHERE payment_pk = ANY(%s)", [[c.payment_pk for c in commands]]
         )
@@ -198,7 +201,10 @@ def post_payments(commands, *, actor_pk, actor_type, source) -> Outcome:
             if command.payment_pk in existing:
                 outcome.skipped += 1
                 continue
-            head_version, head_hash = heads.get(account_pk, (0, None))
+            if heads is None:
+                head_version, head_hash = version, (hashing.PLACEHOLDER_HASH if version else None)
+            else:
+                head_version, head_hash = heads.get(account_pk, (0, None))
             if head_version != version:
                 raise ConcurrencyError(f"account {account_pk}: expected version {version}, found {head_version}")
             # The refusals post_payment makes for a one-account payment with no directions.

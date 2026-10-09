@@ -1,3 +1,9 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/wax/store.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: append skips the head read and stores a placeholder hash when the
+# WAX_HASH=off diagnostic is set (Foundation-written, for the engine bake-off).
 """Event store abstraction layer (WAX-0001 Enriched Event Sourcing).
 
 The three operations WAX-0001 defines: append and load_stream here,
@@ -11,6 +17,7 @@ from datetime import datetime
 from django.db import IntegrityError, connection
 from psycopg.types.json import Jsonb
 
+from wax import hashing
 from wax.hashing import compute_event_hash
 from wax.models import Event
 
@@ -69,22 +76,29 @@ def append(aggregate_type, aggregate_pk, expected_version, events, attribution) 
         raise RuntimeError("append must run inside the command transaction")
 
     with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT aggregate_sequence_number, event_hash FROM core.event "
-            "WHERE aggregate_pk_ref = %s ORDER BY aggregate_sequence_number DESC LIMIT 1",
-            [aggregate_pk],
-        )
-        row = cursor.fetchone()
-        version, prior_hash = row if row else (0, None)
-        position = 0
-        if version != expected_version:
-            raise ConcurrencyError(
-                f"{aggregate_type} {aggregate_pk}: expected version {expected_version}, found {version}"
+        if hashing.HASHING:
+            cursor.execute(
+                "SELECT aggregate_sequence_number, event_hash FROM core.event "
+                "WHERE aggregate_pk_ref = %s ORDER BY aggregate_sequence_number DESC LIMIT 1",
+                [aggregate_pk],
             )
+            row = cursor.fetchone()
+            version, prior_hash = row if row else (0, None)
+            if version != expected_version:
+                raise ConcurrencyError(
+                    f"{aggregate_type} {aggregate_pk}: expected version {expected_version}, found {version}"
+                )
+        else:
+            # The hashing-off diagnostic skips the head read. The caller's row
+            # lock serializes writers, and the unique constraint below still
+            # turns a conflicting version into a ConcurrencyError.
+            version = expected_version
+            prior_hash = hashing.PLACEHOLDER_HASH if version else None
+        position = 0
 
         for event in events:
             version += 1
-            event_hash = compute_event_hash(
+            event_hash = hashing.PLACEHOLDER_HASH if not hashing.HASHING else compute_event_hash(
                 aggregate_type=aggregate_type,
                 aggregate_pk_ref=aggregate_pk,
                 event_type=event.event_type,

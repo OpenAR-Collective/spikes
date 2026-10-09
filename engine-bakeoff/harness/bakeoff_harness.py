@@ -28,6 +28,13 @@ measured from outside the process under test:
 - The correctness gates, in SQL over the tables both sides share, plus the
   side's own verify-chain.
 
+Three diagnostics change what a run does, and run.md says so: --no-engine
+runs the bench without the engine, so nothing reads the stream, and the
+read-model and rule gates are skipped; --hash off sets WAX_HASH=off on the
+engine and bench containers, so events carry a placeholder hash, and
+verify-chain and the chain gate are skipped; and every run records the
+pg_stat_statements breakdown of its top statements by total time.
+
 Each run gets a fresh copy of the seeded template database, made with CREATE
 DATABASE ... TEMPLATE. Development output goes to harness/out/; --record
 writes to ../results/ and is for runs Rob has approved.
@@ -318,8 +325,11 @@ def measurements(side, database, start_clock):
     return {"rule_latency_ms": rules, "register_lateness_ms": lateness, "events_written": int(events or 0)}
 
 
-def gates(side, database, workload, bench, before_total, accounts, placements, end_clock, verify):
-    checks = {}
+def gates(side, database, workload, bench, before_total, accounts, placements, end_clock, verify,
+          engine_paused=False, hash_off=False):
+    """Returns (checks, skipped): the gates that ran, and the names of those a
+    diagnostic made meaningless, which run.md lists."""
+    checks, skipped = {}, []
 
     def count(sql):
         return int(side.psql(database, sql).splitlines()[-1])
@@ -367,13 +377,25 @@ def gates(side, database, workload, bench, before_total, accounts, placements, e
             LEFT JOIN applied ap ON ap.account_pk = o.account_pk
             WHERE o.total - coalesce(c.total, 0) <> coalesce(ap.amount, 0)""")
         checks["every account's opening minus current balance equals what payments applied"] = bad == 0
-        overdue = count(f"""SELECT count(*) FROM core.pending_event
-            WHERE status <> 'fired' AND due_at < '{end_clock}'::timestamptz - interval '5 seconds'""")
-        checks["every register entry due 5 s before the end has fired"] = overdue == 0
-        tasks = count("""SELECT count(*) FROM core.bakeoff_event_log e WHERE e.event_type = 'account.first_contact_due'
-            AND (SELECT count(*) FROM ar.task t WHERE t.account_fk = e.aggregate_pk_ref AND t.task_type = 'first_contact') <> 1""")
-        checks["every first_contact_due event has exactly one task"] = tasks == 0
-    checks["every hash chain verifies"] = bool(verify and verify.get("ok"))
+        if engine_paused:
+            skipped += ["every register entry due 5 s before the end has fired",
+                        "every first_contact_due event has exactly one task"]
+        else:
+            overdue = count(f"""SELECT count(*) FROM core.pending_event
+                WHERE status <> 'fired' AND due_at < '{end_clock}'::timestamptz - interval '5 seconds'""")
+            checks["every register entry due 5 s before the end has fired"] = overdue == 0
+            tasks = count("""SELECT count(*) FROM core.bakeoff_event_log e WHERE e.event_type = 'account.first_contact_due'
+                AND (SELECT count(*) FROM ar.task t WHERE t.account_fk = e.aggregate_pk_ref AND t.task_type = 'first_contact') <> 1""")
+            checks["every first_contact_due event has exactly one task"] = tasks == 0
+    if hash_off:
+        skipped.append("every hash chain verifies")
+    else:
+        checks["every hash chain verifies"] = bool(verify and verify.get("ok"))
+    if engine_paused:
+        skipped += ["every account summary matches the account and its buckets",
+                    "every payment read model row matches its payment",
+                    "every payment line's applied amount matches the payment's distribution"]
+        return checks, skipped
     checks["every account summary matches the account and its buckets"] = count("""
         SELECT count(*) FROM ar.account a
         LEFT JOIN ar.account_summary_read_model s ON s.account_summary_read_model_pk = a.account_pk
@@ -388,7 +410,17 @@ def gates(side, database, workload, bench, before_total, accounts, placements, e
     checks["every payment line's applied amount matches the payment's distribution"] = count("""
         SELECT count(*) FROM ar.account_payment_read_model_v2 l JOIN ar.payment p ON p.payment_pk = l.payment_pk
         WHERE l.applied_minor_units <> coalesce((SELECT sum(value::bigint) FROM jsonb_each_text(p.distribution -> l.account_pk::text)), 0)""") == 0
-    return checks
+    return checks, skipped
+
+
+def top_statements(side, database, limit):
+    """The run's most expensive statements by total time, from pg_stat_statements."""
+    text = side.psql(database, f"""SELECT coalesce(json_agg(t), '[]') FROM (
+        SELECT calls, round(total_exec_time::numeric, 1) AS total_ms, round(mean_exec_time::numeric, 4) AS mean_ms, rows,
+               left(regexp_replace(query, '\\s+', ' ', 'g'), 300) AS query
+        FROM pg_stat_statements WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+        ORDER BY total_exec_time DESC LIMIT {int(limit)}) t""", check=False)
+    return json.loads(text) if text else None
 
 
 def run_one(side, args, workers, index, raw_dir):
@@ -402,15 +434,17 @@ def run_one(side, args, workers, index, raw_dir):
     accounts = int(side.psql(database, "SELECT count(*) FROM ar.account"))
     before_total = int(side.psql(database, "SELECT coalesce(sum(balance_minor_units), 0) FROM ar.account_balance_bucket"))
 
-    engine = side.start("engine", database, f"{side.project}-run-engine", side.cli[0],
-                        [*side.cli[1:], "run-engine", *args.engine_args.split()])
+    engine = None
+    if not args.no_engine:
+        engine = side.start("engine", database, f"{side.project}-run-engine", side.cli[0],
+                            [*side.cli[1:], "run-engine", *args.engine_args.split()])
     bench = side.start("bench", database, f"{side.project}-run-bench", "sleep", ["infinity"])
     time.sleep(args.engine_settle)
     for name in (engine, bench):
-        if not running(name):
+        if name and not running(name):
             logs = sh(["docker", "logs", "--tail", "40", name], check=False)
             raise RuntimeError(f"{name} is not running:\n{logs.stdout}{logs.stderr}")
-    containers = {"db": side.container("db"), "engine": engine, "bench": bench}
+    containers = {"db": side.container("db"), "bench": bench, **({"engine": engine} if engine else {})}
     side.psql(database, "SELECT pg_stat_statements_reset()")
     before = counters(side, database, containers)
     sampler = LagSampler(side, database)
@@ -427,13 +461,17 @@ def run_one(side, args, workers, index, raw_dir):
     _, end_head = sampler.positions()
     statements = int(side.psql(database, """SELECT coalesce(sum(calls), 0) FROM pg_stat_statements
         WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())""") or 0)
+    # Snapshotted with the statement count, at the end of the bench command.
+    statement_breakdown = top_statements(side, database, args.top_statements)
+    (raw_dir / f"{stem}.statements.json").write_text(json.dumps(statement_breakdown, indent=1), encoding="utf-8")
     (raw_dir / f"{stem}.stdout.txt").write_text(result.stdout, encoding="utf-8")
     (raw_dir / f"{stem}.stderr.txt").write_text(result.stderr, encoding="utf-8")
     bench_json = last_json(result.stdout) or {}
 
     def finish():
-        sh(["docker", "stop", "-t", "15", engine], check=False)
-        sh(["docker", "rm", "-f", engine, bench], check=False)
+        if engine:
+            sh(["docker", "stop", "-t", "15", engine], check=False)
+        sh(["docker", "rm", "-f", *filter(None, (engine, bench))], check=False)
         if not args.keep:
             side.psql("postgres", f"DROP DATABASE IF EXISTS {database} WITH (FORCE)")
 
@@ -452,9 +490,10 @@ def run_one(side, args, workers, index, raw_dir):
     # then until nothing is left and, in real time and placement, every entry
     # due five seconds before the end has fired, so the gates see a finished
     # state.
+    # With the engine paused nothing reads the stream, so there is no wait.
     caught_up_at = settled_at = catchup_cpu = None
     wait_started = time.perf_counter()
-    while time.perf_counter() - wait_started < args.catchup_timeout:
+    while engine and time.perf_counter() - wait_started < args.catchup_timeout:
         low, head = sampler.positions()
         if low is None:
             if time.perf_counter() - wait_started > 30:
@@ -474,14 +513,18 @@ def run_one(side, args, workers, index, raw_dir):
         time.sleep(0.5)
     sampler.stop()
 
-    verify_result = sh(["docker", "exec", bench, *side.cli, "verify-chain"], check=False, timeout=6 * 3600)
-    (raw_dir / f"{stem}.verify.txt").write_text(verify_result.stdout + verify_result.stderr, encoding="utf-8")
-    verify = last_json(verify_result.stdout)
-    checks = gates(side, database, args.workload, bench_json, before_total, accounts, args.placements,
-                   after["clock"], verify)
+    # With hashing off, events carry a placeholder hash, so the chain cannot verify.
+    verify = None
+    if args.hash == "on":
+        verify_result = sh(["docker", "exec", bench, *side.cli, "verify-chain"], check=False, timeout=6 * 3600)
+        (raw_dir / f"{stem}.verify.txt").write_text(verify_result.stdout + verify_result.stderr, encoding="utf-8")
+        verify = last_json(verify_result.stdout)
+    checks, skipped = gates(side, database, args.workload, bench_json, before_total, accounts, args.placements,
+                            after["clock"], verify, engine_paused=engine is None, hash_off=args.hash == "off")
     measured = measurements(side, database, before["clock"])
-    engine_logs = sh(["docker", "logs", engine], check=False)
-    (raw_dir / f"{stem}.engine.txt").write_text(engine_logs.stdout + engine_logs.stderr, encoding="utf-8")
+    if engine:
+        engine_logs = sh(["docker", "logs", engine], check=False)
+        (raw_dir / f"{stem}.engine.txt").write_text(engine_logs.stdout + engine_logs.stderr, encoding="utf-8")
     images = {k: sh(["docker", "inspect", "-f", "{{.Image}}", v], check=False).stdout.strip() for k, v in containers.items()}
     container_limits = {k: limits(v) for k, v in containers.items()}
 
@@ -505,6 +548,8 @@ def run_one(side, args, workers, index, raw_dir):
         "accounts": accounts,
         "placements": args.placements if args.workload in PLACEMENTS else None,
         "engine_args": args.engine_args,
+        "engine_paused": engine is None,
+        "hashing": args.hash,
         "pgbouncer": side.pgbouncer,
         "bench": bench_json,
         "bench_exit_code": result.returncode,
@@ -517,6 +562,7 @@ def run_one(side, args, workers, index, raw_dir):
                                  if catchup_cpu is not None and engine_after is not None else None),
         "statements": statements,
         "statements_per_command": round(statements / sent_total, 2) if sent_total else None,
+        "top_statements": statement_breakdown,
         "commits_per_command": round((after["commits"] - before["commits"]) / sent_total, 2) if sent_total else None,
         "rollbacks": after["rollbacks"] - before["rollbacks"],
         "lag_samples": sampler.samples,
@@ -526,6 +572,7 @@ def run_one(side, args, workers, index, raw_dir):
         "settle_s": round(settled_at - after["t"], 1) if settled_at else None,
         "verify": verify,
         "gates": checks,
+        "gates_skipped": skipped,
         "gates_pass": all(checks.values()),
         **measured,
         "images": images,
@@ -576,9 +623,9 @@ def summarize(records):
             "succeeded_per_s": median(rate),
             "p50_ms": median([r["bench"].get("latency_ms", {}).get("p50") for r in group]),
             "p99_ms": median([r["bench"].get("latency_ms", {}).get("p99") for r in group]),
-            "bench_cpu_ms": median([r["cpu_ms_per_command"]["bench"] for r in group]),
-            "engine_cpu_ms": median([r["cpu_ms_per_command"]["engine"] for r in group]),
-            "db_cpu_ms": median([r["cpu_ms_per_command"]["db"] for r in group]),
+            "bench_cpu_ms": median([r["cpu_ms_per_command"].get("bench") for r in group]),
+            "engine_cpu_ms": median([r["cpu_ms_per_command"].get("engine") for r in group]),
+            "db_cpu_ms": median([r["cpu_ms_per_command"].get("db") for r in group]),
             "statements": median([r["statements_per_command"] for r in group]),
             "commits": median([r["commits_per_command"] for r in group]),
             "transactions": median([r["bench"].get("transactions") for r in group]),
@@ -604,6 +651,8 @@ def render(meta, env, rows, records):
         f" Workload: {meta['workload']}. Accounts: {meta['accounts']:,}."
         f"{' New accounts placed per run: ' + format(meta['placements'], ',') + '.' if meta.get('placements') else ''}"
         f" Engine arguments: `{meta['engine_args'] or '(defaults)'}`. pgBouncer: {'yes' if meta['pgbouncer'] else 'no'}."
+        f"{' Engine paused: the engine did not run, so nothing read the stream and there is no catch-up.' if meta.get('engine_paused') else ''}"
+        f"{' Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run.' if meta.get('hashing') == 'off' else ''}"
         f" Warm-up runs per worker count: {meta['warmup_runs']}; measured runs: {meta['repeat']}."
         f" Started {meta['started']}, finished {meta['finished']}.",
         "",
@@ -630,6 +679,10 @@ def render(meta, env, rows, records):
                      f" {r['engine_cpu_ms']} | {r['db_cpu_ms']} | {r['statements']} | {r['commits']} |"
                      f" {r['transactions']} ({r['fallback_chunks']}) | {r['max_lag']} | {r['catchup_s']} |"
                      f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} | {'pass' if r['gates'] else 'FAIL'} |")
+    skipped = sorted({name for r in records for name in r.get("gates_skipped", [])})
+    if skipped:
+        lines += ["", "Gates skipped because of the diagnostic: " + "; ".join(skipped) + "."]
+    lines += ["", "Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`."]
     failed = [r for r in records if not r["gates_pass"]]
     if failed:
         lines += ["", "Failed gates:"]
@@ -646,8 +699,11 @@ def cmd_run(args):
     side = Side(args.side, args.pgbouncer)
     if args.workload in side.workloads_excluded:
         raise SystemExit(f"{side.name} does not run {args.workload}; see workloads_excluded in sides.json")
+    if args.hash == "off":
+        side.container_env = {**side.container_env, "WAX_HASH": "off"}
     side.up_db()
-    label = args.label or f"{side.name}-{args.workload}"
+    label = args.label or "-".join([side.name, args.workload, *(["no-engine"] if args.no_engine else []),
+                                    *(["hash-off"] if args.hash == "off" else [])])
     if not re.fullmatch(r"[a-z0-9-]+", label):
         raise SystemExit("--label may contain only lowercase letters, digits, and hyphens")
     base = BAKEOFF / "results" if args.record else HARNESS / "out"
@@ -659,7 +715,8 @@ def cmd_run(args):
     meta = {"label": label, "side": side.name, "side_env": {**side.compose_env, **side.container_env},
             "workload": args.workload, "accounts": args.accounts,
             "placements": args.placements if args.workload in PLACEMENTS else None,
-            "engine_args": args.engine_args, "pgbouncer": args.pgbouncer, "repeat": args.repeat,
+            "engine_args": args.engine_args, "engine_paused": args.no_engine, "hashing": args.hash,
+            "pgbouncer": args.pgbouncer, "repeat": args.repeat,
             "warmup_runs": args.warmup_runs, "record": args.record,
             "started": datetime.now().isoformat(timespec="seconds")}
     records, index = [], 0
@@ -699,6 +756,12 @@ def main():
             p.add_argument("--workload", choices=WORKLOADS, required=True)
             p.add_argument("--workers", default="1,2,4,8,16,32", help="comma-separated worker counts")
             p.add_argument("--placements", type=int, default=100_000, help="new accounts per placement run")
+            p.add_argument("--no-engine", action="store_true",
+                           help="diagnostic: run without the engine; read-model and rule gates are skipped")
+            p.add_argument("--hash", choices=["on", "off"], default="on",
+                           help="diagnostic: off sets WAX_HASH=off on the engine and bench; the chain gate is skipped")
+            p.add_argument("--top-statements", type=int, default=25,
+                           help="pg_stat_statements rows recorded per run, by total time")
             p.add_argument("--warmup", type=float, default=15, help="real-time warm-up seconds")
             p.add_argument("--duration", type=float, default=120, help="real-time measured seconds")
             p.add_argument("--random-seed", default="1")

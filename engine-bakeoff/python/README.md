@@ -48,16 +48,16 @@ The rule was to keep everything the Wax write path and its read side need, as An
 
 ### Kept unchanged
 
-These 37 files are byte-for-byte copies of the originals.
+These 35 files are byte-for-byte copies of the originals.
 
-- The Wax framework: `wax/store.py` (the event store), `wax/hashing.py`, `wax/commands.py` (command dispatch), `wax/projections.py` (the projection reader and its high-water mark), `wax/release.py`, `wax/apps.py`, both of his `wax/migrations/`, and the management commands `run_projections`, `projections`, and `verify_chain`.
+- The Wax framework: `wax/commands.py` (command dispatch), `wax/projections.py` (the projection reader and its high-water mark), `wax/release.py`, `wax/apps.py`, both of his `wax/migrations/`, and the management commands `run_projections`, `projections`, and `verify_chain`.
 - The HiveAR slice: `hivear/allocation.py` (payment allocation and the waterfall), `hivear/currency.py`, all five of his `hivear/migrations/`, and the `seed_demo` command that loads a sample bucket registry.
 - The tests for those pieces: `tests/conftest.py`, `tests/test_event_store.py`, `tests/test_payments.py`, and `tests/test_projection_reader.py`.
 - Supporting files: `manage.py`, `pytest.ini`, `.dockerignore`, `config/__init__.py`, and `deploy/initdb/10-runtime-role.sh`, which creates the runtime database role.
 
 ### Changed
 
-Each of these eleven files carries a header comment naming its source and its change.
+Each of these thirteen files carries a header comment naming its source and its change.
 
 | File | Change | Reason |
 | --- | --- | --- |
@@ -68,6 +68,8 @@ Each of these eleven files carries a header comment naming its source and its ch
 | `hivear/models.py` | The account's two new columns and the Task model. | The workloads. |
 | `hivear/projections.py` | The account summary handles `account.interest_accrued` and `account.status_changed` and ignores the other new account events. | The reader stops on an event type it neither handles nor ignores. |
 | `wax/models.py` | Added the PendingEvent model. | The register. |
+| `wax/hashing.py` | Adds the `WAX_HASH=off` switch and its placeholder hash. The hash computation is unchanged. | The hashing-off diagnostic, which shows what hashing costs. |
+| `wax/store.py` | With `WAX_HASH=off`, append skips the head read and stores the placeholder hash; the row lock and the unique constraint on the aggregate's version still catch a conflict. Unchanged otherwise. | The hashing-off diagnostic. |
 | `Dockerfile` | One Python stage; the default process is the projection reader; the image carries `bakeoff/`. | The frontend build, the OpenAPI export, static files, and gunicorn served the HTTP layer. |
 | `requirements.txt` | Removed `django-ninja`, `gunicorn`, and `whitenoise`. | They served the HTTP API and the frontend. |
 | `constraints.txt` | Removed the pins for the same three packages. | Every other pin is unchanged. |

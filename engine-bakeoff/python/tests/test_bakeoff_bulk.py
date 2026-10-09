@@ -172,6 +172,32 @@ def test_a_failed_chunk_runs_again_one_command_at_a_time(buckets, new_keys):
 
 
 
+
+@pytest.mark.django_db
+def test_hashing_off_stores_the_placeholder_and_still_catches_a_conflict(buckets, new_keys, monkeypatch):
+    from django.db import transaction
+
+    from wax import hashing
+
+    monkeypatch.setattr(hashing, "HASHING", False)
+    single_account, bulk_account = new_keys()
+    single_payment, bulk_payment = new_keys()
+    dispatch(_placement(single_account, "OFF-1"), **ATTRIBUTION)
+    dispatch(_placement(bulk_account, "OFF-2"), **ATTRIBUTION)
+    dispatch(_payment(single_account, single_payment), **ATTRIBUTION)
+    bulk.post_payments([_payment(bulk_account, bulk_payment)], **ATTRIBUTION)
+
+    for account in (single_account, bulk_account):
+        events = list(store.load_stream(account))
+        assert [event.event_hash for event in events] == [hashing.PLACEHOLDER_HASH] * 2
+        assert [event.prior_event_hash for event in events] == [None, hashing.PLACEHOLDER_HASH]
+    assert balances(bulk_account) == balances(single_account)
+
+    # A stale expected version still fails, on the unique constraint.
+    attribution = store.Attribution(actor_pk=BATCH, actor_type="batch", occurred_at=RECEIVED_AT)
+    with pytest.raises(ConcurrencyError), transaction.atomic():
+        store.append("account", single_account, 1, [store.NewEvent("account.status_changed", None, {"status": "x"})], attribution)
+
 @pytest.fixture
 def new_keys():
     def _keys(n=2):
