@@ -117,12 +117,12 @@ Each side's Compose file has the services `db`, `migrate`, `worker`, and `tools`
 | `bench batch-payments --workers W` | Runs the payment file to the end. |
 | `bench batch-accrual --workers W` | Runs the interest accrual to the end. |
 | `bench realtime --workers W --warmup S --duration S --random-seed R` | Runs the inbound mix. Warm-up commands run but are not counted. |
-| `run-engine --seconds-per-day D --poll-interval-ms P --rule-workers K --projection-workers J` | The long-running services: the projection worker, the rule runner, and the register poller. The defaults are D = 2, P = 250, K = 1, and J = 1 on both sides, and any other value is tuning that the result records. |
+| `run-engine --seconds-per-day D --poll-interval-ms P --rule-workers K --projection-workers J` | The long-running services: the projection worker, the rule runner, and the register poller. K sets both the rule runner's parallelism and the register poller's. The defaults are D = 2, P = 250, K = 1, and J = 1 on both sides, and any other value is tuning that the result records. |
 | `verify-chain` | Recomputes every chain. |
 
 A `bench` command prints one line of JSON when it ends, with these keys: `workload`, `workers`, `sent`, `succeeded`, `rejected`, `failed`, `retried` (attempts started again after a conflict), `elapsed_s`, and `latency_ms` with `p50`, `p95`, `p99`, and `max`, plus `run_pk` for a batch or a real-time run. Everything else is measured by the harness from outside: CPU from each container's cgroup counters, statements and commits from PostgreSQL's statistics, read-model lag from the projection positions, rule latency, and register lateness.
 
-To keep the harness independent of either event store's layout, each side's schema provides a view, `core.bakeoff_event_log`, with the columns `event_key`, `aggregate_pk_ref`, `event_type`, `recorded_at`, `correlation_pk_ref`, and `correlation_type`. Rule latency is the `recorded_at` of each action's event minus the `recorded_at` of the event named in its `correlation_pk_ref`. Register lateness is `fired_at` minus `due_at`.
+To keep the harness independent of either event store's layout, each side's schema provides a view, `core.bakeoff_event_log`, with the columns `event_key`, `aggregate_pk_ref`, `event_type`, `recorded_at`, `correlation_pk_ref`, and `correlation_type`. Rule latency is the `recorded_at` of each action's event minus the `recorded_at` of the event named in its `correlation_pk_ref`. Register lateness is `fired_at` minus `due_at`. A second view, `core.bakeoff_progress`, has a row per projection and per rule runner partition, with the columns `name`, `position` (the last sequence it has handled), and `head` (the highest sequence in the event store); the harness samples it every second for lag, and to know when the engine has caught up.
 
 ## Correctness gates
 

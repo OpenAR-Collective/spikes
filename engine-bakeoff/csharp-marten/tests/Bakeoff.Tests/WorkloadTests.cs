@@ -181,6 +181,8 @@ public sealed class SeedAndBatchTests(DatabaseFixture db) : IClassFixture<Databa
             "WHERE s.balance_minor_units <> (SELECT sum(balance_minor_units) FROM ar.account_balance_bucket WHERE account_fk = a.account_pk) " +
             "OR s.status <> a.status OR s.is_disputed <> a.is_disputed"));
         Assert.Equal((long)Accounts, await scenario.Scalar<long>("SELECT count(*) FROM ar.payment_read_model"));
+        // The harness's progress view shows every projection at the head.
+        Assert.Equal(3L, await scenario.Scalar<long>("SELECT count(*) FROM core.bakeoff_progress WHERE name LIKE 'ar_%' AND position = head"));
     }
 }
 
