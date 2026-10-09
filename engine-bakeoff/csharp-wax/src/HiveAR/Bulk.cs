@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using Marten;
 using Npgsql;
 using NpgsqlTypes;
 using Wax.Commands;
@@ -18,12 +17,12 @@ public readonly record struct BulkOutcome(int Succeeded, int Rejected, int Skipp
 /// its version checked, every event is hashed in the application and chained to
 /// its own aggregate's previous event, events and state are written in the same
 /// transaction, and every stored event is what the single-command path would
-/// write: the same event types and values, from the same shaping code.
-/// Foundation-written.
+/// write: the same event types and values, from the same shaping code, built
+/// and hashed by the same NewEvent.Create. Foundation-written.
 /// </summary>
-public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store, ReasonCodes reasons)
+public sealed class BulkWriter(NpgsqlDataSource dataSource, ReasonCodes reasons)
 {
-    readonly ISerializer serializer = store.Advanced.Serializer;
+    static Attribution Batch(Guid actor, DateTimeOffset occurredAt) => new(actor, "batch", occurredAt, "batch", null, null);
 
     /// <summary>The payment file for one chunk: one payment per account, as
     /// PostPayment would post it, all in one transaction.</summary>
@@ -64,7 +63,8 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
             await reader.NextResultAsync(cancellation);
             while (await reader.ReadAsync(cancellation))
             {
-                heads[reader.GetGuid(0)] = new StreamHead(reader.GetInt64(1), reader.IsDBNull(2) ? null : reader.GetString(2));
+                var (streamId, head) = StreamHeads.Read(reader);
+                heads[streamId] = head;
             }
             await reader.NextResultAsync(cancellation);
             while (await reader.ReadAsync(cancellation))
@@ -83,7 +83,9 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
                 skipped++;
                 continue;
             }
-            var head = heads.GetValueOrDefault(account.Pk, StreamHead.Empty);
+            var head = EventHashing.Enabled
+                ? heads.GetValueOrDefault(account.Pk, StreamHead.Empty)
+                : new StreamHead(account.AggregateSequenceNumber, EventHashing.Placeholder);
             if (head.Version != account.AggregateSequenceNumber)
             {
                 throw new WaxConcurrencyException($"account {account.Pk}: expected version {account.AggregateSequenceNumber}, found {head.Version}");
@@ -117,16 +119,14 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
             // The payment's own event: a new aggregate, so no prior hash.
             var posted = PaymentShapes.Posted(amount, "USD", receivedAt, paydowns, unapplied, PaymentShapes.Request(command, receivedAt));
             writes.Event<PaymentPosted>(
-                this, "payment", paymentPk, 0, null, prior: null, @new: posted, metadata: null, occurredAt, actor, reason);
-            writes.NewStreams.Add(paymentPk);
+                "payment", paymentPk, StreamHead.Empty, prior: null, @new: posted, metadata: null, Batch(actor, occurredAt), reason);
             writes.Payments.Add((paymentPk, amount, receivedAt, Json.Distribution(paydowns).ToJsonString(), unapplied));
 
             if (paydown.Count > 0)
             {
                 var (prior, @new, metadata, moved) = Buckets.Move(buckets, paydown, -1, paymentPk, receivedAt);
                 writes.Event<AccountPaymentApplied>(
-                    this, "account", account.Pk, head.Version, head.EventHash, prior, @new, metadata, occurredAt, actor, reason);
-                writes.MovedStreams.Add((account.Pk, head.Version + 1));
+                    "account", account.Pk, head, prior, @new, metadata, Batch(actor, occurredAt), reason);
                 writes.Versions.Add((account.Pk, (int)(head.Version + 1)));
                 foreach (var row in moved)
                 {
@@ -182,8 +182,7 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
                 continue;
             }
             writes.Event<AccountPlaced>(
-                this, "account", account.Pk, 0, null, prior: null, @new: Seeder.Placed(account), metadata: null, occurredAt, actor, reason);
-            writes.NewStreams.Add(account.Pk);
+                "account", account.Pk, StreamHead.Empty, prior: null, @new: Seeder.Placed(account), metadata: null, Batch(actor, occurredAt), reason);
             writes.NewAccounts.Add(account);
             foreach (var (code, amount) in account.Balances)
             {
@@ -200,9 +199,7 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
     /// <summary>A chunk's writes, gathered in memory and sent as set-based statements.</summary>
     sealed class SetWrites
     {
-        public List<Guid> NewStreams { get; } = [];
-        public List<(Guid Stream, long Version)> MovedStreams { get; } = [];
-        public List<(Guid Id, Guid Stream, long Version, string Data, string Type, string DotnetType, string Headers)> Events { get; } = [];
+        public List<NewEvent> Events { get; } = [];
         public List<(Guid Pk, long Amount, DateTimeOffset ReceivedAt, string Distribution, long Unapplied)> Payments { get; } = [];
         public List<(Guid Pk, long Balance)> Balances { get; } = [];
         public List<(Guid Pk, int Version)> Versions { get; } = [];
@@ -210,35 +207,11 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
         public List<(Guid Pk, long Balance, Guid Account, Guid Definition)> NewBuckets { get; } = [];
 
         /// <summary>Shape, hash, and queue one event, exactly as the single-command path records it.</summary>
-        public string Event<TEvent>(
-            BulkWriter writer, string aggregateType, Guid aggregatePk, long priorVersion, string? priorHash,
-            JsonObject? prior, JsonObject? @new, JsonObject? metadata, DateTimeOffset occurredAt, Guid actor, Guid reason)
-            where TEvent : WaxEvent, new()
-        {
-            var body = new TEvent
-            {
-                AggregateType = aggregateType,
-                PriorValue = prior,
-                NewValue = @new,
-                OccurredAt = occurredAt,
-                ActorPkRef = actor,
-                ActorType = "batch",
-                ReasonCodeFk = reason,
-                Source = "batch",
-                Metadata = metadata,
-            };
-            var eventType = WaxEventTypes.NameOf<TEvent>();
-            var hash = EventHasher.Compute(new EventHashInput(
-                aggregateType, aggregatePk, eventType, body.SchemaVersion, prior, @new, occurredAt, actor, "batch", reason, priorHash));
-            var headers = new JsonObject { [StreamHeads.EventHashHeader] = hash };
-            if (priorHash is not null)
-            {
-                headers[StreamHeads.PriorEventHashHeader] = priorHash;
-            }
-            Events.Add((Guid.NewGuid(), aggregatePk, priorVersion + 1, writer.serializer.ToJson(body), eventType,
-                $"{typeof(TEvent).FullName}, {typeof(TEvent).Assembly.GetName().Name}", headers.ToJsonString()));
-            return hash;
-        }
+        public void Event<TEvent>(
+            string aggregateType, Guid aggregatePk, StreamHead head,
+            JsonObject? prior, JsonObject? @new, JsonObject? metadata, Attribution attribution, Guid reason)
+            where TEvent : WaxEvent =>
+            Events.Add(NewEvent.Create(typeof(TEvent), aggregateType, aggregatePk, head, prior, @new, metadata, attribution, reason));
 
         public async Task FlushAsync(NpgsqlConnection connection, NpgsqlTransaction transaction, CancellationToken cancellation)
         {
@@ -250,32 +223,9 @@ public sealed class BulkWriter(NpgsqlDataSource dataSource, IDocumentStore store
                 batch.BatchCommands.Add(command);
             }
 
-            if (NewStreams.Count > 0)
-            {
-                Add("INSERT INTO core.mt_streams (id, type, version, timestamp, tenant_id) " +
-                    "SELECT id, NULL, 1, now(), '*DEFAULT*' FROM unnest($1) AS s(id)",
-                    Uuids(NewStreams));
-            }
-            if (MovedStreams.Count > 0)
-            {
-                Add("UPDATE core.mt_streams s SET version = v.version, timestamp = now() " +
-                    "FROM unnest($1, $2) AS v(id, version) WHERE s.id = v.id",
-                    Uuids(MovedStreams.Select(m => m.Stream)), Longs(MovedStreams.Select(m => m.Version)));
-            }
             if (Events.Count > 0)
             {
-                // Sequence numbers are taken in the order the events were recorded.
-                Add("INSERT INTO core.mt_events (seq_id, id, stream_id, version, data, type, tenant_id, timestamp, mt_dotnet_type, is_archived, headers) " +
-                    "SELECT nextval('core.mt_events_sequence'), e.id, e.stream_id, e.version, e.data, e.type, '*DEFAULT*', now(), e.dotnet_type, false, e.headers " +
-                    "FROM (SELECT * FROM unnest($1, $2, $3, $4, $5, $6, $7) WITH ORDINALITY " +
-                    "AS u(id, stream_id, version, data, type, dotnet_type, headers, n) ORDER BY n) e",
-                    Uuids(Events.Select(e => e.Id)),
-                    Uuids(Events.Select(e => e.Stream)),
-                    Longs(Events.Select(e => e.Version)),
-                    Texts(Events.Select(e => e.Data), NpgsqlDbType.Jsonb),
-                    Texts(Events.Select(e => e.Type), NpgsqlDbType.Varchar),
-                    Texts(Events.Select(e => e.DotnetType), NpgsqlDbType.Varchar),
-                    Texts(Events.Select(e => e.Headers), NpgsqlDbType.Jsonb));
+                batch.BatchCommands.Add(EventStore.InsertManyCommand(Events));
             }
             if (Payments.Count > 0)
             {

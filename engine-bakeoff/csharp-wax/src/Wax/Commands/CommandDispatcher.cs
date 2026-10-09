@@ -1,7 +1,3 @@
-using JasperFx;
-using JasperFx.Events;
-using Marten;
-using Marten.Services;
 using Npgsql;
 using Wax.Hashing;
 
@@ -16,14 +12,10 @@ namespace Wax.Commands;
 /// </summary>
 public sealed class CommandDispatcher(
     NpgsqlDataSource dataSource,
-    IDocumentStore store,
     ReasonCodes reasons,
-    AppendMode appendMode = AppendMode.Marten,
     TimeProvider? clock = null)
 {
     public const int MaxAttempts = 3;
-
-    public AppendMode AppendMode => appendMode;
 
     static readonly HashSet<string> ActorTypes = ["user", "system", "integration", "batch"];
 
@@ -71,7 +63,7 @@ public sealed class CommandDispatcher(
                 actorPk, actorType, IsoFormat.UtcNowMicroseconds(clock), source, correlationPk, correlationType);
             await using var connection = await dataSource.OpenConnectionAsync(cancellation);
             await using var transaction = await connection.BeginTransactionAsync(cancellation);
-            await using var writes = IWriteQueue.Create(appendMode, connection, transaction, store);
+            await using var writes = new WriteQueue(connection, transaction);
             var context = new CommandContext(connection, transaction, writes, attribution, reasons);
             try
             {
@@ -93,7 +85,7 @@ public sealed class CommandDispatcher(
         }
     }
 
-    /// <summary>A concurrent writer won the race: a stale version, a stream or
+    /// <summary>A concurrent writer won the race: a stale version, an event or
     /// row that now exists, or a deadlock between two lockers.</summary>
     public static bool IsConflict(Exception error)
     {
@@ -102,16 +94,10 @@ public sealed class CommandDispatcher(
             switch (current)
             {
                 case WaxConcurrencyException:
-                case ConcurrencyException:
-                case ExistingStreamIdCollisionException:
                 case PostgresException { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.DeadlockDetected or PostgresErrorCodes.SerializationFailure }:
                     return true;
                 case AggregateException aggregate when aggregate.InnerExceptions.Any(IsConflict):
                     return true;
-            }
-            if (current.GetType().Name == "EventStreamUnexpectedMaxEventIdException")
-            {
-                return true;
             }
         }
         return false;

@@ -419,7 +419,7 @@ static class Streams
     public static async Task<(string? EventType, JsonObject? NewValue)> FirstEventAsync(CommandContext context, Guid streamId, CancellationToken cancellation)
     {
         await using var command = context.CreateCommand(
-            "SELECT type, data -> 'new_value' FROM core.mt_events WHERE stream_id = $1 AND version = 1");
+            "SELECT event_type, new_value FROM core.event WHERE aggregate_pk_ref = $1 AND aggregate_sequence_number = 1");
         command.Parameters.AddWithValue(streamId);
         await using var reader = await command.ExecuteReaderAsync(cancellation);
         if (!await reader.ReadAsync(cancellation))

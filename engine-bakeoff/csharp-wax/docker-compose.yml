@@ -1,20 +1,21 @@
-# The C# side of the engine bake-off: one PostgreSQL 17, a one-shot migrate
-# service that applies the schema as the owner, the projection worker running
-# as the runtime role, and a tools service for the tests and one-off commands.
-# It mirrors the Python side's Compose file, with the same database image,
-# settings, and roles. No ports are published to the host.
-name: hivear-bakeoff-csharp
+# The C# side of the engine bake-off without Marten: one PostgreSQL 17, a
+# one-shot migrate service that applies the schema as the owner, the
+# projection worker running as the runtime role, and a tools service for the
+# tests and one-off commands. It mirrors the other sides' Compose files, with
+# the same database image, settings, and roles, under its own project name so
+# its database and network never meet theirs. No ports are published to the host.
+name: hivear-bakeoff-csharp-wax
 
 x-engine: &engine
-  image: ${IMAGE:-hivear-bakeoff-csharp:local}
+  image: ${IMAGE:-hivear-bakeoff-csharp-wax:local}
   build:
     context: ..
-    dockerfile: csharp-marten/Dockerfile
+    dockerfile: csharp-wax/Dockerfile
     target: runtime
 
 # The schema owner, used for migrations, tests, and verify-chain.
 x-owner-env: &owner-env
-  WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  WAX_HASH: ${BAKEOFF_HASH:-on}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear
   DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
@@ -24,8 +25,8 @@ x-owner-env: &owner-env
 # The application connects as the runtime role, which cannot alter the
 # schema or change history.
 x-runtime-env: &runtime-env
-  # marten (the default) or direct: how commands append events (see the README).
-  WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  # on (the default) or off: the hashing-off diagnostic (see EventHashing.cs).
+  WAX_HASH: ${BAKEOFF_HASH:-on}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
@@ -62,7 +63,7 @@ services:
       db:
         condition: service_healthy
 
-  # The projection daemon (WAX-0001), Marten's async daemon in solo mode.
+  # The projection reader (WAX-0001), ported from Andy Troiano's prototype.
   worker:
     <<: *engine
     restart: unless-stopped
@@ -95,9 +96,9 @@ services:
   tools:
     build:
       context: ..
-      dockerfile: csharp-marten/Dockerfile
+      dockerfile: csharp-wax/Dockerfile
       target: test
-    image: ${TEST_IMAGE:-hivear-bakeoff-csharp-test:local}
+    image: ${TEST_IMAGE:-hivear-bakeoff-csharp-wax-test:local}
     profiles: ["tools"]
     environment: *owner-env
     depends_on:

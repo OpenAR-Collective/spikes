@@ -21,11 +21,10 @@ public sealed class BulkTests(DatabaseFixture db) : IClassFixture<DatabaseFixtur
     [Fact]
     public async Task Bulk_payments_and_placement_pass_their_gates_and_match_the_single_path()
     {
-        var positions = db.Engine.Store.Advanced.AllAsyncProjectionShardNames().Select(shard => shard.Identity).Append("wax_rule_runner:All");
-        await Seeder.SeedAsync(db.Engine.DataSource, db.Engine.Store, Accounts, positions);
+        await Seeder.SeedAsync(db.Engine.DataSource, Accounts, db.Engine.Projections);
         var totalBefore = await scenario.Scalar<decimal>("SELECT sum(balance_minor_units) FROM ar.account_balance_bucket");
         var actor = DerivedUuid.From("bakeoff:batch");
-        var bulk = new BulkWriter(db.Engine.DataSource, db.Engine.Store, await ReasonCodes.LoadAsync(db.Engine.DataSource));
+        var bulk = new BulkWriter(db.Engine.DataSource, await ReasonCodes.LoadAsync(db.Engine.DataSource));
 
         // The payment file, a chunk per transaction.
         var runner = new BatchRunner(db.Engine.DataSource, "ar.account", "account_pk");
@@ -94,10 +93,7 @@ public sealed class BulkTests(DatabaseFixture db) : IClassFixture<DatabaseFixtur
 
         // Every chain verifies, and the read models catch up and agree.
         Assert.Empty((await ChainVerifier.VerifyAllAsync(db.Engine.DataSource)).Problems);
-        using var daemon = await db.Engine.Store.BuildProjectionDaemonAsync();
-        await daemon.StartAllAsync();
-        await daemon.WaitForNonStaleData(TimeSpan.FromSeconds(120));
-        await daemon.StopAllAsync();
+        await db.Engine.CatchUpAsync(120);
         Assert.Equal(0L, await scenario.Scalar<long>(
             "SELECT count(*) FROM ar.account a LEFT JOIN ar.account_summary_read_model s ON s.account_summary_read_model_pk = a.account_pk " +
             "WHERE s.balance_minor_units IS DISTINCT FROM (SELECT sum(balance_minor_units) FROM ar.account_balance_bucket WHERE account_fk = a.account_pk) " +

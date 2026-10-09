@@ -9,19 +9,18 @@ namespace Wax.Commands;
 /// <summary>
 /// What a command handler works through: the command's one connection and
 /// transaction for its reads and row locks, and a queue of writes (events and
-/// state) that go out in a single batch when the handler returns: through
-/// Marten, or as plain SQL (see <see cref="AppendMode"/>).
+/// state) that go out as plain SQL in a single batch when the handler returns.
 /// </summary>
 public sealed class CommandContext
 {
-    readonly IWriteQueue writes;
+    readonly WriteQueue writes;
     readonly ReasonCodes reasons;
     readonly Dictionary<Guid, StreamHead> heads = [];
 
     internal CommandContext(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
-        IWriteQueue writes,
+        WriteQueue writes,
         Attribution attribution,
         ReasonCodes reasons)
     {
@@ -61,7 +60,8 @@ public sealed class CommandContext
         }
         while (await reader.ReadAsync(cancellation))
         {
-            heads[reader.GetGuid(0)] = new StreamHead(reader.GetInt64(1), reader.IsDBNull(2) ? null : reader.GetString(2));
+            var (streamId, head) = StreamHeads.Read(reader);
+            heads[streamId] = head;
         }
     }
 
@@ -99,12 +99,19 @@ public sealed class CommandContext
         JsonObject? metadata = null,
         CancellationToken cancellation = default)
     {
+        if (!EventHashing.Enabled)
+        {
+            // The hashing-off diagnostic: no head was read, so the locked state
+            // row's version is trusted; the unique index is the backstop.
+            heads[aggregate.Pk] = new StreamHead(aggregate.AggregateSequenceNumber, null);
+        }
         if (!heads.TryGetValue(aggregate.Pk, out var head))
         {
             if (aggregate.IsNew && aggregate.AggregateSequenceNumber == 0)
             {
                 // A new aggregate has no stream yet. If one exists after all,
-                // starting it again fails at save and the command is retried.
+                // the unique index refuses a second first event and the
+                // command is retried.
                 head = StreamHead.Empty;
             }
             else
@@ -120,37 +127,11 @@ public sealed class CommandContext
         }
 
         var reasonCode = await reasons.ResolveAsync(reason, cancellation);
-        var body = ((WaxEvent)Activator.CreateInstance(eventType)!) with
-        {
-            AggregateType = aggregate.AggregateType,
-            PriorValue = prior,
-            NewValue = @new,
-            OccurredAt = Attribution.OccurredAt,
-            ActorPkRef = Attribution.ActorPk,
-            ActorType = Attribution.ActorType,
-            ReasonCodeFk = reasonCode,
-            Source = Attribution.Source,
-            CorrelationPkRef = Attribution.CorrelationPk,
-            CorrelationType = Attribution.CorrelationType,
-            Metadata = metadata,
-        };
-        var eventHash = EventHasher.Compute(new EventHashInput(
-            aggregate.AggregateType,
-            aggregate.Pk,
-            WaxEventTypes.NameOf(eventType),
-            body.SchemaVersion,
-            prior,
-            @new,
-            Attribution.OccurredAt,
-            Attribution.ActorPk,
-            Attribution.ActorType,
-            reasonCode,
-            head.EventHash));
+        var appended = NewEvent.Create(eventType, aggregate.AggregateType, aggregate.Pk, head, prior, @new, metadata, Attribution, reasonCode);
+        writes.Append(appended);
 
-        writes.Append(aggregate.Pk, head.Version, body, eventHash, head.EventHash);
-
-        heads[aggregate.Pk] = new StreamHead(head.Version + 1, eventHash);
-        aggregate.AggregateSequenceNumber = checked((int)(head.Version + 1));
+        heads[aggregate.Pk] = new StreamHead(appended.AggregateSequenceNumber, appended.EventHash);
+        aggregate.AggregateSequenceNumber = appended.AggregateSequenceNumber;
         if (aggregate.IsNew && !aggregate.Inserted)
         {
             aggregate.QueueInsert(this);

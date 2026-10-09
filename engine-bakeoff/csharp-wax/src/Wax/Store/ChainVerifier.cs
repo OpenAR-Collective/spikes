@@ -1,7 +1,5 @@
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Npgsql;
+using Wax.Events;
 using Wax.Hashing;
 
 namespace Wax.Store;
@@ -18,10 +16,10 @@ public sealed record ChainReport(long Streams, long Events, IReadOnlyList<ChainP
 public static class ChainVerifier
 {
     const string AllSql =
-        "SELECT stream_id, version, type, data, headers FROM core.mt_events ORDER BY stream_id, version";
+        $"SELECT {StoredEvent.Columns} FROM core.event ORDER BY aggregate_pk_ref, aggregate_sequence_number";
 
     const string OneSql =
-        "SELECT stream_id, version, type, data, headers FROM core.mt_events WHERE stream_id = $1 ORDER BY version";
+        $"SELECT {StoredEvent.Columns} FROM core.event WHERE aggregate_pk_ref = $1 ORDER BY aggregate_sequence_number";
 
     public static async Task<ChainReport> VerifyAllAsync(NpgsqlDataSource dataSource, CancellationToken cancellation = default)
     {
@@ -50,11 +48,9 @@ public static class ChainVerifier
         await using var reader = await command.ExecuteReaderAsync(cancellation);
         while (await reader.ReadAsync(cancellation))
         {
-            var streamId = reader.GetGuid(0);
-            var version = reader.GetInt64(1);
-            var eventType = reader.GetString(2);
-            var body = JsonNode.Parse(reader.GetString(3))!.AsObject();
-            var headers = reader.IsDBNull(4) ? null : JsonNode.Parse(reader.GetString(4))?.AsObject();
+            var e = StoredEvent.Read(reader);
+            var streamId = e.AggregatePkRef;
+            long version = e.AggregateSequenceNumber;
             events++;
 
             if (streamId != current)
@@ -71,33 +67,28 @@ public static class ChainVerifier
                 expectedVersion = version;
             }
 
-            var storedPrior = Text(headers, StreamHeads.PriorEventHashHeader);
-            var storedHash = Text(headers, StreamHeads.EventHashHeader);
-            if (storedPrior != priorHash)
+            if (e.PriorEventHash != priorHash)
             {
                 problems.Add(new(streamId, version, $"version {version}: prior_event_hash does not match predecessor"));
             }
             var recomputed = EventHasher.Compute(new EventHashInput(
-                Text(body, "aggregate_type") ?? "",
+                e.AggregateType,
                 streamId,
-                eventType,
-                body["schema_version"]?.GetValue<int>() ?? 0,
-                body["prior_value"] as JsonObject,
-                body["new_value"] as JsonObject,
-                DateTimeOffset.Parse(Text(body, "occurred_at") ?? "", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                Guid.Parse(Text(body, "actor_pk_ref") ?? Guid.Empty.ToString()),
-                Text(body, "actor_type") ?? "",
-                Text(body, "reason_code_fk") is { } reason ? Guid.Parse(reason) : null,
-                storedPrior));
-            if (recomputed != storedHash)
+                e.EventType,
+                e.SchemaVersion,
+                e.PriorValue,
+                e.NewValue,
+                e.OccurredAt,
+                e.ActorPkRef,
+                e.ActorType,
+                e.ReasonCodeFk,
+                e.PriorEventHash));
+            if (recomputed != e.EventHash)
             {
                 problems.Add(new(streamId, version, $"version {version}: event_hash does not match content"));
             }
-            priorHash = storedHash;
+            priorHash = e.EventHash;
         }
         return new ChainReport(streams, events, problems);
     }
-
-    static string? Text(JsonObject? obj, string key) =>
-        obj?[key] is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null;
 }

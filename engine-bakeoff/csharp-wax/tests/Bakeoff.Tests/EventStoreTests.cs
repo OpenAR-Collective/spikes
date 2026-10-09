@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
 using HiveAR;
-using Marten.Services;
 using Npgsql;
 using Wax.Commands;
 using Wax.Store;
@@ -39,8 +38,9 @@ public sealed class EventStoreTests(DatabaseFixture db) : IClassFixture<Database
     }
 
     [Theory]
-    [InlineData("UPDATE core.mt_events SET type = 'x'")]
-    [InlineData("DELETE FROM core.mt_events")]
+    [InlineData("UPDATE core.event SET event_type = 'x'")]
+    [InlineData("DELETE FROM core.event")]
+    [InlineData("TRUNCATE core.event")]
     public async Task Events_are_immutable_in_the_database(string statement)
     {
         await scenario.Place();
@@ -54,7 +54,7 @@ public sealed class EventStoreTests(DatabaseFixture db) : IClassFixture<Database
         var accountPk = await scenario.Place();
         await using var connection = await db.Engine.DataSource.OpenConnectionAsync();
         await using var transaction = await connection.BeginTransactionAsync();
-        await using var writes = IWriteQueue.Create(db.Engine.Commands.AppendMode, connection, transaction, db.Engine.Store);
+        await using var writes = new WriteQueue(connection, transaction);
         var context = new CommandContext(
             connection,
             transaction,
@@ -85,23 +85,35 @@ public sealed class EventStoreTests(DatabaseFixture db) : IClassFixture<Database
         Assert.Empty(await ChainVerifier.VerifyStreamAsync(db.Engine.DataSource, accountPk));
 
         // Forge a third event whose prior hash points nowhere.
-        var body = new JsonObject
-        {
-            ["aggregate_type"] = "account",
-            ["schema_version"] = 1,
-            ["occurred_at"] = "2026-10-08T00:00:00+00:00",
-            ["actor_pk_ref"] = Scenario.Actor.ToString(),
-            ["actor_type"] = "system",
-        };
         await scenario.Execute(
-            "INSERT INTO core.mt_events (seq_id, id, stream_id, version, data, type, mt_dotnet_type, headers) " +
-            "VALUES (nextval('core.mt_events_sequence'), gen_random_uuid(), $1, 3, $2::jsonb, 'account.forged', 'forged', $3::jsonb)",
+            "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, " +
+            "aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_event_hash, event_hash) " +
+            "VALUES (gen_random_uuid(), 3, 'account.forged', 1, $1, 'account', '2026-10-08T00:00:00+00:00', $2, 'system', " +
+            "'not-the-real-hash', 'made-up')",
             accountPk,
-            body.ToJsonString(),
-            """{"prior_event_hash": "not-the-real-hash", "event_hash": "made-up"}""");
+            Scenario.Actor);
         var problems = await ChainVerifier.VerifyStreamAsync(db.Engine.DataSource, accountPk);
         Assert.Contains(problems, problem => problem.Contains("prior_event_hash"));
         Assert.Contains(problems, problem => problem.Contains("event_hash does not match"));
+    }
+
+    [Fact]
+    public async Task The_store_assigns_the_global_sequence_and_the_recorded_time()
+    {
+        // WAX-0001: recorded_at is assigned by the store and never supplied by a
+        // caller, and the global sequence comes from the store's own sequence.
+        var accountPk = Guid.NewGuid();
+        await scenario.Execute(
+            "INSERT INTO core.event (event_pk, global_sequence_number, recorded_at, aggregate_sequence_number, event_type, " +
+            "schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, event_hash) " +
+            "VALUES (gen_random_uuid(), 999999999, '2000-01-01T00:00:00+00:00', 1, 'account.claimed', 1, $1, 'account', " +
+            "'2000-01-01T00:00:00+00:00', $2, 'system', 'x')",
+            accountPk,
+            Scenario.Actor);
+        Assert.Equal(await scenario.Scalar<long>(EventStore.PositionSql),
+            await scenario.Scalar<long>("SELECT global_sequence_number FROM core.event WHERE aggregate_pk_ref = $1", accountPk));
+        Assert.True(await scenario.Scalar<bool>(
+            "SELECT recorded_at > now() - interval '1 minute' FROM core.event WHERE aggregate_pk_ref = $1", accountPk));
     }
 
     [Fact]

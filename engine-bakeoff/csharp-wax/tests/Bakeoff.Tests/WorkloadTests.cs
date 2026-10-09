@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using HiveAR;
-using Marten;
 using Wax.Batches;
 using Wax.Commands;
 using Wax.Hashing;
@@ -129,8 +128,7 @@ public sealed class SeedAndBatchTests(DatabaseFixture db) : IClassFixture<Databa
     [Fact]
     public async Task The_seed_then_both_batches_pass_their_gates()
     {
-        var positions = db.Engine.Store.Advanced.AllAsyncProjectionShardNames().Select(shard => shard.Identity).Append("wax_rule_runner:All");
-        await Seeder.SeedAsync(db.Engine.DataSource, db.Engine.Store, Accounts, positions);
+        await Seeder.SeedAsync(db.Engine.DataSource, Accounts, db.Engine.Projections);
         Assert.Equal((long)Accounts, await scenario.Scalar<long>("SELECT count(*) FROM ar.account"));
         Assert.Empty((await ChainVerifier.VerifyAllAsync(db.Engine.DataSource)).Problems);
         var first = SeedAccount.For(0);
@@ -172,22 +170,19 @@ public sealed class SeedAndBatchTests(DatabaseFixture db) : IClassFixture<Databa
         Assert.Empty((await ChainVerifier.VerifyAllAsync(db.Engine.DataSource)).Problems);
 
         // The read models catch up from the seed's position and agree.
-        using var daemon = await db.Engine.Store.BuildProjectionDaemonAsync();
-        await daemon.StartAllAsync();
-        await daemon.WaitForNonStaleData(TimeSpan.FromSeconds(120));
-        await daemon.StopAllAsync();
+        await db.Engine.CatchUpAsync(120);
         Assert.Equal(0L, await scenario.Scalar<long>(
             "SELECT count(*) FROM ar.account_summary_read_model s JOIN ar.account a ON a.account_pk = s.account_summary_read_model_pk " +
             "WHERE s.balance_minor_units <> (SELECT sum(balance_minor_units) FROM ar.account_balance_bucket WHERE account_fk = a.account_pk) " +
             "OR s.status <> a.status OR s.is_disputed <> a.is_disputed"));
         Assert.Equal((long)Accounts, await scenario.Scalar<long>("SELECT count(*) FROM ar.payment_read_model"));
         // The harness's progress view shows every projection at the head.
-        Assert.Equal(3L, await scenario.Scalar<long>("SELECT count(*) FROM core.bakeoff_progress WHERE name LIKE 'ar_%' AND position = head"));
+        Assert.Equal(3L, await scenario.Scalar<long>("SELECT count(*) FROM core.bakeoff_progress WHERE name LIKE 'ar.%' AND position = head"));
     }
 }
 
-/// <summary>The real-time rules, end to end: the rule runner as a Marten
-/// subscription and the register poller, with one simulated day of 0.1 seconds.</summary>
+/// <summary>The real-time rules, end to end: two rule runner partitions and
+/// the register poller, with one simulated day of 0.1 seconds.</summary>
 public sealed class RuleTests(DatabaseFixture db) : IClassFixture<DatabaseFixture>
 {
     readonly Scenario scenario = new(db);
@@ -196,12 +191,12 @@ public sealed class RuleTests(DatabaseFixture db) : IClassFixture<DatabaseFixtur
     public async Task Events_fire_rules_and_scheduled_events_fire_in_turn()
     {
         const double secondsPerDay = 0.1;
-        var rules = new RuleRunner(HiveArRules.All(db.Engine.DataSource, secondsPerDay), db.Engine.Commands, parallelism: 4);
-        using var store = DocumentStore.For(options =>
-        {
-            WaxStoreSetup.Configure(options, db.Engine.DataSource, [new HiveArModule()], mayChangeSchema: true);
-            options.Events.Subscribe(rules);
-        });
+        var rules = HiveArRules.All(db.Engine.DataSource, secondsPerDay);
+        RuleRunner[] runners =
+        [
+            new(db.Engine.DataSource, rules, db.Engine.Commands, partition: 0, partitions: 2),
+            new(db.Engine.DataSource, rules, db.Engine.Commands, partition: 1, partitions: 2),
+        ];
         var poller = new PendingEventPoller(
             db.Engine.DataSource,
             (pendingEventPk, cancellation) => db.Engine.Commands.DispatchAsync(
@@ -212,11 +207,13 @@ public sealed class RuleTests(DatabaseFixture db) : IClassFixture<DatabaseFixtur
         await scenario.Run(new OpenDispute { AccountPk = disputed });
         await scenario.Post([placed], 2_000_000);
 
-        using var daemon = await store.BuildProjectionDaemonAsync();
-        await daemon.StartAllAsync();
         var deadline = DateTime.UtcNow.AddSeconds(60);
         while (DateTime.UtcNow < deadline)
         {
+            foreach (var runner in runners)
+            {
+                await runner.RunOnceAsync();
+            }
             await poller.PollOnceAsync(CancellationToken.None);
             var tasks = await scenario.Scalar<long>("SELECT count(*) FROM ar.task");
             var queued = await scenario.Scalar<long>("SELECT count(*) FROM ar.account WHERE queue_code = 'dispute_review'");
@@ -226,7 +223,6 @@ public sealed class RuleTests(DatabaseFixture db) : IClassFixture<DatabaseFixtur
             }
             await Task.Delay(200);
         }
-        await daemon.StopAllAsync();
 
         // Both new accounts got a first-contact task; the dispute reached the
         // review queue 30 simulated days later; the payoff marked the account paid.

@@ -1,13 +1,11 @@
-using Marten;
 using Npgsql;
 
 namespace Wax.Store;
 
 /// <summary>
-/// Applies the schema as its owner: Wax's core tables, then Marten's event
-/// store, then the protections that need Marten's tables to exist, then each
-/// module's scripts. Each script runs once, in its own transaction, and is
-/// recorded in core.schema_migration.
+/// Applies the schema as its owner: Wax's core schema, including the event
+/// store, then each module's scripts. Each script runs once, in its own
+/// transaction, and is recorded in core.schema_migration.
 /// </summary>
 public static class WaxMigrator
 {
@@ -16,16 +14,13 @@ public static class WaxMigrator
         "CREATE TABLE IF NOT EXISTS core.schema_migration (" +
         "script_name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())";
 
-    public static async Task MigrateAsync(NpgsqlDataSource dataSource, IDocumentStore store, IReadOnlyList<IWaxModule> modules, CancellationToken cancellation = default)
+    public static async Task MigrateAsync(NpgsqlDataSource dataSource, IReadOnlyList<IWaxModule> modules, CancellationToken cancellation = default)
     {
         await using (var command = dataSource.CreateCommand(Bookkeeping))
         {
             await command.ExecuteNonQueryAsync(cancellation);
         }
-        var assembly = typeof(WaxMigrator).Assembly;
-        await ApplyAsync(dataSource, EmbeddedScripts.From(assembly, "Schema.BeforeStore", "wax"), cancellation);
-        await store.Storage.ApplyAllConfiguredChangesToDatabaseAsync();
-        await ApplyAsync(dataSource, EmbeddedScripts.From(assembly, "Schema.AfterStore", "wax"), cancellation);
+        await ApplyAsync(dataSource, EmbeddedScripts.From(typeof(WaxMigrator).Assembly, "Schema", "wax"), cancellation);
         foreach (var module in modules)
         {
             await ApplyAsync(dataSource, module.SchemaScripts, cancellation);

@@ -42,13 +42,26 @@ public sealed class DatabaseFixture : IAsyncLifetime
     }
 }
 
-public sealed record StoredEvent(long Version, long Sequence, string Type, JsonObject Data, JsonObject? Headers)
+/// <summary>An event as a test reads it back: its two sequence numbers, its type,
+/// the rest of its columns as one JSON object, and its two hashes.</summary>
+public sealed record LoadedEvent(long Version, long Sequence, string Type, JsonObject Data, string? PriorEventHash, string EventHash)
 {
     public JsonObject? PriorValue => Data["prior_value"] as JsonObject;
     public JsonObject? NewValue => Data["new_value"] as JsonObject;
     public JsonObject? Metadata => Data["metadata"] as JsonObject;
-    public string? PriorEventHash => Headers?[StreamHeads.PriorEventHashHeader]?.GetValue<string>();
-    public string? EventHash => Headers?[StreamHeads.EventHashHeader]?.GetValue<string>();
+}
+
+public static class EngineExtensions
+{
+    /// <summary>Run the projection reader until every read model has reached the
+    /// head as it stood when called, and require that none stopped on a failure.</summary>
+    public static async Task CatchUpAsync(this WaxEngine engine, int seconds = 60)
+    {
+        var reader = engine.CreateReader();
+        await reader.CatchUpAsync(TimeSpan.FromSeconds(seconds));
+        var stopped = (await reader.StatusAsync()).Where(row => row.FailedAt is not null).ToList();
+        Assert.True(stopped.Count == 0, string.Join("; ", stopped.Select(row => $"{row.Projection}: {row.FailureKind} {row.FailureDetail}")));
+    }
 }
 
 /// <summary>The Python side's conftest helpers: place, post, balances.</summary>
@@ -131,21 +144,27 @@ public sealed class Scenario(DatabaseFixture db)
     public static SortedDictionary<string, long> Buckets(params (string Code, long Amount)[] buckets) =>
         new(buckets.ToDictionary(bucket => bucket.Code, bucket => bucket.Amount), StringComparer.Ordinal);
 
-    public async Task<List<StoredEvent>> LoadStream(Guid streamId)
+    public async Task<List<LoadedEvent>> LoadStream(Guid streamId)
     {
-        var events = new List<StoredEvent>();
+        var events = new List<LoadedEvent>();
         await using var command = db.Engine.DataSource.CreateCommand(
-            "SELECT version, seq_id, type, data, headers FROM core.mt_events WHERE stream_id = $1 ORDER BY version");
+            "SELECT aggregate_sequence_number, global_sequence_number, event_type, jsonb_build_object(" +
+            "'aggregate_type', aggregate_type, 'schema_version', schema_version, 'prior_value', prior_value, " +
+            "'new_value', new_value, 'occurred_at', occurred_at, 'actor_pk_ref', actor_pk_ref, 'actor_type', actor_type, " +
+            "'reason_code_fk', reason_code_fk, 'source', source, 'correlation_pk_ref', correlation_pk_ref, " +
+            "'correlation_type', correlation_type, 'metadata', metadata), prior_event_hash, event_hash " +
+            "FROM core.event WHERE aggregate_pk_ref = $1 ORDER BY aggregate_sequence_number");
         command.Parameters.AddWithValue(streamId);
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            events.Add(new StoredEvent(
-                reader.GetInt64(0),
+            events.Add(new LoadedEvent(
+                reader.GetInt32(0),
                 reader.GetInt64(1),
                 reader.GetString(2),
                 JsonNode.Parse(reader.GetString(3))!.AsObject(),
-                reader.IsDBNull(4) ? null : JsonNode.Parse(reader.GetString(4)) as JsonObject));
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.GetString(5)));
         }
         return events;
     }

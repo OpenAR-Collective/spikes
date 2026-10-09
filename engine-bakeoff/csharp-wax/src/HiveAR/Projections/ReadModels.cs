@@ -1,41 +1,55 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
-using JasperFx.Events;
-using Marten;
-using Marten.Events.Projections;
+using Wax.Events;
+using Wax.Projections;
 
 namespace HiveAR.Projections;
 
-// The three read models of the prototype's hivear/projections.py, maintained
-// by Marten's asynchronous projection daemon instead of the prototype's own
-// reader. Each writes plain SQL into the same ar tables the Python side uses,
-// and Marten commits each batch of read model writes with its progress.
+// The three read models of the prototype's hivear/projections.py, under the
+// same names and versions, maintained by Wax's own reader, which is ported
+// from the prototype's. Each writes plain SQL into the same ar tables the
+// Python side uses, and the reader commits each page of read model writes
+// with its checkpoint. Each covers one aggregate type and stops on an event
+// type of that aggregate that it neither handles nor ignores.
+
+/// <summary>The projections HiveAR registers with the engine.</summary>
+public static class ReadModels
+{
+    public static IReadOnlyList<Projection> All() =>
+    [
+        AccountSummaryProjection.Create(),
+        PaymentReadModelProjection.Create(),
+        AccountPaymentLineProjection.Create(),
+    ];
+}
 
 /// <summary>One row per account: its status and balances, for screens.</summary>
-public sealed class AccountSummaryProjection : EventProjection
+public static class AccountSummaryProjection
 {
-    public AccountSummaryProjection()
-    {
-        Name = "ar_account_summary_read_model_v1";
-        IncludeType<AccountPlaced>();
-        IncludeType<DisputeOpened>();
-        IncludeType<AccountPaymentApplied>();
-        IncludeType<AccountPaymentReversed>();
+    public static Projection Create() => new Projection("ar.account_summary_read_model", 1, ["account"])
+        .On<AccountPlaced>(Apply)
+        .On<DisputeOpened>(Apply)
+        .On<AccountPaymentApplied>(Apply)
+        .On<AccountPaymentReversed>(Apply)
         // Added for the bake-off's workloads. The other new account events
-        // change nothing this read model shows, so it does not subscribe to them.
-        IncludeType<AccountInterestAccrued>();
-        IncludeType<AccountStatusChanged>();
-    }
+        // change nothing this read model shows, so they are ignored on purpose.
+        .On<AccountInterestAccrued>(Apply)
+        .On<AccountStatusChanged>(Apply)
+        .Ignore<PendingEventScheduled>()
+        .Ignore<AccountQueueAssigned>()
+        .Ignore<TaskCreated>()
+        .Ignore<AccountDisputeReviewDue>()
+        .Ignore<AccountFirstContactDue>();
 
-    public override ValueTask ApplyAsync(IDocumentOperations operations, IEvent e, CancellationToken cancellation)
+    static void Apply(StoredEvent e, ProjectionWrites operations)
     {
-        switch (e.Data)
+        switch (e.EventType)
         {
-            case AccountPlaced placed:
+            case "account.placed":
             {
-                var value = placed.NewValue!;
+                var value = e.NewValue!;
                 var buckets = value["balance_buckets"]!.AsObject();
-                operations.QueueSqlCommand(
+                operations.Sql(
                     "INSERT INTO ar.account_summary_read_model (account_summary_read_model_pk, client_account_number, status, " +
                     "is_disputed, currency_code, debt_type, contract_type, list_date, balance_buckets, balance_minor_units, " +
                     "last_global_sequence_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?) " +
@@ -44,7 +58,7 @@ public sealed class AccountSummaryProjection : EventProjection
                     "debt_type = EXCLUDED.debt_type, contract_type = EXCLUDED.contract_type, list_date = EXCLUDED.list_date, " +
                     "balance_buckets = EXCLUDED.balance_buckets, balance_minor_units = EXCLUDED.balance_minor_units, " +
                     "last_global_sequence_number = EXCLUDED.last_global_sequence_number",
-                    e.StreamId,
+                    e.AggregatePkRef,
                     Text(value, "client_account_number"),
                     Text(value, "status"),
                     value["is_disputed"]!.GetValue<bool>(),
@@ -54,48 +68,47 @@ public sealed class AccountSummaryProjection : EventProjection
                     DateOnly.Parse(Text(value, "list_date"), CultureInfo.InvariantCulture),
                     buckets.ToJsonString(),
                     buckets.Sum(pair => pair.Value!.GetValue<long>()),
-                    e.Sequence);
+                    e.GlobalSequenceNumber);
                 break;
             }
-            case DisputeOpened:
-                operations.QueueSqlCommand(
+            case "dispute.opened":
+                operations.Sql(
                     "UPDATE ar.account_summary_read_model SET is_disputed = true, last_global_sequence_number = ? " +
                     "WHERE account_summary_read_model_pk = ?",
-                    e.Sequence, e.StreamId);
+                    e.GlobalSequenceNumber, e.AggregatePkRef);
                 break;
-            case AccountPaymentApplied applied:
+            case "account.payment_applied":
             {
-                var moved = applied.NewValue!["balance_buckets"]!.ToJsonString();
-                var metadata = applied.Metadata!;
-                operations.QueueSqlCommand(
+                var moved = e.NewValue!["balance_buckets"]!.ToJsonString();
+                var metadata = e.Metadata!;
+                operations.Sql(
                     "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || ?::jsonb, " +
                     "balance_minor_units = (SELECT COALESCE(sum(value::bigint), 0) FROM jsonb_each_text(balance_buckets || ?::jsonb)), " +
                     "last_global_sequence_number = ?, last_payment_at = ?, last_payment_minor_units = ? " +
                     "WHERE account_summary_read_model_pk = ?",
-                    moved, moved, e.Sequence,
+                    moved, moved, e.GlobalSequenceNumber,
                     DateTimeOffset.Parse(Text(metadata, "received_at"), CultureInfo.InvariantCulture).ToUniversalTime(),
                     metadata["bucket_amounts"]!.AsObject().Sum(pair => pair.Value!.GetValue<long>()),
-                    e.StreamId);
+                    e.AggregatePkRef);
                 break;
             }
-            case AccountStatusChanged changed:
-                operations.QueueSqlCommand(
+            case "account.status_changed":
+                operations.Sql(
                     "UPDATE ar.account_summary_read_model SET status = ?, last_global_sequence_number = ? " +
                     "WHERE account_summary_read_model_pk = ?",
-                    Text(changed.NewValue!, "status"), e.Sequence, e.StreamId);
+                    Text(e.NewValue!, "status"), e.GlobalSequenceNumber, e.AggregatePkRef);
                 break;
-            case AccountPaymentReversed or AccountInterestAccrued:
+            case "account.payment_reversed" or "account.interest_accrued":
             {
-                var moved = ((Wax.Events.WaxEvent)e.Data).NewValue!["balance_buckets"]!.ToJsonString();
-                operations.QueueSqlCommand(
+                var moved = e.NewValue!["balance_buckets"]!.ToJsonString();
+                operations.Sql(
                     "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || ?::jsonb, " +
                     "balance_minor_units = (SELECT COALESCE(sum(value::bigint), 0) FROM jsonb_each_text(balance_buckets || ?::jsonb)), " +
                     "last_global_sequence_number = ? WHERE account_summary_read_model_pk = ?",
-                    moved, moved, e.Sequence, e.StreamId);
+                    moved, moved, e.GlobalSequenceNumber, e.AggregatePkRef);
                 break;
             }
         }
-        return ValueTask.CompletedTask;
     }
 
     internal static string Text(JsonObject value, string key) => value[key]!.GetValue<string>();
@@ -103,23 +116,20 @@ public sealed class AccountSummaryProjection : EventProjection
 
 /// <summary>A payment as a whole: what was received, where it went, and what
 /// was left unapplied.</summary>
-public sealed class PaymentReadModelProjection : EventProjection
+public static class PaymentReadModelProjection
 {
-    public PaymentReadModelProjection()
-    {
-        Name = "ar_payment_read_model_v1";
-        IncludeType<PaymentPosted>();
-        IncludeType<PaymentReversed>();
-    }
+    public static Projection Create() => new Projection("ar.payment_read_model", 1, ["payment"])
+        .On<PaymentPosted>(Apply)
+        .On<PaymentReversed>(Apply);
 
-    public override ValueTask ApplyAsync(IDocumentOperations operations, IEvent e, CancellationToken cancellation)
+    static void Apply(StoredEvent e, ProjectionWrites operations)
     {
-        switch (e.Data)
+        switch (e.EventType)
         {
-            case PaymentPosted posted:
+            case "payment.posted":
             {
-                var value = posted.NewValue!;
-                operations.QueueSqlCommand(
+                var value = e.NewValue!;
+                operations.Sql(
                     "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, " +
                     "received_at, distribution, unapplied_minor_units, last_global_sequence_number) " +
                     "VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?) ON CONFLICT (payment_read_model_pk) DO UPDATE SET " +
@@ -127,23 +137,22 @@ public sealed class PaymentReadModelProjection : EventProjection
                     "status = EXCLUDED.status, received_at = EXCLUDED.received_at, distribution = EXCLUDED.distribution, " +
                     "unapplied_minor_units = EXCLUDED.unapplied_minor_units, " +
                     "last_global_sequence_number = EXCLUDED.last_global_sequence_number",
-                    e.StreamId,
+                    e.AggregatePkRef,
                     value["amount_minor_units"]!.GetValue<long>(),
                     AccountSummaryProjection.Text(value, "currency_code"),
                     AccountSummaryProjection.Text(value, "status"),
                     DateTimeOffset.Parse(AccountSummaryProjection.Text(value, "received_at"), CultureInfo.InvariantCulture).ToUniversalTime(),
                     value["distribution"]!.ToJsonString(),
                     value["unapplied_minor_units"]!.GetValue<long>(),
-                    e.Sequence);
+                    e.GlobalSequenceNumber);
                 break;
             }
-            case PaymentReversed reversed:
-                operations.QueueSqlCommand(
+            case "payment.reversed":
+                operations.Sql(
                     "UPDATE ar.payment_read_model SET status = ?, last_global_sequence_number = ? WHERE payment_read_model_pk = ?",
-                    AccountSummaryProjection.Text(reversed.NewValue!, "status"), e.Sequence, e.StreamId);
+                    AccountSummaryProjection.Text(e.NewValue!, "status"), e.GlobalSequenceNumber, e.AggregatePkRef);
                 break;
         }
-        return ValueTask.CompletedTask;
     }
 }
 
@@ -152,22 +161,19 @@ public sealed class PaymentReadModelProjection : EventProjection
 /// which name every account the payment was taken against. A payment taken
 /// against an account has a line there even when nothing was applied.
 /// </summary>
-public sealed class AccountPaymentLineProjection : EventProjection
+public static class AccountPaymentLineProjection
 {
-    public AccountPaymentLineProjection()
-    {
-        Name = "ar_account_payment_read_model_v2";
-        IncludeType<PaymentPosted>();
-        IncludeType<PaymentReversed>();
-    }
+    public static Projection Create() => new Projection("ar.account_payment_read_model", 2, ["payment"])
+        .On<PaymentPosted>(Apply)
+        .On<PaymentReversed>(Apply);
 
-    public override ValueTask ApplyAsync(IDocumentOperations operations, IEvent e, CancellationToken cancellation)
+    static void Apply(StoredEvent e, ProjectionWrites operations)
     {
-        switch (e.Data)
+        switch (e.EventType)
         {
-            case PaymentPosted posted:
+            case "payment.posted":
             {
-                var value = posted.NewValue!;
+                var value = e.NewValue!;
                 var distribution = value["distribution"]!.AsObject();
                 // Events written before the request was recorded name only the
                 // accounts money reached.
@@ -181,7 +187,7 @@ public sealed class AccountPaymentLineProjection : EventProjection
                 {
                     var buckets = distribution[accountPk] as JsonObject ?? [];
                     var applied = buckets.Sum(pair => pair.Value!.GetValue<long>());
-                    operations.QueueSqlCommand(
+                    operations.Sql(
                         "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, " +
                         "applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, " +
                         "currency_code, received_at, status, last_global_sequence_number) " +
@@ -192,7 +198,7 @@ public sealed class AccountPaymentLineProjection : EventProjection
                         "currency_code = EXCLUDED.currency_code, received_at = EXCLUDED.received_at, status = EXCLUDED.status, " +
                         "last_global_sequence_number = EXCLUDED.last_global_sequence_number",
                         Guid.NewGuid(),
-                        e.StreamId,
+                        e.AggregatePkRef,
                         Guid.Parse(accountPk),
                         applied,
                         buckets.ToJsonString(),
@@ -201,16 +207,15 @@ public sealed class AccountPaymentLineProjection : EventProjection
                         AccountSummaryProjection.Text(value, "currency_code"),
                         receivedAt,
                         applied > 0 ? "applied" : "held",
-                        e.Sequence);
+                        e.GlobalSequenceNumber);
                 }
                 break;
             }
-            case PaymentReversed:
-                operations.QueueSqlCommand(
+            case "payment.reversed":
+                operations.Sql(
                     "UPDATE ar.account_payment_read_model_v2 SET status = 'reversed', last_global_sequence_number = ? WHERE payment_pk = ?",
-                    e.Sequence, e.StreamId);
+                    e.GlobalSequenceNumber, e.AggregatePkRef);
                 break;
         }
-        return ValueTask.CompletedTask;
     }
 }

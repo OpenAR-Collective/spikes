@@ -1,4 +1,3 @@
-using JasperFx.Events;
 using Npgsql;
 using Wax.Commands;
 using Wax.Events;
@@ -26,8 +25,8 @@ public static class HiveArRules
         new FirstContactTask(),
     ];
 
-    static Task Act(CommandDispatcher commands, ICommand action, IEvent trigger, CancellationToken cancellation) =>
-        commands.DispatchAsync(action, RuleRunnerActor, "system", "rule", trigger.Id, "rule", cancellation);
+    static Task Act(CommandDispatcher commands, ICommand action, StoredEvent trigger, CancellationToken cancellation) =>
+        commands.DispatchAsync(action, RuleRunnerActor, "system", "rule", trigger.EventPk, "rule", cancellation);
 
     /// <summary>When a payment is applied and the account is active with a
     /// total balance of zero, mark it paid in full.</summary>
@@ -35,12 +34,12 @@ public static class HiveArRules
     {
         public Type TriggerType => typeof(AccountPaymentApplied);
 
-        public async Task ExecuteAsync(IEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
+        public async Task ExecuteAsync(StoredEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
         {
             // A bucket the payment left above zero means the account is not at
             // zero, so the current state need not be read. Only a payment that
             // emptied every bucket it touched is checked against current state.
-            var touched = ((WaxEvent)trigger.Data).NewValue?["balance_buckets"]?.AsObject();
+            var touched = trigger.NewValue?["balance_buckets"]?.AsObject();
             if (touched is null || touched.Any(bucket => bucket.Value!.GetValue<long>() != 0))
             {
                 return;
@@ -52,7 +51,7 @@ public static class HiveArRules
                 "LEFT JOIN ar.account_balance_bucket b ON b.account_fk = a.account_pk " +
                 "WHERE a.account_pk = $1 GROUP BY a.status"))
             {
-                command.Parameters.AddWithValue(trigger.StreamId);
+                command.Parameters.AddWithValue(trigger.AggregatePkRef);
                 await using var reader = await command.ExecuteReaderAsync(cancellation);
                 if (await reader.ReadAsync(cancellation))
                 {
@@ -64,7 +63,7 @@ public static class HiveArRules
             {
                 return;
             }
-            await Act(commands, new ChangeAccountStatus { AccountPk = trigger.StreamId, Status = "paid_in_full", ReasonCode = "paid_in_full" }, trigger, cancellation);
+            await Act(commands, new ChangeAccountStatus { AccountPk = trigger.AggregatePkRef, Status = "paid_in_full", ReasonCode = "paid_in_full" }, trigger, cancellation);
         }
     }
 
@@ -73,16 +72,15 @@ public static class HiveArRules
     {
         public Type TriggerType => typeof(TTrigger);
 
-        public Task ExecuteAsync(IEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
+        public Task ExecuteAsync(StoredEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
         {
-            var occurredAt = ((WaxEvent)trigger.Data).OccurredAt;
             return Act(commands, new ScheduleFutureEvent
             {
-                PendingEventPk = DerivedUuid.From("pending:" + trigger.Id),
-                AccountPk = trigger.StreamId,
+                PendingEventPk = DerivedUuid.From("pending:" + trigger.EventPk),
+                AccountPk = trigger.AggregatePkRef,
                 TargetEventType = target,
-                DueAt = occurredAt.AddSeconds(days * secondsPerDay),
-                ScheduledByEvent = trigger.Id,
+                DueAt = trigger.OccurredAt.AddSeconds(days * secondsPerDay),
+                ScheduledByEvent = trigger.EventPk,
             }, trigger, cancellation);
         }
     }
@@ -92,8 +90,8 @@ public static class HiveArRules
     {
         public Type TriggerType => typeof(AccountDisputeReviewDue);
 
-        public Task ExecuteAsync(IEvent trigger, CommandDispatcher commands, CancellationToken cancellation) =>
-            Act(commands, new AssignToQueue { AccountPk = trigger.StreamId, QueueCode = "dispute_review" }, trigger, cancellation);
+        public Task ExecuteAsync(StoredEvent trigger, CommandDispatcher commands, CancellationToken cancellation) =>
+            Act(commands, new AssignToQueue { AccountPk = trigger.AggregatePkRef, QueueCode = "dispute_review" }, trigger, cancellation);
     }
 
     /// <summary>When first contact comes due, create the task for it.</summary>
@@ -101,13 +99,13 @@ public static class HiveArRules
     {
         public Type TriggerType => typeof(AccountFirstContactDue);
 
-        public Task ExecuteAsync(IEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
+        public Task ExecuteAsync(StoredEvent trigger, CommandDispatcher commands, CancellationToken cancellation)
         {
-            var pendingEventPk = ((WaxEvent)trigger.Data).Metadata!["pending_event_pk"]!.GetValue<string>();
+            var pendingEventPk = trigger.Metadata!["pending_event_pk"]!.GetValue<string>();
             return Act(commands, new CreateTask
             {
                 TaskPk = DerivedUuid.From("task:" + pendingEventPk),
-                AccountPk = trigger.StreamId,
+                AccountPk = trigger.AggregatePkRef,
                 TaskType = "first_contact",
             }, trigger, cancellation);
         }

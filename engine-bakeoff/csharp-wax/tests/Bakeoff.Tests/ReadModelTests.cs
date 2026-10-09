@@ -5,7 +5,7 @@ using Xunit;
 namespace Bakeoff.Tests;
 
 /// <summary>
-/// Marten's asynchronous daemon keeps the three read models current, and once
+/// Wax's projection reader keeps the three read models current, and once
 /// it has caught up they agree with the authoritative state. This is the
 /// bake-off's read-model gate, run on a small scale.
 /// </summary>
@@ -25,10 +25,7 @@ public sealed class ReadModelTests(DatabaseFixture db) : IClassFixture<DatabaseF
         await scenario.Run(new ReversePayment { PaymentPk = reversed });
         await scenario.Run(new OpenDispute { AccountPk = third });
 
-        using var daemon = await db.Engine.Store.BuildProjectionDaemonAsync();
-        await daemon.StartAllAsync();
-        await daemon.WaitForNonStaleData(TimeSpan.FromSeconds(60));
-        await daemon.StopAllAsync();
+        await db.Engine.CatchUpAsync();
 
         foreach (var accountPk in new[] { first, second, third })
         {

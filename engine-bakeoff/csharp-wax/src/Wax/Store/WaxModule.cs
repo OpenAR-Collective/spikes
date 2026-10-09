@@ -1,6 +1,6 @@
 using System.Reflection;
-using Marten;
 using Wax.Commands;
+using Wax.Projections;
 
 namespace Wax.Store;
 
@@ -8,8 +8,9 @@ namespace Wax.Store;
 public sealed record SchemaScript(string Name, string Sql);
 
 /// <summary>
-/// What a module (HiveAR here) adds to the engine: its schema, its event
-/// types and projections, and its command handlers.
+/// What a module (HiveAR here) adds to the engine: its schema, its
+/// projections, and its command handlers. Its event types are found in its
+/// assembly.
 /// </summary>
 public interface IWaxModule
 {
@@ -17,7 +18,7 @@ public interface IWaxModule
 
     IReadOnlyList<SchemaScript> SchemaScripts { get; }
 
-    void ConfigureStore(StoreOptions options);
+    IReadOnlyList<Projection> Projections { get; }
 
     void RegisterHandlers(CommandDispatcher dispatcher);
 }

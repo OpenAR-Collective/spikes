@@ -25,6 +25,7 @@ Wax v1 defers hash computation, multi-instance batch work, and the Pending Event
 | [csharp-marten](csharp-marten/README.md) | Champion | C# on the current .NET LTS release | Marten on PostgreSQL |
 | [python](python/README.md) | Challenger | Python 3.13 | Andy Troiano's own event store, written directly against PostgreSQL |
 | [csharp-marten](csharp-marten/README.md), direct append | Variant | C# on the current .NET LTS release | Marten's tables, appended with plain SQL; Marten's daemon for read models and rules |
+| [csharp-wax](csharp-wax/README.md) | Variant | C# on the current .NET LTS release | No Marten: WAX-0001's `core.event`, with a reader ported from Andy Troiano's prototype for read models and rules |
 
 The variant runs the champion's code with one change: it appends events with plain SQL instead of through Marten, as the Python side's own event store does. It separates the cost of the language from the cost of the library on the write path, which bears on whether Wax should use Marten for its event store at all.
 

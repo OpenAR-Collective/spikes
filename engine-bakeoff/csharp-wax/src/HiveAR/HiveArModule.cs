@@ -1,8 +1,7 @@
 using HiveAR.Projections;
-using JasperFx.Events.Projections;
-using Marten;
 using Npgsql;
 using Wax.Commands;
+using Wax.Projections;
 using Wax.Store;
 
 namespace HiveAR;
@@ -14,12 +13,7 @@ public sealed class HiveArModule : IWaxModule
     public IReadOnlyList<SchemaScript> SchemaScripts { get; } =
         EmbeddedScripts.From(typeof(HiveArModule).Assembly, "Schema", "hivear");
 
-    public void ConfigureStore(StoreOptions options)
-    {
-        options.Projections.Add(new AccountSummaryProjection(), ProjectionLifecycle.Async);
-        options.Projections.Add(new PaymentReadModelProjection(), ProjectionLifecycle.Async);
-        options.Projections.Add(new AccountPaymentLineProjection(), ProjectionLifecycle.Async);
-    }
+    public IReadOnlyList<Projection> Projections { get; } = ReadModels.All();
 
     public void RegisterHandlers(CommandDispatcher dispatcher)
     {

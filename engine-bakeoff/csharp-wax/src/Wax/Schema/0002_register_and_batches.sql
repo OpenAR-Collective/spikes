@@ -36,3 +36,7 @@ CREATE TABLE core.batch_job_chunk (
     UNIQUE (batch_job_run_fk, chunk_sequence_number)
 );
 CREATE INDEX idx_batch_job_chunk_claim ON core.batch_job_chunk (batch_job_run_fk, status, chunk_sequence_number);
+
+-- Operational tables: the runtime role reads and writes them, but, as
+-- everywhere in core, may not delete from them.
+GRANT SELECT, INSERT, UPDATE ON core.pending_event, core.batch_job_run, core.batch_job_chunk TO wax_runtime;

@@ -1,28 +1,33 @@
-using Marten;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Wax.Commands;
+using Wax.Events;
+using Wax.Projections;
 using Wax.Store;
 
 namespace Wax;
 
 /// <summary>
-/// The composition root: one data source, one Marten store, and the command
-/// dispatcher with every module's handlers registered.
+/// The composition root: one data source, the command dispatcher with every
+/// module's handlers registered, and every module's projections.
 /// </summary>
 public sealed class WaxEngine : IAsyncDisposable
 {
-    WaxEngine(NpgsqlDataSource dataSource, DocumentStore store, CommandDispatcher commands)
+    WaxEngine(NpgsqlDataSource dataSource, CommandDispatcher commands, IReadOnlyList<Projection> projections)
     {
         DataSource = dataSource;
-        Store = store;
         Commands = commands;
+        Projections = projections;
     }
 
     public NpgsqlDataSource DataSource { get; }
 
-    public DocumentStore Store { get; }
-
     public CommandDispatcher Commands { get; }
+
+    public IReadOnlyList<Projection> Projections { get; }
+
+    /// <summary>A reader over every module's projections. Each reader keeps its own high-water mark.</summary>
+    public ProjectionReader CreateReader(ILogger? logger = null) => new(DataSource, Projections, logger);
 
     /// <summary>Build the engine. With migrate, apply the schema first; that
     /// needs the owner's connection, never the runtime role's.</summary>
@@ -30,39 +35,28 @@ public sealed class WaxEngine : IAsyncDisposable
         string connectionString,
         IReadOnlyList<IWaxModule> modules,
         bool migrate = false,
-        AppendMode? appendMode = null,
         CancellationToken cancellation = default)
     {
         var dataSource = NpgsqlDataSource.Create(connectionString);
-        var store = DocumentStore.For(options => WaxStoreSetup.Configure(options, dataSource, modules, mayChangeSchema: migrate));
+        WaxEventTypes.Register(modules.Select(module => module.GetType().Assembly).Append(typeof(WaxEvent).Assembly).Distinct());
         if (migrate)
         {
-            await WaxMigrator.MigrateAsync(dataSource, store, modules, cancellation);
+            await WaxMigrator.MigrateAsync(dataSource, modules, cancellation);
         }
         var reasons = await ReasonCodes.LoadAsync(dataSource, cancellation);
-        var commands = new CommandDispatcher(dataSource, store, reasons, appendMode ?? WaxSettings.AppendModeFromEnvironment());
+        var commands = new CommandDispatcher(dataSource, reasons);
         foreach (var module in modules)
         {
             module.RegisterHandlers(commands);
         }
-        return new WaxEngine(dataSource, store, commands);
+        return new WaxEngine(dataSource, commands, modules.SelectMany(module => module.Projections).ToList());
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        Store.Dispose();
-        await DataSource.DisposeAsync();
-    }
+    public async ValueTask DisposeAsync() => await DataSource.DisposeAsync();
 }
 
 public static class WaxSettings
 {
-    /// <summary>WAX_APPEND=direct selects the direct append; anything else, Marten's.</summary>
-    public static AppendMode AppendModeFromEnvironment() =>
-        string.Equals(Environment.GetEnvironmentVariable("WAX_APPEND"), "direct", StringComparison.OrdinalIgnoreCase)
-            ? AppendMode.Direct
-            : AppendMode.Marten;
-
     /// <summary>The connection named by the same DATABASE_* variables the Python side reads.</summary>
     public static string ConnectionStringFromEnvironment(string? databaseOverride = null)
     {

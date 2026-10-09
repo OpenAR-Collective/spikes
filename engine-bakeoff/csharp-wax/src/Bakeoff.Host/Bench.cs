@@ -26,8 +26,7 @@ static class Bench
     public static async Task<int> SeedAsync(WaxEngine engine, Options options)
     {
         var accounts = options.Long("accounts", 500_000);
-        var positions = engine.Store.Advanced.AllAsyncProjectionShardNames().Select(shard => shard.Identity).Append("wax_rule_runner:All");
-        var elapsed = await Seeder.SeedAsync(engine.DataSource, engine.Store, accounts, positions);
+        var elapsed = await Seeder.SeedAsync(engine.DataSource, accounts, engine.Projections);
         Print(new { workload = "seed", accounts, elapsed_s = Math.Round(elapsed.TotalSeconds, 3) });
         return 0;
     }
@@ -77,7 +76,7 @@ static class Bench
                 var runner = new BatchRunner(engine.DataSource, "ar.account", "account_pk");
                 runPk = await runner.CreateRunAsync("payment_file_bulk", chunkSize: 1_000);
                 var receivedAt = new DateTimeOffset(2026, 10, 1, 6, 0, 0, TimeSpan.Zero);
-                var bulk = new BulkWriter(engine.DataSource, engine.Store, await ReasonCodes.LoadAsync(engine.DataSource));
+                var bulk = new BulkWriter(engine.DataSource, await ReasonCodes.LoadAsync(engine.DataSource));
                 var run = runPk;
                 await runner.RunChunksAsync(runPk, workers, Environment.MachineName, keys => tally.MeasureChunk(
                     () => bulk.PostPaymentsAsync(keys, run, 2_500, receivedAt, BatchActor, CancellationToken.None),
@@ -99,7 +98,7 @@ static class Bench
                 runPk = Guid.NewGuid();
                 var run = runPk;
                 var bulk = workload == "placement-bulk"
-                    ? new BulkWriter(engine.DataSource, engine.Store, await ReasonCodes.LoadAsync(engine.DataSource))
+                    ? new BulkWriter(engine.DataSource, await ReasonCodes.LoadAsync(engine.DataSource))
                     : null;
                 long nextChunk = -1;
                 await Task.WhenAll(Enumerable.Range(0, workers).Select(_ => Task.Run(async () =>
@@ -167,7 +166,9 @@ static class Bench
             run_pk = runPk,
             transactions = tally.Transactions,
             fallback_chunks = tally.FallbackChunks,
-            append = engine.Commands.AppendMode.ToString().ToLowerInvariant(),
+            // No Marten: commands append to core.event with plain SQL.
+            append = "wax",
+            hashing = EventHashing.Enabled ? "on" : "off",
         });
         return tally.Failed == 0 ? 0 : 1;
     }

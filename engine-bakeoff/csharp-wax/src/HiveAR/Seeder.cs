@@ -1,10 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
-using Marten;
 using Npgsql;
 using NpgsqlTypes;
 using Wax.Events;
 using Wax.Hashing;
+using Wax.Projections;
+using Wax.Rules;
 using Wax.Store;
 
 namespace HiveAR;
@@ -42,9 +43,10 @@ public sealed record SeedAccount(
 /// The bulk loader for the bake-off's seed. Not measured. For each account it
 /// writes exactly what PlaceAccount would have: the state row, the bucket rows,
 /// one account.placed event with a valid hash, and the account summary row. It
-/// writes them with COPY rather than through the command path, then moves every
-/// projection and the rule runner to the head, so nothing reprocesses the seed.
-/// Foundation-written.
+/// writes them with COPY rather than through the command path; core.event's own
+/// insert trigger still numbers each event and stamps its recorded time. Then it
+/// moves every projection and the rule runner to the head, so nothing
+/// reprocesses the seed. Foundation-written.
 /// </summary>
 public static class Seeder
 {
@@ -52,7 +54,7 @@ public static class Seeder
     public static readonly DateTimeOffset OccurredAt = new(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
 
     public static async Task<TimeSpan> SeedAsync(
-        NpgsqlDataSource dataSource, IDocumentStore store, long accounts, IEnumerable<string> positions, CancellationToken cancellation = default)
+        NpgsqlDataSource dataSource, long accounts, IReadOnlyList<Projection> projections, CancellationToken cancellation = default)
     {
         var clock = Stopwatch.StartNew();
         await using var connection = await dataSource.OpenConnectionAsync(cancellation);
@@ -73,10 +75,10 @@ public static class Seeder
                 definitions[reader.GetString(0)] = reader.GetGuid(1);
             }
         }
-        var firstSequence = await Scalar<long>(connection, "SELECT COALESCE(max(seq_id), 0) FROM core.mt_events", cancellation) + 1;
+        // The trigger numbers the COPY's rows in order from the sequence's next
+        // value; nothing else writes while the seed loads, and that is checked below.
+        var firstSequence = await Scalar<long>(connection, EventStore.PositionSql, cancellation) + 1;
         var eventType = WaxEventTypes.NameOf<AccountPlaced>();
-        var serializer = store.Advanced.Serializer;
-        var dotnetType = $"{typeof(AccountPlaced).FullName}, {typeof(AccountPlaced).Assembly.GetName().Name}";
 
         await Task.Run(() =>
         {
@@ -122,55 +124,30 @@ public static class Seeder
                 buckets.Complete();
             }
 
-            using (var streams = Import(connection, 
-                "COPY core.mt_streams (id, version, timestamp, created, tenant_id, compacted_version, is_archived) FROM STDIN (FORMAT BINARY)"))
-            {
-                for (long i = 0; i < accounts; i++)
-                {
-                    streams.StartRow();
-                    streams.Write(SeedAccount.For(i).Pk, NpgsqlDbType.Uuid);
-                    streams.Write(1L, NpgsqlDbType.Bigint);
-                    streams.Write(OccurredAt, NpgsqlDbType.TimestampTz);
-                    streams.Write(OccurredAt, NpgsqlDbType.TimestampTz);
-                    streams.Write("*DEFAULT*", NpgsqlDbType.Varchar);
-                    streams.Write(0L, NpgsqlDbType.Bigint);
-                    streams.Write(false, NpgsqlDbType.Boolean);
-                }
-                streams.Complete();
-            }
-
-            using (var events = Import(connection, 
-                "COPY core.mt_events (seq_id, id, stream_id, version, data, type, timestamp, tenant_id, mt_dotnet_type, headers, is_archived) " +
-                "FROM STDIN (FORMAT BINARY)"))
+            using (var events = Import(connection,
+                "COPY core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, " +
+                "occurred_at, actor_pk_ref, actor_type, new_value, reason_code_fk, source, event_hash) FROM STDIN (FORMAT BINARY)"))
             {
                 for (long i = 0; i < accounts; i++)
                 {
                     var seed = SeedAccount.For(i);
                     var placed = Placed(seed);
-                    var body = new AccountPlaced
-                    {
-                        AggregateType = "account",
-                        NewValue = placed,
-                        OccurredAt = OccurredAt,
-                        ActorPkRef = SeederActor,
-                        ActorType = "batch",
-                        ReasonCodeFk = reason,
-                        Source = "seed",
-                    };
                     var hash = EventHasher.Compute(new EventHashInput(
                         "account", seed.Pk, eventType, 1, null, placed, OccurredAt, SeederActor, "batch", reason, null));
                     events.StartRow();
-                    events.Write(firstSequence + i, NpgsqlDbType.Bigint);
                     events.Write(DerivedUuid.From($"bakeoff:seed-event:{i}"), NpgsqlDbType.Uuid);
+                    events.Write(1, NpgsqlDbType.Integer);
+                    events.Write(eventType, NpgsqlDbType.Text);
+                    events.Write((short)1, NpgsqlDbType.Smallint);
                     events.Write(seed.Pk, NpgsqlDbType.Uuid);
-                    events.Write(1L, NpgsqlDbType.Bigint);
-                    events.Write(serializer.ToJson(body), NpgsqlDbType.Jsonb);
-                    events.Write(eventType, NpgsqlDbType.Varchar);
+                    events.Write("account", NpgsqlDbType.Text);
                     events.Write(OccurredAt, NpgsqlDbType.TimestampTz);
-                    events.Write("*DEFAULT*", NpgsqlDbType.Varchar);
-                    events.Write(dotnetType, NpgsqlDbType.Varchar);
-                    events.Write(new JsonObject { [StreamHeads.EventHashHeader] = hash }.ToJsonString(), NpgsqlDbType.Jsonb);
-                    events.Write(false, NpgsqlDbType.Boolean);
+                    events.Write(SeederActor, NpgsqlDbType.Uuid);
+                    events.Write("batch", NpgsqlDbType.Text);
+                    events.Write(placed.ToJsonString(), NpgsqlDbType.Jsonb);
+                    events.Write(reason, NpgsqlDbType.Uuid);
+                    events.Write("seed", NpgsqlDbType.Text);
+                    events.Write(hash, NpgsqlDbType.Text);
                 }
                 events.Complete();
             }
@@ -201,13 +178,20 @@ public static class Seeder
         }, cancellation);
 
         var head = firstSequence + accounts - 1;
-        await Execute(connection, $"SELECT setval('core.mt_events_sequence', {head})", cancellation);
-        foreach (var name in positions.Append("HighWaterMark"))
+        if (await Scalar<long>(connection, EventStore.PositionSql, cancellation) != head)
+        {
+            throw new InvalidOperationException("Something else wrote events while the seed loaded; the summary rows' positions are wrong");
+        }
+        var positions = projections.Select(projection => (projection.Name, projection.Digest()))
+            .Append((RuleRunner.BasePosition, "rules"));
+        foreach (var (name, digest) in positions)
         {
             await using var position = new NpgsqlCommand(
-                "INSERT INTO core.mt_event_progression (name, last_seq_id) VALUES ($1, $2) " +
-                "ON CONFLICT (name) DO UPDATE SET last_seq_id = EXCLUDED.last_seq_id, last_updated = now()", connection);
+                "INSERT INTO core.projection_checkpoint (projection_name, definition_digest, last_global_sequence_number) " +
+                "VALUES ($1, $2, $3) ON CONFLICT (projection_name) DO UPDATE SET " +
+                "last_global_sequence_number = EXCLUDED.last_global_sequence_number, updated_at = now()", connection);
             position.Parameters.AddWithValue(name);
+            position.Parameters.AddWithValue(digest);
             position.Parameters.AddWithValue(head);
             await position.ExecuteNonQueryAsync(cancellation);
         }
