@@ -1,0 +1,108 @@
+# The C# side of the engine bake-off: one PostgreSQL 17, a one-shot migrate
+# service that applies the schema as the owner, the projection worker running
+# as the runtime role, and a tools service for the tests and one-off commands.
+# It mirrors the Python side's Compose file, with the same database image,
+# settings, and roles. No ports are published to the host.
+name: hivear-bakeoff-csharp
+
+x-engine: &engine
+  image: ${IMAGE:-hivear-bakeoff-csharp:local}
+  build:
+    context: ..
+    dockerfile: csharp-marten/Dockerfile
+    target: runtime
+
+# The schema owner, used for migrations, tests, and verify-chain.
+x-owner-env: &owner-env
+  WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
+  DATABASE_USER: hivear
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
+  DATABASE_HOST: db
+  DATABASE_PORT: "5432"
+
+# The application connects as the runtime role, which cannot alter the
+# schema or change history.
+x-runtime-env: &runtime-env
+  # marten (the default) or direct: how commands append events (see the README).
+  WAX_APPEND: ${BAKEOFF_APPEND:-marten}
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
+  DATABASE_USER: hivear_app
+  DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
+  DATABASE_HOST: db
+  DATABASE_PORT: "5432"
+
+services:
+  db:
+    image: postgres@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24  # postgres:17-alpine
+    restart: unless-stopped
+    # A session left idle inside a transaction would hold back every read
+    # model, so the database ends it.
+    command: ["postgres", "-c", "idle_in_transaction_session_timeout=300000"]
+    environment:
+      POSTGRES_DB: hivear
+      POSTGRES_USER: hivear
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
+      HIVEAR_APP_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+      - ./deploy/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivear -d hivear"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Applies the schema and loads the sample bucket registry, then exits.
+  migrate:
+    <<: *engine
+    environment: *owner-env
+    entrypoint: ["sh", "-c", "dotnet Bakeoff.Host.dll migrate && dotnet Bakeoff.Host.dll seed-demo"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # The projection daemon (WAX-0001), Marten's async daemon in solo mode.
+  worker:
+    <<: *engine
+    restart: unless-stopped
+    environment: *runtime-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # The bake-off's long-running services (WORKLOADS.md): the projection
+  # worker, the rule runner, and the register poller. The harness starts it
+  # in place of worker, with its own flags.
+  engine:
+    <<: *engine
+    profiles: ["bench"]
+    environment: *runtime-env
+    command: ["run-engine"]
+
+  # The bake-off's one-shot driver: seed, bench, and verify-chain. It runs as
+  # the runtime role; the harness runs seed as the owner, which can ANALYZE.
+  bench:
+    <<: *engine
+    profiles: ["bench"]
+    environment: *runtime-env
+    command: ["about"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Tests by default. Each test class creates and drops its own database.
+  tools:
+    build:
+      context: ..
+      dockerfile: csharp-marten/Dockerfile
+      target: test
+    image: ${TEST_IMAGE:-hivear-bakeoff-csharp-test:local}
+    profiles: ["tools"]
+    environment: *owner-env
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  database_data:
