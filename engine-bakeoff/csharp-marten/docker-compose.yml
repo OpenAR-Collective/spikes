@@ -14,7 +14,7 @@ x-engine: &engine
 
 # The schema owner, used for migrations, tests, and verify-chain.
 x-owner-env: &owner-env
-  DATABASE_NAME: hivear
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear
   DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
   DATABASE_HOST: db
@@ -23,7 +23,7 @@ x-owner-env: &owner-env
 # The application connects as the runtime role, which cannot alter the
 # schema or change history.
 x-runtime-env: &runtime-env
-  DATABASE_NAME: hivear
+  DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}
   DATABASE_HOST: db
@@ -67,6 +67,26 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  # The bake-off's long-running services (WORKLOADS.md): the projection
+  # worker, the rule runner, and the register poller. The harness starts it
+  # in place of worker, with its own flags.
+  engine:
+    <<: *engine
+    profiles: ["bench"]
+    environment: *runtime-env
+    command: ["run-engine"]
+
+  # The bake-off's one-shot driver: seed, bench, and verify-chain. It runs as
+  # the runtime role; the harness runs seed as the owner, which can ANALYZE.
+  bench:
+    <<: *engine
+    profiles: ["bench"]
+    environment: *runtime-env
+    command: ["about"]
+    depends_on:
+      db:
+        condition: service_healthy
 
   # Tests by default. Each test class creates and drops its own database.
   tools:

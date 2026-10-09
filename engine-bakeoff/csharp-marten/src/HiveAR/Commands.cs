@@ -20,9 +20,17 @@ public sealed record PlaceAccount : ICommand
     public required DateOnly ItemizationDate { get; init; }
     public required IReadOnlyDictionary<string, long> OpeningBalances { get; init; }
 
+    /// <summary>The last day interest has been accrued for; the itemization date
+    /// when not given. Added for the bake-off's interest accrual.</summary>
+    public DateOnly? InterestAccruedThrough { get; init; }
+
     public void Validate()
     {
         Rules.Text(ClientAccountNumber, "client_account_number");
+        if (InterestAccruedThrough is { } accruedThrough)
+        {
+            Rules.PlausibleDate(accruedThrough, "interest_accrued_through");
+        }
         Rules.Text(DebtType, "debt_type");
         Rules.OneOf(ContractType, "contract_type", "third_party_contingency", "purchase");
         Rules.Currency(CurrencyCode);

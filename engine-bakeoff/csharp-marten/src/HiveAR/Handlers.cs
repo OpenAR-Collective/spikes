@@ -27,6 +27,7 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
             ["list_date"] = IsoFormat.Date(command.ListDate),
             ["itemization_date"] = IsoFormat.Date(command.ItemizationDate),
             ["balance_buckets"] = Json.Amounts(command.OpeningBalances),
+            ["interest_accrued_through"] = IsoFormat.Date(command.InterestAccruedThrough ?? command.ItemizationDate),
         };
 
         bool exists;
@@ -77,6 +78,7 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
             CurrencyCode = command.CurrencyCode,
             ListDate = command.ListDate,
             ItemizationDate = command.ItemizationDate,
+            InterestAccruedThrough = command.InterestAccruedThrough ?? command.ItemizationDate,
         };
         await context.RecordAsync<AccountPlaced>(account, prior: null, @new: placed, reason: "account_placed", cancellation: cancellation);
 
@@ -432,6 +434,38 @@ static class Streams
             throw new CommandRejectedException("One or more accounts do not exist", "account_not_found");
         }
         return (accounts, rows);
+    }
+
+    /// <summary>Lock one account, then run one more query that must see the
+    /// state as of the lock, then read the account's stream head: one round
+    /// trip. Returns the account and the extra query's first row, if any.</summary>
+    public static async Task<(AccountState Account, object[]? Row)> LockAccountWithAsync(
+        CommandContext context, Guid accountPk, NpgsqlBatchCommand extra, CancellationToken cancellation)
+    {
+        AccountState? account = null;
+        object[]? row = null;
+        await using (var batch = context.CreateBatch())
+        {
+            batch.BatchCommands.Add(AccountState.LockCommand([accountPk]));
+            batch.BatchCommands.Add(extra);
+            batch.BatchCommands.Add(CommandContext.StreamHeadsCommand([accountPk]));
+            await using var reader = await batch.ExecuteReaderAsync(cancellation);
+            if (await reader.ReadAsync(cancellation))
+            {
+                account = AccountState.Read(reader);
+            }
+            await reader.NextResultAsync(cancellation);
+            if (await reader.ReadAsync(cancellation))
+            {
+                row = new object[reader.FieldCount];
+                reader.GetValues(row);
+            }
+            await reader.NextResultAsync(cancellation);
+            await context.ReadStreamHeadsAsync(reader, [accountPk], cancellation);
+        }
+        return account is null
+            ? throw new CommandRejectedException("One or more accounts do not exist", "account_not_found")
+            : (account, row);
     }
 
     /// <summary>Whether the payment exists, then the locked accounts, their

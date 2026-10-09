@@ -9,7 +9,7 @@ public sealed class AccountState : AggregateRoot
 {
     public const string LockSql =
         "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, " +
-        "currency_code, status, is_disputed, list_date, itemization_date " +
+        "currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code " +
         "FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE";
 
     public override string AggregateType => "account";
@@ -21,6 +21,8 @@ public sealed class AccountState : AggregateRoot
     public bool IsDisputed { get; set; }
     public required DateOnly ListDate { get; init; }
     public required DateOnly ItemizationDate { get; init; }
+    public required DateOnly InterestAccruedThrough { get; set; }
+    public string? QueueCode { get; set; }
 
     /// <summary>Row-lock account state rows in a fixed order (WAX-0013).</summary>
     public static NpgsqlBatchCommand LockCommand(Guid[] accountPks) => new(LockSql)
@@ -40,18 +42,21 @@ public sealed class AccountState : AggregateRoot
         IsDisputed = reader.GetBoolean(7),
         ListDate = reader.GetFieldValue<DateOnly>(8),
         ItemizationDate = reader.GetFieldValue<DateOnly>(9),
+        InterestAccruedThrough = reader.GetFieldValue<DateOnly>(10),
+        QueueCode = reader.IsDBNull(11) ? null : reader.GetString(11),
     };
 
     protected override void QueueInsert(CommandContext context) => context.QueueSql(
         "INSERT INTO ar.account (aggregate_sequence_number, account_pk, client_account_number, debt_type, " +
-        "contract_type, currency_code, status, is_disputed, list_date, itemization_date) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         AggregateSequenceNumber, Pk, ClientAccountNumber, DebtType, ContractType, CurrencyCode, Status, IsDisputed,
-        ListDate, ItemizationDate);
+        ListDate, ItemizationDate, InterestAccruedThrough);
 
     protected override void QueueUpdate(CommandContext context) => context.QueueSql(
-        "UPDATE ar.account SET aggregate_sequence_number = ?, status = ?, is_disputed = ? WHERE account_pk = ?",
-        AggregateSequenceNumber, Status, IsDisputed, Pk);
+        "UPDATE ar.account SET aggregate_sequence_number = ?, status = ?, is_disputed = ?, " +
+        "interest_accrued_through = ?, queue_code = ?::text WHERE account_pk = ?",
+        AggregateSequenceNumber, Status, IsDisputed, InterestAccruedThrough, (object?)QueueCode ?? DBNull.Value, Pk);
 
     public static NpgsqlParameter UuidArray(Guid[] values) =>
         new() { Value = values, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Uuid };

@@ -1,3 +1,6 @@
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text.Json.Nodes;
 using JasperFx.Events;
 using Marten;
@@ -18,6 +21,21 @@ public sealed class CommandContext
     readonly IDocumentSession session;
     readonly ReasonCodes reasons;
     readonly Dictionary<Guid, StreamHead> heads = [];
+
+    // Marten names an event after the static type it is wrapped as, so each
+    // body is wrapped as its own concrete type, never as WaxEvent.
+    static readonly ConcurrentDictionary<Type, Func<WaxEvent, IEvent>> Wrappers = new();
+
+    static IEvent Wrap(WaxEvent body) => Wrappers.GetOrAdd(body.GetType(), static type =>
+    {
+        var asEvent = typeof(Event).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(method => method.Name == nameof(Event.AsEvent) && method.IsGenericMethodDefinition && method.GetParameters().Length == 1)
+            .MakeGenericMethod(type);
+        var parameter = Expression.Parameter(typeof(WaxEvent));
+        return Expression.Lambda<Func<WaxEvent, IEvent>>(
+            Expression.Convert(Expression.Call(asEvent, Expression.Convert(parameter, type)), typeof(IEvent)),
+            parameter).Compile();
+    })(body);
 
     internal CommandContext(
         NpgsqlConnection connection,
@@ -148,7 +166,7 @@ public sealed class CommandContext
             reasonCode,
             head.EventHash));
 
-        var wrapped = body.AsEvent().WithHeader(StreamHeads.EventHashHeader, eventHash);
+        var wrapped = Wrap(body).WithHeader(StreamHeads.EventHashHeader, eventHash);
         if (head.EventHash is not null)
         {
             wrapped = wrapped.WithHeader(StreamHeads.PriorEventHashHeader, head.EventHash);

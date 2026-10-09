@@ -21,6 +21,10 @@ public sealed class AccountSummaryProjection : EventProjection
         IncludeType<DisputeOpened>();
         IncludeType<AccountPaymentApplied>();
         IncludeType<AccountPaymentReversed>();
+        // Added for the bake-off's workloads. The other new account events
+        // change nothing this read model shows, so it does not subscribe to them.
+        IncludeType<AccountInterestAccrued>();
+        IncludeType<AccountStatusChanged>();
     }
 
     public override ValueTask ApplyAsync(IDocumentOperations operations, IEvent e, CancellationToken cancellation)
@@ -74,9 +78,15 @@ public sealed class AccountSummaryProjection : EventProjection
                     e.StreamId);
                 break;
             }
-            case AccountPaymentReversed reversed:
+            case AccountStatusChanged changed:
+                operations.QueueSqlCommand(
+                    "UPDATE ar.account_summary_read_model SET status = ?, last_global_sequence_number = ? " +
+                    "WHERE account_summary_read_model_pk = ?",
+                    Text(changed.NewValue!, "status"), e.Sequence, e.StreamId);
+                break;
+            case AccountPaymentReversed or AccountInterestAccrued:
             {
-                var moved = reversed.NewValue!["balance_buckets"]!.ToJsonString();
+                var moved = ((Wax.Events.WaxEvent)e.Data).NewValue!["balance_buckets"]!.ToJsonString();
                 operations.QueueSqlCommand(
                     "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || ?::jsonb, " +
                     "balance_minor_units = (SELECT COALESCE(sum(value::bigint), 0) FROM jsonb_each_text(balance_buckets || ?::jsonb)), " +

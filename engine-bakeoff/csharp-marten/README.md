@@ -2,7 +2,7 @@
 
 This folder holds the champion side of the [engine bake-off](../README.md): the Wax command path written in C# on .NET 10, the current LTS release, with Marten 9 as the event store on PostgreSQL, the stack [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) adopts.
 
-Status: built and tested at parity with the Python side. It implements the same four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. Its 24 tests pass. The throughput harness and the batch and real-time workloads come next.
+Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, and the driver that the workloads need. Its 31 tests pass. No measured runs have been made.
 
 ## What it is
 
@@ -41,6 +41,18 @@ A conflict with a concurrent writer is retried from the start, up to three attem
 
 Marten appends in its quick mode, Marten 9's default (`QuickWithServerTimestamps`), which assigns versions and sequence numbers on the server.
 
+## The workloads
+
+Everything in this section was written by the Foundation for the bake-off, not ported from the prototype.
+
+- **The six new commands** are in `src/HiveAR/Workloads.cs`: AccrueInterest, ChangeAccountStatus, AssignToQueue, CreateTask, ScheduleFutureEvent, and FirePendingEvent. Each locks its account and reads what it needs in one round trip, like the prototype's commands.
+- **The rule runner** (`src/Wax/Rules/RuleRunner.cs`) is a Marten subscription, so the async daemon delivers it events after they commit and advances its position only after its actions have committed. With one worker it handles events in global order; with more, it runs different aggregates in parallel and keeps each aggregate's order. The rules themselves are in `src/HiveAR/Rules.cs`.
+- **The register poller** (`src/Wax/Rules/PendingEventPoller.cs`) looks for due entries on its interval. Each FirePendingEvent claims its entry with `SELECT ... FOR UPDATE SKIP LOCKED`.
+- **The batch runner** (`src/Wax/Batches/BatchRunner.cs`) builds the chunks in SQL, in PostgreSQL's key order, and its workers claim them with `SKIP LOCKED`, as WAX-0024 describes.
+- **The seeder** (`src/HiveAR/Seeder.cs`) writes the seed with `COPY`, with a valid hash on every event, and moves every projection and the rule runner to the head.
+- **The driver** (`src/Bakeoff.Host/Bench.cs`) answers `seed`, `bench batch-payments`, `bench batch-accrual`, and `bench realtime`, and prints one line of JSON. `run-engine` runs the projection daemon, the rule runner, and the poller in one process. `--rule-workers` sets both the rule runner's and the poller's parallelism. Marten runs one agent per projection, so `--projection-workers` does not apply here.
+- **The Compose file** adds an `engine` service and a `bench` service. Both take their database from `BAKEOFF_DATABASE`, so the harness can point a run at a copy of the seed. The seed runs as the owner, so that it can ANALYZE.
+
 ## How it matches the Python side
 
 - **The same rules.** The handlers, the allocation, and the waterfall are ports of the prototype's code, and the payment tests are ports of its tests.
@@ -60,13 +72,16 @@ Marten appends in its quick mode, Marten 9's default (`QuickWithServerTimestamps
 
 ## Tests
 
-The 24 tests run against a real PostgreSQL, each test class in a fresh database:
+The 31 tests run against a real PostgreSQL, each test class in a fresh database:
 
 - **Event store (7):** an account's first event and its state row are written together, state cannot be written outside a command, events cannot be updated or deleted, a stale expected version is refused, a forged link in the chain is detected, and the hashes match the Python side's vectors.
 - **Payments (10):** the nine payment tests of the prototype, plus one showing that a retried command is answered as success and that a different command under the same key is refused.
 - **Concurrency (2):** 25 payments against one account at once serialize on its row lock, with no money lost and an unbroken chain, and 30 payments over two accounts in both orders do not deadlock.
 - **Read models (1):** after the daemon catches up, every read model agrees with the authoritative state, and every chain verifies.
 - **Reader (4):** the reader behaviors listed above.
+- **Workload commands (5):** the derived keys match the Python side's vectors, interest accrues once per day, status and queue changes are idempotent, a scheduled event fires once, and a task is created once per key.
+- **Seed and batches (1):** 2,500 seeded accounts, then the payment file and the interest accrual with four workers, each passing its gate from WORKLOADS.md, then the read models catching up from the seed's position and agreeing.
+- **Rules (1):** the rule runner and the poller, end to end: new accounts get a first-contact task, a dispute reaches the review queue, a payoff marks the account paid in full, and every action names the event that triggered it.
 
 These prototype reader tests have no counterpart here: the reader refusing to run inside another transaction, and its high-water mark resetting after a restore. Both test the prototype's own reader, and Marten manages its own connections and marks.
 
@@ -81,7 +96,7 @@ docker compose run --rm --entrypoint "dotnet Bakeoff.Host.dll" worker verify-cha
 docker compose down -v
 ```
 
-The second command builds the test image and runs the 24 tests. For a faster loop while editing, `build.sh` runs any `dotnet` command in the pinned SDK container. Set `NETWORK` to reach the Compose database:
+The second command builds the test image and runs the 31 tests. For a faster loop while editing, `build.sh` runs any `dotnet` command in the pinned SDK container. Set `NETWORK` to reach the Compose database:
 
 ```
 ./build.sh dotnet build

@@ -71,6 +71,7 @@ public sealed class EventStoreTests(DatabaseFixture db) : IClassFixture<Database
             CurrencyCode = "USD",
             ListDate = new DateOnly(2026, 1, 1),
             ItemizationDate = new DateOnly(2026, 1, 1),
+            InterestAccruedThrough = new DateOnly(2026, 1, 1),
         };
         await Assert.ThrowsAsync<WaxConcurrencyException>(() =>
             context.RecordAsync<AccountPlaced>(stale, new JsonObject { ["status"] = "active" }, new JsonObject { ["status"] = "active" }, "account_placed").AsTask());

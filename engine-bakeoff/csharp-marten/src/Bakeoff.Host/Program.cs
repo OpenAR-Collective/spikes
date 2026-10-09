@@ -1,22 +1,31 @@
+using Bakeoff.Host;
 using HiveAR;
 using JasperFx.Events.Daemon;
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Wax;
+using Wax.Hashing;
+using Wax.Rules;
 using Wax.Store;
 
-// The engine's command line, mirroring the Python side's management commands:
+// The engine's command line, mirroring the Python side's management commands
+// and answering the commands WORKLOADS.md asks of each side:
 //   migrate          apply the schema as its owner
 //   seed-demo        load the sample bucket registry
-//   run-projections  keep the read models current (the default)
+//   seed             load the bake-off's seed (--accounts N)
+//   bench            run a workload: batch-payments, batch-accrual, or realtime
+//   run-engine       the projection worker, the rule runner, and the register poller
+//   run-projections  the projection worker alone (the default)
 //   projections      show each projection's position
 //   verify-chain     recompute every stream's hash chain
 //   about            the runtime, library versions, and settings a result records
 
 IReadOnlyList<IWaxModule> modules = [new HiveArModule()];
 var connectionString = WaxSettings.ConnectionStringFromEnvironment();
+var options = new Options(args);
 
 switch (args.FirstOrDefault() ?? "run-projections")
 {
@@ -32,6 +41,16 @@ switch (args.FirstOrDefault() ?? "run-projections")
         await HiveArModule.SeedDemoAsync(dataSource);
         Console.WriteLine("3 bucket definitions loaded");
         return 0;
+    }
+    case "seed":
+    {
+        await using var engine = await WaxEngine.CreateAsync(connectionString, modules);
+        return await Bench.SeedAsync(engine, options);
+    }
+    case "bench":
+    {
+        await using var engine = await WaxEngine.CreateAsync(connectionString, modules);
+        return await Bench.RunAsync(engine, args.ElementAtOrDefault(1) ?? "", options);
     }
     case "verify-chain":
     {
@@ -59,11 +78,41 @@ switch (args.FirstOrDefault() ?? "run-projections")
     {
         // What a result records about this side: runtime, library versions, and settings.
         await using var engine = await WaxEngine.CreateAsync(connectionString, modules);
-        var options = engine.Store.Options;
+        var storeOptions = engine.Store.Options;
         Console.WriteLine($".NET {Environment.Version}, {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
         Console.WriteLine($"Marten {typeof(DocumentStore).Assembly.GetName().Version}, Npgsql {typeof(NpgsqlConnection).Assembly.GetName().Version}");
-        Console.WriteLine($"event append mode: {options.Events.AppendMode}");
+        Console.WriteLine($"event append mode: {storeOptions.Events.AppendMode}");
         Console.WriteLine($"server GC: {System.Runtime.GCSettings.IsServerGC}, processors: {Environment.ProcessorCount}");
+        return 0;
+    }
+    case "run-engine":
+    {
+        // The long-running services of WORKLOADS.md in one process. Marten's
+        // daemon runs one agent per projection, so --projection-workers does
+        // not apply here; it is accepted and recorded for symmetry.
+        var secondsPerDay = options.Double("seconds-per-day", 2);
+        var pollInterval = TimeSpan.FromMilliseconds(options.Int("poll-interval-ms", 250));
+        var ruleWorkers = options.Int("rule-workers", 1);
+        var engine = await WaxEngine.CreateAsync(connectionString, modules);
+        var registerActor = DerivedUuid.From("bakeoff:register");
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services
+            .AddMarten(storeOptions =>
+            {
+                WaxStoreSetup.Configure(storeOptions, engine.DataSource, modules, mayChangeSchema: false);
+                storeOptions.Events.Subscribe(new RuleRunner(HiveArRules.All(engine.DataSource, secondsPerDay), engine.Commands, ruleWorkers));
+            })
+            .AddAsyncDaemon(DaemonMode.Solo);
+        builder.Services.AddHostedService(services => new PendingEventPoller(
+            engine.DataSource,
+            (pendingEventPk, cancellation) => engine.Commands.DispatchAsync(
+                new FirePendingEvent { PendingEventPk = pendingEventPk }, registerActor, "system", "register", cancellation: cancellation),
+            parallelism: ruleWorkers,
+            pollInterval: pollInterval,
+            logger: services.GetRequiredService<ILogger<PendingEventPoller>>()));
+        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}");
+        await builder.Build().RunAsync();
+        await engine.DisposeAsync();
         return 0;
     }
     case "run-projections":
@@ -71,12 +120,13 @@ switch (args.FirstOrDefault() ?? "run-projections")
         var builder = Host.CreateApplicationBuilder();
         var dataSource = NpgsqlDataSource.Create(connectionString);
         builder.Services
-            .AddMarten(options => WaxStoreSetup.Configure(options, dataSource, modules, mayChangeSchema: false))
+            .AddMarten(storeOptions => WaxStoreSetup.Configure(storeOptions, dataSource, modules, mayChangeSchema: false))
             .AddAsyncDaemon(DaemonMode.Solo);
         await builder.Build().RunAsync();
         return 0;
     }
     default:
-        Console.Error.WriteLine("usage: Bakeoff.Host [migrate | seed-demo | run-projections | projections | verify-chain | about]");
+        Console.Error.WriteLine(
+            "usage: Bakeoff.Host [migrate | seed-demo | seed | bench <workload> | run-engine | run-projections | projections | verify-chain | about]");
         return 2;
 }

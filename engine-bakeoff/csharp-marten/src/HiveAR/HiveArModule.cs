@@ -27,6 +27,12 @@ public sealed class HiveArModule : IWaxModule
         dispatcher.Register(new OpenDisputeHandler());
         dispatcher.Register(new PostPaymentHandler());
         dispatcher.Register(new ReversePaymentHandler());
+        dispatcher.Register(new AccrueInterestHandler());
+        dispatcher.Register(new ChangeAccountStatusHandler());
+        dispatcher.Register(new AssignToQueueHandler());
+        dispatcher.Register(new CreateTaskHandler());
+        dispatcher.Register(new ScheduleFutureEventHandler());
+        dispatcher.Register(new FirePendingEventHandler());
     }
 
     /// <summary>
