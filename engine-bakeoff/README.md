@@ -71,7 +71,7 @@ The measurements are these:
 - Command latency at the 50th, 95th, and 99th percentiles.
 - In the real-time workload, the time from an event committing to its rule's action committing, and from a scheduled event coming due to its firing.
 - How far the read models fall behind, and how long they take to catch up once the bench command ends: the time until every projection and the rule runner have reached the head as it stood at that moment. Events written afterward, such as scheduled reviews still firing, do not count.
-- CPU per command is each container's CPU over the whole bench command, divided by every command sent in it, the warm-up's included.
+- CPU per command is each container's CPU over the whole bench command, divided by every command sent in it, the warm-up's included. Statements and commits per command are divided the same way.
 
 After every run, the correctness gates in WORKLOADS.md are checked. In short: every command was applied exactly once, every hash chain verifies, and once the reader has caught up, every read model agrees with the authoritative state.
 
