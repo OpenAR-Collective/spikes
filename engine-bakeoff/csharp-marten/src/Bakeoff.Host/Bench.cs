@@ -85,6 +85,7 @@ static class Bench
             workload,
             workers,
             sent = tally.Sent,
+            sent_total = tally.SentTotal,
             succeeded = tally.Succeeded,
             rejected = tally.Rejected,
             failed = tally.Failed,
@@ -171,11 +172,14 @@ static class Bench
     sealed class Tally
     {
         readonly ThreadLocal<List<double>> latencies = new(() => [], trackAllValues: true);
-        long sent, succeeded, rejected, failed;
+        long sent, succeeded, rejected, failed, sentTotal;
 
         public long MeasureFrom { get; set; }
 
         public long Sent => sent;
+
+        /// <summary>Every command sent, the warm-up's included, for CPU per command over the whole run.</summary>
+        public long SentTotal => sentTotal;
         public long Succeeded => succeeded;
         public long Rejected => rejected;
         public long Failed => failed;
@@ -200,6 +204,7 @@ static class Bench
                     Console.Error.WriteLine(error);
                 }
             }
+            Interlocked.Increment(ref sentTotal);
             if (started < MeasureFrom)
             {
                 // A warm-up command: run, not counted.
