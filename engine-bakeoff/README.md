@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: setting up. Both sides are built: the Python side is adapted from Andy's prototype and its 27 tests pass, and the C# side matches it rule for rule, hashes identically, and passes 24 tests. The workloads in WORKLOADS.md and the harness come next. The method below is a draft, and no results have been recorded.
+Status: the first measured pass is complete. Three sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; and C# with a direct append. All 18 runs of the first pass, at 500,000 accounts, passed every correctness gate, and their results are below.
 
 ## Background
 
@@ -85,7 +85,39 @@ After every run, the correctness gates in WORKLOADS.md are checked. In short: ev
 
 ## Results
 
-No runs yet. Each run is recorded in [results](results/README.md), and this section will summarize them.
+### First side-by-side pass, 2026-10-08 and 2026-10-09
+
+The pass ran overnight from 23:46 to 06:17 under the scope above: 500,000 accounts, 4 and 16 workers, one run of each configuration, `--rule-workers 4` on every side, on the benchmark laptop with nothing else in use. All 18 runs passed every correctness gate. Each run's full record, with its raw output, is in [results](results/README.md); the folder names begin `2026-10-08-first-pass` or `2026-10-09-first-pass`.
+
+Throughput, in commands per second over the measured run:
+
+| Workload | Workers | C# through Marten | C# with direct append | Python |
+| --- | --- | --- | --- | --- |
+| Payment file | 4 | 425 | 321 | 205 |
+| Payment file | 16 | 841 | 975 | 310 |
+| Interest accrual | 4 | 334 | 337 | 264 |
+| Interest accrual | 16 | 1,168 | 1,287 | 489 |
+| Real time, inbound | 4 | 297 | 302 | 194 |
+| Real time, inbound | 16 | 651 | 755 | 292 |
+
+CPU per command at 16 workers, in milliseconds, from each container's cgroup counters. "Application" is the driver and the engine together:
+
+| Workload | C# through Marten, application / database | C# with direct append | Python |
+| --- | --- | --- | --- |
+| Payment file | 1.7 / 6.8 | 1.3 / 5.7 | 15.7 / 9.5 |
+| Interest accrual | 1.1 / 4.4 | 0.9 / 3.8 | 9.7 / 5.7 |
+| Real time | 3.5 / 12.1 | 2.9 / 10.4 | 26.6 / 14.8 |
+
+What the pass shows:
+
+- **The C# sides moved two to three times as many commands at 16 workers, with the same 4 CPUs for the driver.** Python's driver was held at its CPU limit at 16 workers, so its throughput is where its CPU per command put it.
+- **Python's application spent about nine times as much CPU per command, and its database about 1.4 times as much.** The Python side ran about 27 statements per payment against 15 for the C# side, because the prototype's code reads and writes one statement at a time.
+- **Read models.** After the payment file, the C# read models were caught up within two seconds; Python's took 31 minutes after the 4-worker run and 46 minutes after the 16-worker run, because one projection worker on 2 CPUs could not keep pace. Its engine was not tuned for this pass, and a second projection worker is allowed tuning.
+- **Rules under load.** At 4 workers the rule delay was about 0.24 seconds on both C# sides and 0.70 seconds on Python. At 16 workers the C# rule runner fell behind, with a median delay of about 14 seconds, while Python's held near 1 second, but at less than half the inbound rate. Neither side's rule runner was tuned beyond four workers.
+- **Marten's append.** At 16 workers the direct append was faster than Marten's by 16 percent on the payment file, 10 percent on the accrual, and 16 percent on the real-time mix, with less database CPU each time. At 4 workers it was slower on the payment file, 321 against 425, with about the same database CPU; one run cannot say whether that is real or noise.
+- **The threshold.** No side came near 6,900 commands per second on this laptop. The best was 1,287, the direct append's accrual at 16 workers. The laptop runs say how the stacks compare, not whether either clears the threshold on server hardware.
+
+Limits of this pass: one run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions.
 
 ## Attribution
 
