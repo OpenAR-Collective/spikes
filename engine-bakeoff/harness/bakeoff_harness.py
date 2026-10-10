@@ -342,12 +342,106 @@ class LagSampler(threading.Thread):
         self.join(10)
 
 
+def kernel_cpu_ticks(container):
+    """The aggregate cpu line of /proc/stat as seen from a container: user, nice,
+    system, idle, iowait, irq, softirq, and steal, in clock ticks."""
+    out = sh(["docker", "exec", container, "cat", "/proc/stat"], check=False).stdout
+    for line in out.splitlines():
+        if line.startswith("cpu "):
+            values = [int(v) for v in line.split()[1:9]]
+            return dict(zip(("user", "nice", "system", "idle", "iowait", "irq", "softirq", "steal"), values))
+    return None
+
+
+def steal(before, after):
+    """Over the bench command: the share of the kernel's CPU time stolen by the
+    hypervisor for other tenants, and the share spent busy at all."""
+    a, b = before.get("kernel_ticks"), after.get("kernel_ticks")
+    if not a or not b:
+        return {"steal_pct": None, "busy_pct": None}
+    delta = {k: b[k] - a[k] for k in a}
+    total = sum(delta.values())
+    if total <= 0:
+        return {"steal_pct": None, "busy_pct": None}
+    return {"steal_pct": round(100 * delta["steal"] / total, 2),
+            "busy_pct": round(100 * (total - delta["idle"] - delta["iowait"]) / total, 1)}
+
+
+def wait_for_engine(engine, started, timeout, idle_cores=0.5, window=2.0):
+    """Waits until the engine has finished starting, judged from outside by its
+    CPU: two windows in a row in which it used less than idle_cores. A Python
+    engine spends about half a minute at its CPU limit while its processes
+    import Django; a run that starts sooner measures that start-up, and the
+    host probe competes with it. Returns (seconds from the engine's start,
+    cores in the last window), or (None, cores) if it never settled."""
+    quiet, cores = 0, None
+    while time.perf_counter() - started < timeout:
+        first = cpu_usec(engine)
+        time.sleep(window)
+        second = cpu_usec(engine)
+        if first is None or second is None:
+            return None, None
+        cores = round((second - first) / 1e6 / window, 2)
+        quiet = quiet + 1 if cores < idle_cores else 0
+        if quiet >= 2:
+            return round(time.perf_counter() - started, 1), cores
+    return None, cores
+
+
+def _json_rows(side, database, sql):
+    text = side.psql(database, f"SELECT coalesce(json_agg(t), '[]') FROM ({sql}) t", check=False)
+    try:
+        return json.loads(text) if text else None
+    except ValueError:
+        return None
+
+
+def db_activity(side, database):
+    """The database's write-side counters: pg_stat_wal and pg_stat_checkpointer
+    are cluster-wide, which is the run's database alone while a run is going;
+    pg_stat_bgwriter likewise; pg_stat_user_tables is this database's. Each
+    view is read on its own, so one a PostgreSQL version lacks is just null."""
+    def one(view):
+        rows = _json_rows(side, database, f"SELECT * FROM {view}")
+        return rows[0] if rows else None
+
+    tables = _json_rows(side, database, "SELECT schemaname || '.' || relname AS name, n_tup_ins, n_tup_upd,"
+                        " n_tup_hot_upd, n_tup_del, n_dead_tup, autovacuum_count, autoanalyze_count"
+                        " FROM pg_stat_user_tables")
+    return {"wal": one("pg_stat_wal"), "checkpointer": one("pg_stat_checkpointer"), "bgwriter": one("pg_stat_bgwriter"),
+            "tables": {row.pop("name"): row for row in tables or []}}
+
+
+def _numeric_delta(start, end):
+    if not isinstance(start, dict) or not isinstance(end, dict):
+        return None
+    return {key: end[key] - start[key] for key in end
+            if isinstance(end.get(key), (int, float)) and isinstance(start.get(key), (int, float))}
+
+
+def activity_delta(before, after):
+    """Write activity over the bench command. Per table, only tables that
+    changed, with n_dead_tup as it stood at the end."""
+    a, b = before.get("db_activity") or {}, after.get("db_activity") or {}
+    tables = {}
+    for name, end in (b.get("tables") or {}).items():
+        delta = _numeric_delta((a.get("tables") or {}).get(name, {}), end) or {}
+        if any(v for k, v in delta.items() if k != "n_dead_tup"):
+            delta["n_dead_tup"] = end.get("n_dead_tup")
+            tables[name] = delta
+    return {"wal": _numeric_delta(a.get("wal"), b.get("wal")),
+            "checkpointer": _numeric_delta(a.get("checkpointer"), b.get("checkpointer")),
+            "bgwriter": _numeric_delta(a.get("bgwriter"), b.get("bgwriter")),
+            "tables": dict(sorted(tables.items(), key=lambda item: -item[1].get("n_tup_upd", 0)))}
+
+
 def counters(side, database, containers):
     stats = side.psql(database, "SELECT xact_commit, xact_rollback FROM pg_stat_database WHERE datname = current_database()")
     commit, rollback = (int(x) for x in stats.split("|"))
     stats_by_container = {k: cpu_stat(v) for k, v in containers.items()}
     return {"cpu": {k: stat.get("usage_usec") for k, stat in stats_by_container.items()},
-            "cpu_stat": stats_by_container, "commits": commit, "rollbacks": rollback,
+            "cpu_stat": stats_by_container, "kernel_ticks": kernel_cpu_ticks(containers["db"]),
+            "db_activity": db_activity(side, database), "commits": commit, "rollbacks": rollback,
             "clock": side.psql(database, "SELECT clock_timestamp()"), "t": time.perf_counter()}
 
 
@@ -493,6 +587,7 @@ def run_one(side, args, workers, index, raw_dir):
     if not args.no_engine:
         engine = side.start("engine", database, f"{side.project}-run-engine", side.cli[0],
                             [*side.cli[1:], "run-engine", *args.engine_args.split()])
+    engine_started = time.perf_counter()
     bench = side.start("bench", database, f"{side.project}-run-bench", "sleep", ["infinity"])
     time.sleep(args.engine_settle)
     for name in (engine, bench):
@@ -500,6 +595,13 @@ def run_one(side, args, workers, index, raw_dir):
             logs = sh(["docker", "logs", "--tail", "40", name], check=False)
             raise RuntimeError(f"{name} is not running:\n{logs.stdout}{logs.stderr}")
     containers = {"db": side.container("db"), "bench": bench, **({"engine": engine} if engine else {})}
+    # The engine must have finished starting before the probe and the bench.
+    engine_ready_s = engine_idle_cores = None
+    if engine:
+        engine_ready_s, engine_idle_cores = wait_for_engine(engine, engine_started, args.engine_ready_timeout)
+        if engine_ready_s is None:
+            log(f"  the engine did not settle within {args.engine_ready_timeout} s"
+                f" (last {engine_idle_cores} cores); the run goes ahead, and the result says so")
     # Before the measured window, and before the statement statistics reset.
     probe_ms, probe_samples = host_probe(side, database)
     side.psql(database, "SELECT pg_stat_statements_reset()")
@@ -614,7 +716,11 @@ def run_one(side, args, workers, index, raw_dir):
         "sent_total": sent_total,
         "cpu_s": cpu_window,
         "cpu_throttling": throttling(before, after),
+        "host_cpu": steal(before, after),
         "host_probe_ms": probe_ms,
+        "engine_ready_s": engine_ready_s,
+        "engine_idle_cores": engine_idle_cores,
+        "db_activity": activity_delta(before, after),
         "host_probe_samples_ms": probe_samples,
         "cpu_ms_per_command": {k: (round(v * 1000 / sent_total, 3) if v is not None and sent_total else None)
                                for k, v in cpu_window.items()},
@@ -671,11 +777,81 @@ else { $ac = [bool]($batteries | Where-Object { $_.BatteryStatus -ne 1 }) }
 """
 
 
+HOST_FACTS = Path("/etc/openar-sandbox/host-facts.json")
+HOST_FACT_KEYS = ("provider", "instance_type", "instance_id", "region", "availability_zone")
+
+
+def _read(path):
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+
+
+def linux_host():
+    """The Linux host, read from /proc, /sys, and lsblk. Anything unreadable stays null."""
+    host = {}
+    cpuinfo = _read("/proc/cpuinfo") or ""
+    model = next((line.split(":", 1)[1].strip() for line in cpuinfo.splitlines()
+                  if line.lower().startswith("model name")), None)
+    if not model:
+        # Arm processors, such as AWS Graviton, have no "model name" line.
+        lscpu = sh(["lscpu"], check=False).stdout
+        model = next((line.split(":", 1)[1].strip() for line in lscpu.splitlines()
+                      if line.startswith("Model name")), None)
+    host["cpu_model"] = model or platform.processor() or None
+    host["logical_cores"] = os.cpu_count()
+    meminfo = _read("/proc/meminfo") or ""
+    total_kb = next((int(line.split()[1]) for line in meminfo.splitlines() if line.startswith("MemTotal:")), None)
+    host["ram_bytes"] = total_kb * 1024 if total_kb else None
+    host["kernel"] = platform.release()
+    disks = []
+    out = sh(["lsblk", "-J", "-b", "-d", "-o", "NAME,MODEL,ROTA,TRAN,SIZE,TYPE"], check=False).stdout
+    try:
+        for d in json.loads(out).get("blockdevices", []):
+            if d.get("type") != "disk":
+                continue
+            rota = d.get("rota")
+            disks.append({"name": " ".join(filter(None, (d.get("name"), (d.get("model") or "").strip()))),
+                          "media_type": None if rota is None else ("HDD" if rota in (True, "1", 1) else "SSD"),
+                          "bus_type": d.get("tran"), "size_bytes": int(d["size"]) if d.get("size") else None})
+    except (ValueError, AttributeError):
+        disks = None
+    host["disks"] = disks or None
+    host["cpu_governor"] = _read("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
+    host["energy_performance_preference"] = _read(
+        "/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference")
+    supplies = list(Path("/sys/class/power_supply").glob("*"))
+    batteries = [d for d in supplies if (_read(d / "type") or "") == "Battery"]
+    mains = [d for d in supplies if (_read(d / "type") or "") == "Mains"]
+    host["has_battery"] = bool(batteries)
+    if mains:
+        host["on_ac_power"] = any(_read(d / "online") == "1" for d in mains)
+    else:
+        host["on_ac_power"] = True if not batteries else None
+    return host
+
+
+def host_facts():
+    """The cloud sandbox's facts file, written on the host's first boot from the
+    provider's metadata service, so the harness never calls that service. A
+    missing file means the host is not such a sandbox."""
+    try:
+        facts = json.loads(HOST_FACTS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return dict.fromkeys(HOST_FACT_KEYS)
+    return {key: facts.get(key) for key in HOST_FACT_KEYS}
+
+
 def host_machine():
-    """CPU model, logical cores, RAM, physical disks, power plan, and power
-    source. Windows only; every value is null elsewhere or if the probe fails."""
+    """CPU model, logical cores, RAM, physical disks, and power settings, read
+    on Windows with PowerShell and on Linux from /proc, /sys, and lsblk, plus
+    the cloud sandbox's host facts where that file exists. Values that cannot
+    be read are null."""
     host = dict.fromkeys(("cpu_model", "logical_cores", "ram_bytes", "disks", "power_plan", "power_plan_name",
-                          "has_battery", "on_ac_power"))
+                          "has_battery", "on_ac_power", "kernel", "cpu_governor", "energy_performance_preference"))
+    if platform.system() == "Linux":
+        host.update(linux_host())
     if platform.system() == "Windows":
         encoded = base64.b64encode(HOST_PROBE.encode("utf-16-le")).decode("ascii")
         result = sh(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded], check=False, timeout=120)
@@ -688,6 +864,7 @@ def host_machine():
     if host["power_plan"]:
         name = re.search(r"\(([^()]*)\)\s*$", host["power_plan"])
         host["power_plan_name"] = name.group(1) if name else None
+    host.update(host_facts())
     return host
 
 
@@ -741,6 +918,13 @@ def summarize(records):
             "throttled": {k: median([(r.get("cpu_throttling") or {}).get(k, {}).get("throttled_pct") for r in group])
                           for k in ("db", "engine", "bench")},
             "host_probe_ms": median([r.get("host_probe_ms") for r in group]),
+            "steal_pct": median([(r.get("host_cpu") or {}).get("steal_pct") for r in group]),
+            "wal_kb": median([round(((r.get("db_activity") or {}).get("wal") or {}).get("wal_bytes", 0) / 1024
+                                    / r["sent_total"], 2) if r.get("sent_total") and ((r.get("db_activity") or {}).get("wal"))
+                              else None for r in group]),
+            "fpi": median([round(((r.get("db_activity") or {}).get("wal") or {}).get("wal_fpi", 0) / r["sent_total"], 3)
+                           if r.get("sent_total") and ((r.get("db_activity") or {}).get("wal")) else None for r in group]),
+            "engine_ready_s": median([r.get("engine_ready_s") for r in group]),
             "statements": median([r["statements_per_command"] for r in group]),
             "commits": median([r["commits_per_command"] for r in group]),
             "transactions": median([r["bench"].get("transactions") for r in group]),
@@ -762,11 +946,20 @@ def host_line(env):
     platform_name = f" {env['docker_platform']}." if env.get("docker_platform") else ""
     if not host.get("cpu_model"):
         return platform_name
-    disks = ", ".join(f"{d.get('name')} ({d.get('bus_type')} {d.get('media_type')})" for d in host.get("disks") or [])
+    disks = ", ".join(
+        d.get("name") + (f" ({' '.join(filter(None, (d.get('bus_type'), d.get('media_type'))))})"
+                         if d.get("bus_type") or d.get("media_type") else "")
+        for d in host.get("disks") or [] if d.get("name"))
     power = {True: "on AC power", False: "on battery"}.get(host.get("on_ac_power"), "power source unknown")
+    if host.get("power_plan"):
+        setting = f"power plan {host.get('power_plan_name') or host['power_plan']}"
+    else:
+        setting = f"CPU governor {host.get('cpu_governor') or 'not exposed'}"
+    cloud = (f" {host['provider']} {host.get('instance_type')} in {host.get('availability_zone')}."
+             if host.get("provider") else "")
     return (f" Host: {host['cpu_model']}, {host.get('logical_cores')} logical cores,"
             f" {round((host.get('ram_bytes') or 0) / 2**30)} GiB RAM; disks: {disks or 'unknown'};"
-            f" power plan {host.get('power_plan_name') or host.get('power_plan')}, {power}.{platform_name}")
+            f" {setting}, {power}.{cloud}{platform_name}")
 
 
 def render(meta, env, rows, records):
@@ -801,12 +994,16 @@ def render(meta, env, rows, records):
         " percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much"
         " of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in"
         " the run's database just before the bench, outside the measured window; a probe well above the night's usual"
-        " marks a run during which the machine itself ran slow.",
+        " marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the"
+        " hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is"
+        " the write-ahead log written per command over the bench command, with full-page images per command; the WAL,"
+        " checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready"
+        " is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.",
         "",
         "| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd |"
         " Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 |"
-        " Throttled % db / engine / bench | Host probe ms | Gates |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        " Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         lines.append(f"| {r['workers']} | {r['succeeded_per_s']} | {r['p50_ms']} | {r['p99_ms']} | {r['bench_cpu_ms']} |"
@@ -814,7 +1011,8 @@ def render(meta, env, rows, records):
                      f" {r['transactions']} ({r['fallback_chunks']}) | {r['max_lag']} | {r['catchup_s']} |"
                      f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} |"
                      f" {r['throttled']['db']} / {r['throttled']['engine']} / {r['throttled']['bench']} |"
-                     f" {r['host_probe_ms']} | {'pass' if r['gates'] else 'FAIL'} |")
+                     f" {r['host_probe_ms']} | {r['steal_pct']} | {r['wal_kb']} ({r['fpi']}) | {r['engine_ready_s']} |"
+                     f" {'pass' if r['gates'] else 'FAIL'} |")
     skipped = sorted({name for r in records for name in r.get("gates_skipped", [])})
     if skipped:
         lines += ["", "Gates skipped because of the diagnostic: " + "; ".join(skipped) + "."]
@@ -904,7 +1102,10 @@ def main():
             p.add_argument("--engine-args", default="", help='run-engine flags, for example "--rule-workers 4"')
             p.add_argument("--repeat", type=int, default=1, help="measured runs per worker count (3 for a recorded result)")
             p.add_argument("--warmup-runs", type=int, default=0, help="unreported runs first (1 for a recorded result)")
-            p.add_argument("--engine-settle", type=float, default=5, help="seconds between starting the engine and the bench")
+            p.add_argument("--engine-settle", type=float, default=5,
+                           help="minimum seconds between starting the engine and checking that it has settled")
+            p.add_argument("--engine-ready-timeout", type=float, default=180,
+                           help="seconds to wait for the engine to finish starting before the run goes ahead anyway")
             p.add_argument("--catchup-timeout", type=float, default=1800)
             p.add_argument("--timeout", type=float, default=6 * 3600)
             p.add_argument("--label")
