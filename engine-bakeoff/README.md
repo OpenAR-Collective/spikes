@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: two measured passes are complete, and the third is planned. Four sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; C# with a direct append; and C# without Marten. Every run of both passes, at 500,000 accounts, passed every correctness gate that applied to it, and their results are below.
+Status: two measured passes are complete, and the first group of the third has run; its other groups wait for Rob's go. Four sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; C# with a direct append; and C# without Marten. Every run of both passes, at 500,000 accounts, passed every correctness gate that applied to it, and their results are below.
 
 ## Background
 
@@ -210,6 +210,42 @@ What the pass shows:
 The diagnostics ran the payment file at 16 workers on every side. With the engine paused, the C# sides ran 1,014 (through Marten), 1,114 (direct append), and 1,301 (without Marten) commands per second; with hashing off, 1,071, 1,190, and 1,172. Only the side without Marten has a normal run at 16 workers in this pass, at 992, so against it, pausing the engine was worth about 31 percent and turning hashing off about 18 percent. Python's diagnostics at 16 workers do not isolate anything, because its driver was at its CPU limit and the host ran slow during its engine-paused run, as the limits below describe. The next pass repeats the diagnostics at 8 workers, below Python's limit, with each side's normal, engine-paused, and hashing-off runs back to back.
 
 Limits of this pass: one run per configuration, so no spread is known, and the host's speed was not constant. In Python's engine-paused run, every statement's average time in PostgreSQL, a trivial in-memory lookup included, ran about 1.5 times as long as in other runs, and Python's payment file at 32 workers showed the same; nothing in either run's code explains it, so the laptop itself slowed, most likely from clock speed, heat, or Docker's processors landing on the efficiency cores. Differences of 10 or 20 percent between single runs taken at different times of the night are therefore within the noise until the repeats arrive, and the percentages above are indications, not measurements of an effect. From the next pass, each run also records a host-speed probe and each container's CPU-throttle counters, so a slow host shows in the result. The engines' settings differ by side, because each side was tuned to its own runtime, and the first pass's figures marked * used the same untuned setting on every side. A light scheduled job that does not use Docker ran at 08:07 during Python's bulk payment file at 4 workers.
+
+### Third pass, group 1 only, 2026-10-10
+
+At Rob's instruction the third pass ran only its group 1, the 21 runs the second pass skipped for time, on the benchmark laptop from 10:32 to 16:42 under the plan in [passes](passes/third-pass.plan.md). All 21 passed every gate that applied to them. Groups 2 to 4, the diagnostic triples at 8 workers, the core repeat, and the second round of triples, did not run and wait for Rob's go. The host-speed probe stayed between 716 and 795 ms all day, so the laptop showed none of the slowdown seen in the second pass. Each run's record is in the folders whose names contain `third-pass`.
+
+With these runs every side has tuned batch results at every worker count. Commands per second, one run each; the 8- and 32-worker figures, and every figure for the C# side without Marten, come from the second pass:
+
+| Workload | Workers | C# through Marten | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- | --- |
+| Payment file | 4 | 406 | 386 | 415 | 239 |
+| Payment file | 8 | 679 | 729 | 804 | 427 |
+| Payment file | 16 | 815 | 932 | 992 | 372 |
+| Payment file | 32 | 622 | 691 | 701 | 276 |
+| Interest accrual | 4 | 398 | 307 | 410 | 366 |
+| Interest accrual | 8 | 835 | 787 | 834 | 556 |
+| Interest accrual | 16 | 1,046 | 1,416 | 1,547 | 569 |
+| Interest accrual | 32 | 919 | 1,044 | 1,054 | 469 |
+
+The untuned real-time runs repeat the first pass's engine setting, `--rule-workers 4` on every side, under the corrected method. Inbound commands per second, with the rule delay's 99th percentile in seconds, against the tuned runs of the second pass:
+
+| Workers | Engines | C# through Marten | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- | --- |
+| 4 | Untuned | 275 (1.0 s) | 443 (1.0 s) | 382 (0.5 s) | 190 (1.1 s) |
+| 4 | Tuned | 461 (1.0 s) | 395 (1.0 s) | 512 (0.5 s) | 237 (5.5 s) |
+| 16 | Untuned | 569 (26.2 s) | 631 (25.8 s) | 1,096 (28.8 s) | 348 (1.6 s) |
+| 16 | Tuned | 559 (1.2 s) | 642 (1.1 s) | 646 (0.7 s) | 330 (10.7 s) |
+
+Python placed 100,000 new accounts at 16 workers at 432 per second one command each and 11,391 per second in bulk, with its read models and rules catching up in about 25 and 29 minutes.
+
+What these runs add:
+
+- **Single runs vary more than the differences between sides.** The untuned real-time runs repeat configurations the first pass ran, and the same configuration moved by -16 to +47 percent between passes: the side through Marten went from 297 to 275 at 4 workers and from 651 to 569 at 16, the direct append from 302 to 443 at 4 and from 755 to 631 at 16, and Python from 194 to 190 at 4 and from 292 to 348 at 16. The order of the C# sides at one worker count is therefore not settled by one run, and margins between them should not be quoted until repeats exist.
+- **Batch work peaks at 16 workers on the C# sides.** Python's payment file peaks at 8, where its driver is still below its CPU limit.
+- **Tuning the rule runner mattered at 16 workers.** With four rule workers, every C# side's rules fell 25 to 29 seconds behind at the 99th percentile, so part of the rule work landed after the measured window. On the side without Marten that freed enough database time to lift its inbound rate to 1,096 per second; on the other two C# sides the inbound rate barely moved. Tuned, all three kept up within 1.2 seconds, so the untuned 16-worker figures are not comparable with the tuned ones. At 4 workers every side's rules kept up under both settings, and the inbound differences there are within the run-to-run spread above. Python went the other way: four rule workers kept up at 16 workers, with a 99th-percentile delay of 1.6 seconds, where its tuned eight lagged at 10.7. Each Python rule worker is its own process, so at 500,000 accounts more of them crowd the engine's 2 CPUs; its tuning trial at 50,000 accounts did not show this, and its setting should be revisited.
+- **Past about 8 concurrent workers, every statement costs more.** In the committed statement records, the event insert of the side without Marten took 0.26, 0.38, 0.73, and 1.58 ms as the number of active sessions grew, and Marten's append function went from 0.90 ms to about 1.8 ms. Every side shares hot spots that would explain this: one event sequence, the rightmost leaf of the index on it, and a few small, often-updated tables. The 16- and 32-worker results therefore measure contention as much as language or library.
+- **The C# side without Marten spends the least database CPU per command in most rows,** 4.7 ms per real-time command at 8 workers against 6.9 through Marten and 6.4 with the direct append. Statement times explain the gap between Marten's append and the direct append, but most of the gap between the direct append and the side without Marten lies outside statement execution, which accounts for only about a quarter of database CPU on every side. One hypothesis is the cost of updating Marten's stream table on every command, through dead tuples, vacuum, and full-page writes after each checkpoint; the harness records no WAL or checkpoint statistics yet, so it is unconfirmed.
 
 ## Attribution
 
