@@ -1,0 +1,49 @@
+# The engine bake-off's scaled profile, for the 32-vCPU AWS host. The harness
+# applies this file in place of compose.override.yml when a run is made with
+# --caps scaled, and every result records which profile it used. It asks
+# where each side stops scaling when the database has 16 CPUs: the database
+# 16 CPUs and 64 GB, the bench driver 8 and 16 GB, and the engine 4 and 8 GB,
+# 28 of the host's 32 vCPUs, leaving 4 for the host and Docker. The PostgreSQL
+# settings are the standard profile's, scaled with the memory: shared_buffers
+# a quarter of the database's memory, and enough WAL that no checkpoint falls
+# inside a run. Like compose.override.yml, a change here is a change to the
+# method: commit it with its reason, and rerun earlier results under it.
+services:
+  db:
+    cpus: 16
+    mem_limit: 64g
+    shm_size: 4g
+    command:
+      - postgres
+      - -c
+      - shared_buffers=16GB
+      - -c
+      - effective_cache_size=48GB
+      - -c
+      - max_connections=300
+      - -c
+      - max_wal_size=32GB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - wal_buffers=64MB
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=top
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - track_io_timing=on
+      # A session left idle inside a transaction would hold back every
+      # reader, so the database ends it.
+      - -c
+      - idle_in_transaction_session_timeout=300000
+
+  engine:
+    cpus: 4
+    mem_limit: 8g
+
+  bench:
+    cpus: 8
+    mem_limit: 16g
