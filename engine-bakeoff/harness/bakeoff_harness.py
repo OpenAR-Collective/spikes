@@ -63,6 +63,8 @@ OVERRIDE = HARNESS / "compose.override.yml"
 # layered on it.
 CAPS = {"standard": OVERRIDE, "scaled": HARNESS / "compose.scale.yml"}
 PGBOUNCER = HARNESS / "compose.pgbouncer.yml"
+# compose.pgbouncer.yml's DEFAULT_POOL_SIZE when --pool-size is not given.
+DEFAULT_POOL_SIZE = 60
 SIDES = json.loads((HARNESS / "sides.json").read_text(encoding="utf-8"))
 WORKLOADS = ["batch-payments", "batch-accrual", "batch-payments-bulk", "placement", "placement-bulk", "realtime"]
 PLACEMENTS = ("placement", "placement-bulk")
@@ -107,7 +109,7 @@ def last_json(text):
 
 
 class Side:
-    def __init__(self, name, pgbouncer=False, caps="standard"):
+    def __init__(self, name, pgbouncer=False, caps="standard", pool_size=None):
         spec = SIDES[name]
         if caps not in CAPS:
             raise ValueError(f"unknown caps profile {caps!r}; the profiles are {sorted(CAPS)}")
@@ -129,6 +131,10 @@ class Side:
         # Marten side, whose writer is the direct side's (WORKLOADS.md).
         self.workloads_excluded = spec.get("workloads_excluded", [])
         self.pgbouncer = pgbouncer
+        if pool_size is not None and not pgbouncer:
+            raise SystemExit("--pool-size sets pgBouncer's pool, so it needs --pgbouncer")
+        # The pool size in effect, recorded with every result that used pgBouncer.
+        self.pool_size = (pool_size or DEFAULT_POOL_SIZE) if pgbouncer else None
 
     def env_flags(self):
         return [flag for key, value in self.container_env.items() for flag in ("-e", f"{key}={value}")]
@@ -138,7 +144,8 @@ class Side:
         return files + (["-f", str(PGBOUNCER)] if self.pgbouncer else [])
 
     def dc(self, *args, database=None, check=True, timeout=None):
-        env = {**self.compose_env, **({"BAKEOFF_DATABASE": database} if database else {})}
+        env = {**self.compose_env, **({"BAKEOFF_DATABASE": database} if database else {}),
+               **({"BAKEOFF_POOL_SIZE": str(self.pool_size)} if self.pool_size else {})}
         return sh(["docker", "compose", "-p", self.project, *self.files(), "--profile", self.profile, *args],
                   env=env, check=check, timeout=timeout)
 
@@ -605,7 +612,8 @@ def run_one(side, args, workers, index, raw_dir):
         if name and not running(name):
             logs = sh(["docker", "logs", "--tail", "40", name], check=False)
             raise RuntimeError(f"{name} is not running:\n{logs.stdout}{logs.stderr}")
-    containers = {"db": side.container("db"), "bench": bench, **({"engine": engine} if engine else {})}
+    containers = {"db": side.container("db"), "bench": bench, **({"engine": engine} if engine else {}),
+                  **({"pgbouncer": side.container("pgbouncer")} if side.pgbouncer else {})}
     # The engine must have finished starting before the probe and the bench.
     engine_ready_s = engine_idle_cores = None
     if engine:
@@ -722,6 +730,7 @@ def run_one(side, args, workers, index, raw_dir):
         "hashing": args.hash,
         "caps": side.caps,
         "pgbouncer": side.pgbouncer,
+        "pool_size": side.pool_size,
         "bench": bench_json,
         "bench_exit_code": result.returncode,
         "window_s": round(window, 3),
@@ -932,7 +941,8 @@ def summarize(records):
             "engine_cpu_ms": median([r["cpu_ms_per_command"].get("engine") for r in group]),
             "db_cpu_ms": median([r["cpu_ms_per_command"].get("db") for r in group]),
             "throttled": {k: median([(r.get("cpu_throttling") or {}).get(k, {}).get("throttled_pct") for r in group])
-                          for k in ("db", "engine", "bench")},
+                          for k in ("db", "engine", "bench", "pgbouncer")},
+            "pgbouncer_cpu_ms": median([r["cpu_ms_per_command"].get("pgbouncer") for r in group]),
             "host_probe_ms": median([r.get("host_probe_ms") for r in group]),
             "steal_pct": median([(r.get("host_cpu") or {}).get("steal_pct") for r in group]),
             "wal_kb": median([round(((r.get("db_activity") or {}).get("wal") or {}).get("wal_bytes", 0) / 1024
@@ -987,7 +997,7 @@ def render(meta, env, rows, records):
         f"{' (' + ', '.join(f'{k}={v}' for k, v in meta['side_env'].items()) + ')' if meta['side_env'] else ''}."
         f" Workload: {meta['workload']}. Accounts: {meta['accounts']:,}."
         f"{' New accounts placed per run: ' + format(meta['placements'], ',') + '.' if meta.get('placements') else ''}"
-        f" Engine arguments: `{meta['engine_args'] or '(defaults)'}`. pgBouncer: {'yes' if meta['pgbouncer'] else 'no'}."
+        f" Engine arguments: `{meta['engine_args'] or '(defaults)'}`. pgBouncer: {'yes, pool size ' + str(meta.get('pool_size')) if meta['pgbouncer'] else 'no'}."
         f" Caps: {meta.get('caps', 'standard')}"
         f"{' (' + (meta.get('caps_sha256') or '')[:12] + ')' if meta.get('caps_sha256') else ''}."
         f"{' Engine paused: the engine did not run, so nothing read the stream and there is no catch-up.' if meta.get('engine_paused') else ''}"
@@ -1028,9 +1038,14 @@ def render(meta, env, rows, records):
                      f" {r['engine_cpu_ms']} | {r['db_cpu_ms']} | {r['statements']} | {r['commits']} |"
                      f" {r['transactions']} ({r['fallback_chunks']}) | {r['max_lag']} | {r['catchup_s']} |"
                      f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} |"
-                     f" {r['throttled']['db']} / {r['throttled']['engine']} / {r['throttled']['bench']} |"
+                     f" {r['throttled']['db']} / {r['throttled']['engine']} / {r['throttled']['bench']}"
+                     f"{' / pgBouncer ' + str(r['throttled']['pgbouncer']) if r['throttled']['pgbouncer'] is not None else ''} |"
                      f" {r['host_probe_ms']} | {r['steal_pct']} | {r['wal_kb']} ({r['fpi']}) | {r['engine_ready_s']} |"
                      f" {'pass' if r['gates'] else 'FAIL'} |")
+    if any(r.get("pgbouncer_cpu_ms") is not None for r in rows):
+        lines += ["", "pgBouncer, by worker count: " + "; ".join(
+            f"{r['workers']} workers, {r['pgbouncer_cpu_ms']} ms CPU per command, throttled {r['throttled']['pgbouncer']}%"
+            for r in rows) + ". It runs single-threaded with 1 CPU, so a high throttle share means it was the ceiling."]
     skipped = sorted({name for r in records for name in r.get("gates_skipped", [])})
     if skipped:
         lines += ["", "Gates skipped because of the diagnostic: " + "; ".join(skipped) + "."]
@@ -1048,7 +1063,7 @@ def render(meta, env, rows, records):
 
 
 def cmd_run(args):
-    side = Side(args.side, args.pgbouncer, caps=args.caps)
+    side = Side(args.side, args.pgbouncer, caps=args.caps, pool_size=args.pool_size)
     if args.workload in side.workloads_excluded:
         raise SystemExit(f"{side.name} does not run {args.workload}; see workloads_excluded in sides.json")
     if args.hash == "off":
@@ -1069,7 +1084,7 @@ def cmd_run(args):
             "placements": args.placements if args.workload in PLACEMENTS else None,
             "engine_args": args.engine_args, "engine_paused": args.no_engine, "hashing": args.hash,
             "caps": side.caps, "caps_sha256": env["caps_sha256"],
-            "pgbouncer": args.pgbouncer, "repeat": args.repeat,
+            "pgbouncer": args.pgbouncer, "pool_size": side.pool_size, "repeat": args.repeat,
             "warmup_runs": args.warmup_runs, "record": args.record,
             "started": datetime.now().isoformat(timespec="seconds")}
     records, index = [], 0
@@ -1112,6 +1127,8 @@ def main():
             p.add_argument("--workload", choices=WORKLOADS, required=True)
             p.add_argument("--workers", default="1,2,4,8,16,32", help="comma-separated worker counts")
             p.add_argument("--placements", type=int, default=100_000, help="new accounts per placement run")
+            p.add_argument("--pool-size", type=int,
+                           help=f"pgBouncer's DEFAULT_POOL_SIZE (with --pgbouncer; {DEFAULT_POOL_SIZE} when not given)")
             p.add_argument("--no-engine", action="store_true",
                            help="diagnostic: run without the engine; read-model and rule gates are skipped")
             p.add_argument("--hash", choices=["on", "off"], default="on",

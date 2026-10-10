@@ -17,7 +17,8 @@ services:
       POOL_MODE: transaction
       LISTEN_PORT: "6432"
       MAX_CLIENT_CONN: "500"
-      DEFAULT_POOL_SIZE: "60"
+      # The harness's --pool-size sets this; 60 when it is not given.
+      DEFAULT_POOL_SIZE: "${BAKEOFF_POOL_SIZE:-60}"
     depends_on:
       db:
         condition: service_healthy
