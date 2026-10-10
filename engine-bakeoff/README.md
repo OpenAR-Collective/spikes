@@ -2,7 +2,7 @@
 
 This experiment runs the same Wax workloads in two stacks, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). The challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
 
-Status: the first measured pass is complete, and the second is planned. Four sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; C# with a direct append; and C# without Marten. All 18 runs of the first pass, at 500,000 accounts, passed every correctness gate, and their results are below.
+Status: two measured passes are complete, and the third is planned. Four sides are built and tested: Python, adapted from Andy's prototype; C# through Marten; C# with a direct append; and C# without Marten. Every run of both passes, at 500,000 accounts, passed every correctness gate that applied to it, and their results are below.
 
 ## Background
 
@@ -139,6 +139,68 @@ What the pass shows:
 - **The threshold.** No side came near 6,900 commands per second on this laptop. The best was 1,287, the direct append's accrual at 16 workers. The laptop runs say how the stacks compare, not whether either clears the threshold on server hardware.
 
 Limits of this pass: the catch-up time that each real-time run's record reports is not comparable across sides, because dispute reviews scheduled near the end of a run keep firing for up to 60 seconds afterward and keep moving the head; batch catch-up times are unaffected. The real-time CPU figures include the warm-up's CPU but are divided only by the commands of the measured window, so they read about a third high, by the ratio of 240 seconds to 180; the ratios between the sides hold, and the batch figures and the database ceiling, which use batch runs, are unaffected. One run per configuration, so no spread is known; a laptop under Docker Desktop, with 13 unrelated containers running and possibly slowing itself for heat over a seven-hour run; the sides ran in order, so a side's place in the night is mixed with its result; and neither engine was tuned. Repeats, the remaining worker counts, and tuned engines are the next decisions. After this pass, Rob approved two corrections to the method that fix the flaws above: catch-up now ends at the head as it stood when the bench command ended, and CPU per command now divides by every command sent, the warm-up's included. The real-time runs are repeated under the corrected method in the next pass.
+
+### Second pass, 2026-10-09 and 2026-10-10
+
+The pass ran overnight from 21:07 to 09:31 on the benchmark laptop, under the plan committed before it in [passes](passes/second-pass.plan.md), with the engines tuned as the method describes and the containers of the unrelated stack stopped. It completed 61 of the plan's 82 runs, and every one passed every gate that applied to it. All of group 1, the core comparison, and all of group 2, the diagnostics, ran. Group 3, the bulk workloads, ran 16 of its 18 runs; Python's placement and bulk placement at 16 workers did not fit before the deadline. Group 4 ran 1 of its 8 untuned runs, and group 5 none. The skipped runs carry over to the next pass. Each run's record is in [results](results/README.md), in the folders whose names contain `second-pass`.
+
+Throughput, in commands per second, one run each. A figure marked * comes from the first pass, with every engine untuned at `--rule-workers 4`; the second pass did not run those configurations:
+
+| Workload | Workers | C# through Marten | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- | --- |
+| Payment file | 4 | 425* | 321* | 415 | 205* |
+| Payment file | 8 | 679 | 729 | 804 | 427 |
+| Payment file | 16 | 841* | 975* | 992 | 310* |
+| Payment file | 32 | 622 | 691 | 701 | 276 |
+| Interest accrual | 4 | 334* | 337* | 410 | 264* |
+| Interest accrual | 8 | 835 | 787 | 834 | 556 |
+| Interest accrual | 16 | 1,168* | 1,287* | 1,547 | 489* |
+| Interest accrual | 32 | 919 | 1,044 | 1,054 | 469 |
+| Real time, inbound | 4 | 461 | 395 | 512 | 237 |
+| Real time, inbound | 8 | 647 | 656 | 1,020 | 407 |
+| Real time, inbound | 16 | 559 | 642 | 646 | 330 |
+| Real time, inbound | 32 | 487 | 598 | 628 | 268 |
+
+CPU per command at 8 workers, in milliseconds, application (the driver and the engine together) / database. At 8 workers no side's driver is at its CPU limit:
+
+| Workload | C# through Marten | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- |
+| Payment file | 1.7 / 5.2 | 1.5 / 4.7 | 1.9 / 4.6 | 12.8 / 7.4 |
+| Interest accrual | 1.3 / 3.7 | 1.2 / 3.7 | 1.6 / 3.9 | 6.9 / 4.1 |
+| Real time | 2.2 / 6.9 | 2.0 / 6.4 | 2.0 / 4.7 | 13.1 / 7.7 |
+
+The real-time rule delay, from an event committing to its rule's action committing, in seconds, 50th / 99th percentile:
+
+| Workers | C# through Marten | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- |
+| 4 | 0.23 / 1.01 | 0.24 / 1.03 | 0.23 / 0.52 | 1.29 / 5.53 |
+| 8 | 0.22 / 1.02 | 0.23 / 1.03 | 0.22 / 0.52 | 2.87 / 5.21 |
+| 16 | 0.29 / 1.16 | 0.30 / 1.11 | 0.33 / 0.69 | 6.57 / 10.70 |
+| 32 | 0.42 / 1.40 | 0.41 / 1.41 | 0.80 / 1.83 | 1.98 / 3.12 |
+
+The bulk workloads, in aggregates per second, with the time the read models and rules took to catch up afterward. A bulk run's command is a chunk of 1,000 aggregates, so its rate is counted in aggregates to compare with one command per aggregate:
+
+| Workload | Workers | C# with direct append | C# without Marten | Python |
+| --- | --- | --- | --- | --- |
+| Bulk payment file | 4 | 13,071 (79 s) | 16,198 (94 s) | 11,791 (1,704 s) |
+| Bulk payment file | 16 | 8,576 (99 s) | 11,694 (111 s) | 12,051 (1,657 s) |
+| Placement, one command each | 4 | 301 (3 s) | 370 (3 s) | 262 (1,319 s) |
+| Placement, one command each | 16 | 471 (62 s) | 503 (57 s) | skipped |
+| Bulk placement | 4 | 4,790 (130 s) | 7,481 (133 s) | 15,640 (1,731 s) |
+| Bulk placement | 16 | 12,077 (134 s) | 8,831 (144 s) | skipped |
+
+What the pass shows:
+
+- **Past 16 workers every side slowed.** At 32 workers every side's payment file ran slower than at 8, and real time peaked at 8 workers on every side. The C# sides' database CPU per payment rose from about 5 ms at 8 workers to about 9 ms at 32. On this laptop the database's 6 CPUs set the ceiling, and contention at high worker counts adds cost on top.
+- **The C# side without Marten led or tied in most rows,** with the lowest or nearly the lowest database CPU per command. One figure is out of line with its neighbors: its real-time inbound rate at 8 workers, 1,020 per second against 512 at 4 and 646 at 16. One run cannot say whether that is real.
+- **Python's application spent 4 to 9 times as much CPU per command as the C# sides at 8 workers,** and its database 1.1 to 1.6 times as much. At 16 and 32 workers Python's driver is held at its 4-CPU limit, so its throughput there is 4 CPUs divided by its CPU per command: a measure of Python's cost per command, not of its engine or its database.
+- **Tuning worked for read models.** After the batch jobs, every C# side's read models were caught up within 3 to 6 seconds after the bench ended, except 26 seconds for the side without Marten after accrual at 32 workers. Python's took 3 to 13 minutes, down from 31 to 46 minutes in the first pass, with three projection workers.
+- **Rules under load.** Every C# side's rule runner kept up at every worker count, with a 99th-percentile delay of 1.8 seconds or less. Python's kept up in its 50,000-account trial, but at 500,000 accounts its 99th-percentile delay was 5.2 to 10.7 seconds at 4, 8, and 16 workers, and 3.1 seconds at 32.
+- **Bulk writes are an order of magnitude faster.** One transaction per chunk of 1,000 aggregates moved 8,600 to 16,200 aggregates per second through the payment file, against 280 to 990 commands per second one at a time, with every event still hashed and chained to its own aggregate. Placement in bulk ran 16 to 60 times faster than one command per account. Python's bulk writes kept pace with the C# sides', but its read models and rules then took about 28 minutes to catch up, against 1.3 to 2.4 minutes on the C# sides.
+
+The diagnostics ran the payment file at 16 workers on every side. With the engine paused, the C# sides ran 1,014 (through Marten), 1,114 (direct append), and 1,301 (without Marten) commands per second; with hashing off, 1,071, 1,190, and 1,172. Only the side without Marten has a normal run at 16 workers in this pass, at 992, so against it, pausing the engine was worth about 31 percent and turning hashing off about 18 percent. Python's diagnostics at 16 workers do not isolate anything, because its driver was at its CPU limit and the host ran slow during its engine-paused run, as the limits below describe. The next pass repeats the diagnostics at 8 workers, below Python's limit, with each side's normal, engine-paused, and hashing-off runs back to back.
+
+Limits of this pass: one run per configuration, so no spread is known, and the host's speed was not constant. In Python's engine-paused run, every statement's average time in PostgreSQL, a trivial in-memory lookup included, ran about 1.5 times as long as in other runs, and Python's payment file at 32 workers showed the same; nothing in either run's code explains it, so the laptop itself slowed, most likely from clock speed, heat, or Docker's processors landing on the efficiency cores. Differences of 10 or 20 percent between single runs taken at different times of the night are therefore within the noise until the repeats arrive, and the percentages above are indications, not measurements of an effect. From the next pass, each run also records a host-speed probe and each container's CPU-throttle counters, so a slow host shows in the result. The engines' settings differ by side, because each side was tuned to its own runtime, and the first pass's figures marked * used the same untuned setting on every side. A light scheduled job that does not use Docker ran at 08:07 during Python's bulk payment file at 4 workers.
 
 ## Attribution
 
