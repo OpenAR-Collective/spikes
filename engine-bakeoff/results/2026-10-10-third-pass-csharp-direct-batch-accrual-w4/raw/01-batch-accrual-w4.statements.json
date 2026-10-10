@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 500000,
+  "total_ms": 126545.7,
+  "mean_ms": 0.2531,
+  "rows": 500000,
+  "query": "INSERT INTO core.mt_events (seq_id, id, stream_id, version, data, type, tenant_id, timestamp, mt_dotnet_type, is_archived, headers) VALUES (nextval($8), $1, $2, $3, $4, $5, $9, now(), $6, $10, $7)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 44539.3,
+  "mean_ms": 0.0891,
+  "rows": 500000,
+  "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 38120.0,
+  "mean_ms": 0.0762,
+  "rows": 1500000,
+  "query": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 33829.9,
+  "mean_ms": 0.0677,
+  "rows": 500000,
+  "query": "SELECT s.id, s.version, e.headers ->> $2 FROM core.mt_streams s JOIN core.mt_events e ON e.stream_id = s.id AND e.version = s.version WHERE s.id = ANY($1)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 30611.7,
+  "mean_ms": 0.0612,
+  "rows": 500000,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrued_through = $4, queue_code = $5::text WHERE account_pk = $6"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 28481.8,
+  "mean_ms": 0.057,
+  "rows": 500000,
+  "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $5) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3 WHERE account_summary_read_model_pk = $4"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 27533.7,
+  "mean_ms": 0.0551,
+  "rows": 500000,
+  "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 23820.6,
+  "mean_ms": 0.0476,
+  "rows": 500000,
+  "query": "UPDATE core.mt_streams SET version = $2, timestamp = now() WHERE id = $1"
+ },
+ {
+  "calls": 18032,
+  "total_ms": 23641.7,
+  "mean_ms": 1.3111,
+  "rows": 500000,
+  "query": "select d.data, d.type, d.mt_dotnet_type, d.bdata, d.seq_id, d.id, d.stream_id, d.version, d.timestamp, d.tenant_id, d.headers, d.is_archived, s.type as stream_type from core.mt_events as d inner join core.mt_streams as s on d.stream_id = s.id where d.seq_id > $1 and d.seq_id <= $2 and d.type = ANY($"
+ },
+ {
+  "calls": 562095,
+  "total_ms": 9012.2,
+  "mean_ms": 0.016,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 500,
+  "total_ms": 3099.7,
+  "mean_ms": 6.1994,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+ },
+ {
+  "calls": 518033,
+  "total_ms": 3026.5,
+  "mean_ms": 0.0058,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 4508,
+  "total_ms": 1931.3,
+  "mean_ms": 0.4284,
+  "rows": 4508,
+  "query": "select core.mt_mark_event_progression($2, $1)"
+ },
+ {
+  "calls": 4508,
+  "total_ms": 1570.0,
+  "mean_ms": 0.3483,
+  "rows": 4508,
+  "query": "select (select min(seq_id) from core.mt_events where seq_id > $1) as first_after, (select seq_id from (select seq_id, lead(seq_id) over (order by seq_id) as next_seq from core.mt_events where seq_id >= $1) gaps where next_seq is not null and next_seq - seq_id > $2 order by seq_id limit $3) as gap_ed"
+ },
+ {
+  "calls": 18032,
+  "total_ms": 1262.1,
+  "mean_ms": 0.07,
+  "rows": 18032,
+  "query": "update core.mt_event_progression set last_seq_id = $1, last_updated = transaction_timestamp() where name = $2 and last_seq_id = $3"
+ },
+ {
+  "calls": 518033,
+  "total_ms": 509.6,
+  "mean_ms": 0.001,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 1,
+  "total_ms": 345.7,
+  "mean_ms": 345.7429,
+  "rows": 500,
+  "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+ },
+ {
+  "calls": 4516,
+  "total_ms": 318.9,
+  "mean_ms": 0.0706,
+  "rows": 4516,
+  "query": "select (select last_value from core.mt_events_sequence) as highest_sequence, transaction_timestamp() as \"timestamp\", pg_snapshot_xmax(pg_current_snapshot())::text::bigint as current_xmax, p.last_seq_id, p.last_updated, (select case when is_called then last_value else last_value - $1 end from core.mt"
+ },
+ {
+  "calls": 6500,
+  "total_ms": 275.0,
+  "mean_ms": 0.0423,
+  "rows": 0,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= now() ORDER BY due_at LIMIT $2"
+ },
+ {
+  "calls": 882,
+  "total_ms": 156.0,
+  "mean_ms": 0.1769,
+  "rows": 882,
+  "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+ },
+ {
+  "calls": 504,
+  "total_ms": 96.8,
+  "mean_ms": 0.1921,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $3, claimed_by_instance = $2, claim_expires_at = now() + interval $4 WHERE batch_job_chunk_pk = (SELECT batch_job_chunk_pk FROM core.batch_job_chunk WHERE batch_job_run_fk = $1 AND status = $5 ORDER BY chunk_sequence_number LIMIT $6 FOR UPDATE SKIP LOCKED) RE"
+ },
+ {
+  "calls": 4516,
+  "total_ms": 89.1,
+  "mean_ms": 0.0197,
+  "rows": 8,
+  "query": "insert into core.mt_event_progression(name, last_seq_id, last_updated) select $2, alloc.high, transaction_timestamp() from (select case when is_called then last_value else last_value - $3 end as high from core.mt_events_sequence) alloc where alloc.high <= $1 on conflict (name) do update set last_seq"
+ },
+ {
+  "calls": 500,
+  "total_ms": 79.9,
+  "mean_ms": 0.1597,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job_chunk_pk = $1"
+ },
+ {
+  "calls": 1,
+  "total_ms": 1.8,
+  "mean_ms": 1.7575,
+  "rows": 172,
+  "query": "SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid FROM ( -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a -- We first do this for the type (innerest-most subquery), and then for its element type -- This also returns"
+ },
+ {
+  "calls": 8,
+  "total_ms": 0.4,
+  "mean_ms": 0.0475,
+  "rows": 8,
+  "query": "update core.mt_event_progression set last_updated = transaction_timestamp() where name = $1"
+ }
+]
