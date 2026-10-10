@@ -57,6 +57,11 @@ from pathlib import Path
 HARNESS = Path(__file__).resolve().parent
 BAKEOFF = HARNESS.parent
 OVERRIDE = HARNESS / "compose.override.yml"
+# The caps profiles. Each is the Compose file applied on top of a side's own,
+# setting the PostgreSQL settings and every service's CPU and memory limits.
+# The scaled profile is a complete file used in place of the standard one, not
+# layered on it.
+CAPS = {"standard": OVERRIDE, "scaled": HARNESS / "compose.scale.yml"}
 PGBOUNCER = HARNESS / "compose.pgbouncer.yml"
 SIDES = json.loads((HARNESS / "sides.json").read_text(encoding="utf-8"))
 WORKLOADS = ["batch-payments", "batch-accrual", "batch-payments-bulk", "placement", "placement-bulk", "realtime"]
@@ -102,8 +107,14 @@ def last_json(text):
 
 
 class Side:
-    def __init__(self, name, pgbouncer=False):
+    def __init__(self, name, pgbouncer=False, caps="standard"):
         spec = SIDES[name]
+        if caps not in CAPS:
+            raise ValueError(f"unknown caps profile {caps!r}; the profiles are {sorted(CAPS)}")
+        if not CAPS[caps].exists():
+            raise SystemExit(f"{CAPS[caps].name} does not exist, and the {caps} caps profile needs it")
+        self.caps = caps
+        self.caps_file = CAPS[caps]
         self.name = name
         self.compose = (HARNESS / spec["compose"]).resolve()
         self.project = spec["project"]
@@ -123,7 +134,7 @@ class Side:
         return [flag for key, value in self.container_env.items() for flag in ("-e", f"{key}={value}")]
 
     def files(self):
-        files = ["-f", str(self.compose), "-f", str(OVERRIDE)]
+        files = ["-f", str(self.compose), "-f", str(self.caps_file)]
         return files + (["-f", str(PGBOUNCER)] if self.pgbouncer else [])
 
     def dc(self, *args, database=None, check=True, timeout=None):
@@ -238,7 +249,7 @@ def template_name(accounts):
 # ---------------------------------------------------------------- selftest
 
 def cmd_selftest(args):
-    side = Side(args.side, args.pgbouncer)
+    side = Side(args.side, args.pgbouncer, caps=args.caps)
     side.dc("config", "--quiet")
     log("compose files merge cleanly")
     side.up_db()
@@ -264,7 +275,7 @@ def cmd_selftest(args):
 # ---------------------------------------------------------------- prepare
 
 def cmd_prepare(args):
-    side = Side(args.side, args.pgbouncer)
+    side = Side(args.side, args.pgbouncer, caps=args.caps)
     template = template_name(args.accounts)
     log(f"{side.name}: building the image")
     side.dc("build", "migrate", timeout=3600)
@@ -709,6 +720,7 @@ def run_one(side, args, workers, index, raw_dir):
         "engine_args": args.engine_args,
         "engine_paused": engine is None,
         "hashing": args.hash,
+        "caps": side.caps,
         "pgbouncer": side.pgbouncer,
         "bench": bench_json,
         "bench_exit_code": result.returncode,
@@ -888,7 +900,11 @@ def environment(side):
         "repository_commit": sh(["git", "-C", str(BAKEOFF), "rev-parse", "HEAD"], check=False).stdout.strip(),
         "side_uncommitted_changes": sh(["git", "-C", str(BAKEOFF), "status", "--porcelain", "--", str(side_dir), str(HARNESS)],
                                        check=False).stdout.strip().splitlines(),
-        "override_sha256": hashlib.sha256(OVERRIDE.read_bytes()).hexdigest(),
+        "caps": side.caps,
+        "caps_file": side.caps_file.name,
+        "caps_sha256": hashlib.sha256(side.caps_file.read_bytes()).hexdigest(),
+        # The file in place of compose.override.yml; the same hash as caps_sha256.
+        "override_sha256": hashlib.sha256(side.caps_file.read_bytes()).hexdigest(),
         "other_containers": [name for name in others if not name.startswith(side.project)],
     }
 
@@ -972,6 +988,8 @@ def render(meta, env, rows, records):
         f" Workload: {meta['workload']}. Accounts: {meta['accounts']:,}."
         f"{' New accounts placed per run: ' + format(meta['placements'], ',') + '.' if meta.get('placements') else ''}"
         f" Engine arguments: `{meta['engine_args'] or '(defaults)'}`. pgBouncer: {'yes' if meta['pgbouncer'] else 'no'}."
+        f" Caps: {meta.get('caps', 'standard')}"
+        f"{' (' + (meta.get('caps_sha256') or '')[:12] + ')' if meta.get('caps_sha256') else ''}."
         f"{' Engine paused: the engine did not run, so nothing read the stream and there is no catch-up.' if meta.get('engine_paused') else ''}"
         f"{' Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run.' if meta.get('hashing') == 'off' else ''}"
         f" Warm-up runs per worker count: {meta['warmup_runs']}; measured runs: {meta['repeat']}."
@@ -1030,7 +1048,7 @@ def render(meta, env, rows, records):
 
 
 def cmd_run(args):
-    side = Side(args.side, args.pgbouncer)
+    side = Side(args.side, args.pgbouncer, caps=args.caps)
     if args.workload in side.workloads_excluded:
         raise SystemExit(f"{side.name} does not run {args.workload}; see workloads_excluded in sides.json")
     if args.hash == "off":
@@ -1050,6 +1068,7 @@ def cmd_run(args):
             "workload": args.workload, "accounts": args.accounts,
             "placements": args.placements if args.workload in PLACEMENTS else None,
             "engine_args": args.engine_args, "engine_paused": args.no_engine, "hashing": args.hash,
+            "caps": side.caps, "caps_sha256": env["caps_sha256"],
             "pgbouncer": args.pgbouncer, "repeat": args.repeat,
             "warmup_runs": args.warmup_runs, "record": args.record,
             "started": datetime.now().isoformat(timespec="seconds")}
@@ -1070,7 +1089,7 @@ def cmd_run(args):
 
 
 def cmd_teardown(args):
-    side = Side(args.side, args.pgbouncer)
+    side = Side(args.side, args.pgbouncer, caps=args.caps)
     for suffix in ("run-engine", "run-bench"):
         sh(["docker", "rm", "-f", f"{side.project}-{suffix}"], check=False)
     side.dc("--profile", "tools", "down", "-v", "--remove-orphans", check=False)
@@ -1084,6 +1103,9 @@ def main():
         p = sub.add_parser(name)
         p.add_argument("--side", choices=sorted(SIDES), required=True)
         p.add_argument("--pgbouncer", action="store_true", help="put pgBouncer in front of PostgreSQL (recorded tuning)")
+        p.add_argument("--caps", choices=sorted(CAPS), default="standard",
+                       help="the CPU, memory, and PostgreSQL profile: standard is compose.override.yml,"
+                            " scaled is compose.scale.yml in its place")
         if name in ("prepare", "run"):
             p.add_argument("--accounts", type=int, required=True)
         if name == "run":
