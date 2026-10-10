@@ -162,12 +162,64 @@ class Side:
         return name
 
 
-def cpu_usec(container):
+def cpu_stat(container):
+    """The container's cgroup cpu.stat, every counter in it, as integers."""
     out = sh(["docker", "exec", container, "cat", "/sys/fs/cgroup/cpu.stat"], check=False).stdout
+    stat = {}
     for line in out.splitlines():
-        if line.startswith("usage_usec"):
-            return int(line.split()[1])
-    return None
+        parts = line.split()
+        if len(parts) == 2 and parts[1].isdigit():
+            stat[parts[0]] = int(parts[1])
+    return stat
+
+
+def cpu_usec(container):
+    return cpu_stat(container).get("usage_usec")
+
+
+def throttling(before, after):
+    """Each container's CPU throttling over the bench command: of its scheduler
+    periods, how many hit the container's CPU limit, and how long it was held
+    back. A container throttled for much of the run was capped by its limit."""
+    result = {}
+    for name, start in before["cpu_stat"].items():
+        end = after["cpu_stat"].get(name, {})
+        periods = end.get("nr_periods", 0) - start.get("nr_periods", 0)
+        throttled = end.get("nr_throttled", 0) - start.get("nr_throttled", 0)
+        result[name] = {
+            "nr_periods": periods,
+            "nr_throttled": throttled,
+            "throttled_s": round((end.get("throttled_usec", 0) - start.get("throttled_usec", 0)) / 1e6, 3),
+            "throttled_pct": round(100 * throttled / periods, 1) if periods else None,
+        }
+    return result
+
+
+# A fixed CPU-bound statement, timed five times in the run's database just
+# before the bench. generate_series sits in the select list so its rows stream
+# rather than filling a tuplestore that could spill to disk, and JIT is off so
+# compilation adds nothing; the probe measures one core's speed and nothing else.
+HOST_PROBE_SQL = (
+    "SET jit = off; "
+    "CREATE FUNCTION pg_temp.host_probe(n int) RETURNS SETOF double precision LANGUAGE plpgsql AS $$ "
+    "DECLARE started timestamptz; total bigint; "
+    "BEGIN FOR k IN 1..n LOOP started := clock_timestamp(); "
+    "SELECT sum(x) INTO total FROM (SELECT generate_series(1, 20000000) AS x) s; "
+    "RETURN NEXT extract(epoch FROM clock_timestamp() - started) * 1000; END LOOP; END $$; "
+    "SELECT round(ms::numeric, 1) FROM pg_temp.host_probe(5) AS ms;"
+)
+
+
+def host_probe(side, database):
+    """Returns (median ms, every sample). A median well above the night's usual
+    marks a run during which the machine itself ran slow."""
+    samples = []
+    for line in (side.psql(database, HOST_PROBE_SQL, check=False) or "").splitlines():
+        try:
+            samples.append(float(line))
+        except ValueError:
+            continue  # the SET and CREATE FUNCTION status lines
+    return (round(statistics.median(samples), 1) if samples else None), samples
 
 
 def running(container):
@@ -293,7 +345,9 @@ class LagSampler(threading.Thread):
 def counters(side, database, containers):
     stats = side.psql(database, "SELECT xact_commit, xact_rollback FROM pg_stat_database WHERE datname = current_database()")
     commit, rollback = (int(x) for x in stats.split("|"))
-    return {"cpu": {k: cpu_usec(v) for k, v in containers.items()}, "commits": commit, "rollbacks": rollback,
+    stats_by_container = {k: cpu_stat(v) for k, v in containers.items()}
+    return {"cpu": {k: stat.get("usage_usec") for k, stat in stats_by_container.items()},
+            "cpu_stat": stats_by_container, "commits": commit, "rollbacks": rollback,
             "clock": side.psql(database, "SELECT clock_timestamp()"), "t": time.perf_counter()}
 
 
@@ -446,6 +500,8 @@ def run_one(side, args, workers, index, raw_dir):
             logs = sh(["docker", "logs", "--tail", "40", name], check=False)
             raise RuntimeError(f"{name} is not running:\n{logs.stdout}{logs.stderr}")
     containers = {"db": side.container("db"), "bench": bench, **({"engine": engine} if engine else {})}
+    # Before the measured window, and before the statement statistics reset.
+    probe_ms, probe_samples = host_probe(side, database)
     side.psql(database, "SELECT pg_stat_statements_reset()")
     before = counters(side, database, containers)
     sampler = LagSampler(side, database)
@@ -557,6 +613,9 @@ def run_one(side, args, workers, index, raw_dir):
         "window_s": round(window, 3),
         "sent_total": sent_total,
         "cpu_s": cpu_window,
+        "cpu_throttling": throttling(before, after),
+        "host_probe_ms": probe_ms,
+        "host_probe_samples_ms": probe_samples,
         "cpu_ms_per_command": {k: (round(v * 1000 / sent_total, 3) if v is not None and sent_total else None)
                                for k, v in cpu_window.items()},
         "engine_catchup_cpu_s": (round((catchup_cpu - engine_after) / 1e6, 3)
@@ -679,6 +738,9 @@ def summarize(records):
             "bench_cpu_ms": median([r["cpu_ms_per_command"].get("bench") for r in group]),
             "engine_cpu_ms": median([r["cpu_ms_per_command"].get("engine") for r in group]),
             "db_cpu_ms": median([r["cpu_ms_per_command"].get("db") for r in group]),
+            "throttled": {k: median([(r.get("cpu_throttling") or {}).get(k, {}).get("throttled_pct") for r in group])
+                          for k in ("db", "engine", "bench")},
+            "host_probe_ms": median([r.get("host_probe_ms") for r in group]),
             "statements": median([r["statements_per_command"] for r in group]),
             "commits": median([r["commits_per_command"] for r in group]),
             "transactions": median([r["bench"].get("transactions") for r in group]),
@@ -735,17 +797,24 @@ def render(meta, env, rows, records):
         " the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the"
         " end of the bench command until every reader reached the head as it stood at that end; events written afterward do"
         " not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver"
-        " reports committing; in a bulk workload, latency is per transaction, that is, per chunk.",
+        " reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the"
+        " percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much"
+        " of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in"
+        " the run's database just before the bench, outside the measured window; a probe well above the night's usual"
+        " marks a run during which the machine itself ran slow.",
         "",
         "| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd |"
-        " Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        " Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 |"
+        " Throttled % db / engine / bench | Host probe ms | Gates |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         lines.append(f"| {r['workers']} | {r['succeeded_per_s']} | {r['p50_ms']} | {r['p99_ms']} | {r['bench_cpu_ms']} |"
                      f" {r['engine_cpu_ms']} | {r['db_cpu_ms']} | {r['statements']} | {r['commits']} |"
                      f" {r['transactions']} ({r['fallback_chunks']}) | {r['max_lag']} | {r['catchup_s']} |"
-                     f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} | {'pass' if r['gates'] else 'FAIL'} |")
+                     f" {r['rule_p50']} / {r['rule_p99']} | {r['late_p50']} / {r['late_p99']} |"
+                     f" {r['throttled']['db']} / {r['throttled']['engine']} / {r['throttled']['bench']} |"
+                     f" {r['host_probe_ms']} | {'pass' if r['gates'] else 'FAIL'} |")
     skipped = sorted({name for r in records for name in r.get("gates_skipped", [])})
     if skipped:
         lines += ["", "Gates skipped because of the diagnostic: " + "; ".join(skipped) + "."]
