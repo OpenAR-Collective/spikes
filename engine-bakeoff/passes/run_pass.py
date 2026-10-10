@@ -17,7 +17,9 @@ stopped, and its partial output is moved out of results/. Progress goes to
 import argparse
 import contextlib
 import json
+import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -127,7 +129,12 @@ def stop_databases():
 
 
 def stop_run(process, entry):
-    subprocess.run(["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True)
+    # The harness and everything it started go together: on Windows the
+    # process tree, elsewhere the session the run was started in.
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True)
+    else:
+        os.killpg(process.pid, signal.SIGKILL)
     for name in sh(["docker", "ps", "--filter", "name=hivear-bakeoff-", "--format", "{{.Names}}"]).stdout.split():
         if "-run-" in name:
             sh(["docker", "rm", "-f", name])
@@ -221,7 +228,8 @@ def main():
             print(f"[{datetime.now():%H:%M}] {entry['order']:>3} run  {entry['label']} ({record['estimate_min']} min)", flush=True)
             log.write(f"\n===== {entry['order']} {entry['label']} {record['started']}\n{' '.join(command(plan, entry))}\n")
             log.flush()
-            process = subprocess.Popen(command(plan, entry), cwd=HARNESS, stdout=log, stderr=subprocess.STDOUT)
+            process = subprocess.Popen(command(plan, entry), cwd=HARNESS, stdout=log, stderr=subprocess.STDOUT,
+                                       start_new_session=os.name != "nt")
             while process.poll() is None and datetime.now() < deadline:
                 time.sleep(5)
             if process.poll() is None:
