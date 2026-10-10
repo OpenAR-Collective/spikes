@@ -117,8 +117,15 @@ def outcome(entry):
 
 
 def prepare(plan):
-    """Seed each side's template at the plan's size; not measured."""
+    """Seed each side's template at the plan's size; not measured. Sides that
+    share a Compose project share a template, so each project is seeded once."""
+    projects = {name: spec["project"] for name, spec in
+                json.loads((HARNESS / "sides.json").read_text(encoding="utf-8")).items()}
+    seeded = set()
     for side in dict.fromkeys(entry["side"] for entry in plan["runs"]):
+        if projects[side] in seeded:
+            continue
+        seeded.add(projects[side])
         stop_databases()
         result = subprocess.run([sys.executable, "bakeoff_harness.py", "prepare", "--side", side,
                                  "--accounts", str(plan["accounts"])], cwd=HARNESS, capture_output=True,
