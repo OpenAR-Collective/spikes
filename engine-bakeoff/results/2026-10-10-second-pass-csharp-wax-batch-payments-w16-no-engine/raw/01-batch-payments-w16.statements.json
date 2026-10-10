@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 1000000,
+  "total_ms": 355243.0,
+  "mean_ms": 0.3552,
+  "rows": 1000000,
+  "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+ },
+ {
+  "calls": 583334,
+  "total_ms": 43160.3,
+  "mean_ms": 0.074,
+  "rows": 583334,
+  "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 38638.2,
+  "mean_ms": 0.0773,
+  "rows": 1500000,
+  "query": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 31234.2,
+  "mean_ms": 0.0625,
+  "rows": 500000,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrued_through = $4, queue_code = $5::text WHERE account_pk = $6"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 27126.6,
+  "mean_ms": 0.0543,
+  "rows": 500000,
+  "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 25730.9,
+  "mean_ms": 0.0515,
+  "rows": 500000,
+  "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 21695.4,
+  "mean_ms": 0.0434,
+  "rows": 500000,
+  "query": "SELECT EXISTS (SELECT $2 FROM ar.payment WHERE payment_pk = $1)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 19333.9,
+  "mean_ms": 0.0387,
+  "rows": 500000,
+  "query": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)"
+ },
+ {
+  "calls": 501503,
+  "total_ms": 6718.6,
+  "mean_ms": 0.0134,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 500001,
+  "total_ms": 3281.3,
+  "mean_ms": 0.0066,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 500,
+  "total_ms": 2115.3,
+  "mean_ms": 4.2307,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+ },
+ {
+  "calls": 500001,
+  "total_ms": 422.8,
+  "mean_ms": 0.0008,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 1,
+  "total_ms": 387.3,
+  "mean_ms": 387.3072,
+  "rows": 500,
+  "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+ },
+ {
+  "calls": 516,
+  "total_ms": 90.4,
+  "mean_ms": 0.1752,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $3, claimed_by_instance = $2, claim_expires_at = now() + interval $4 WHERE batch_job_chunk_pk = (SELECT batch_job_chunk_pk FROM core.batch_job_chunk WHERE batch_job_run_fk = $1 AND status = $5 ORDER BY chunk_sequence_number LIMIT $6 FOR UPDATE SKIP LOCKED) RE"
+ },
+ {
+  "calls": 500,
+  "total_ms": 68.9,
+  "mean_ms": 0.1378,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job_chunk_pk = $1"
+ },
+ {
+  "calls": 205,
+  "total_ms": 12.1,
+  "mean_ms": 0.0591,
+  "rows": 205,
+  "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+ },
+ {
+  "calls": 1,
+  "total_ms": 1.9,
+  "mean_ms": 1.9292,
+  "rows": 172,
+  "query": "SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid FROM ( -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a -- We first do this for the type (innerest-most subquery), and then for its element type -- This also returns"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.3,
+  "mean_ms": 0.2651,
+  "rows": 1,
+  "query": "INSERT INTO core.batch_job_run (batch_job_run_pk, job_name) VALUES ($1, $2)"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.2,
+  "mean_ms": 0.1571,
+  "rows": 1,
+  "query": "SELECT coalesce(sum(calls), $1) FROM pg_stat_statements WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.1271,
+  "rows": 1,
+  "query": "SELECT min(position), max(head) FROM core.bakeoff_progress"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.1183,
+  "rows": 0,
+  "query": "-- Load field definitions for (free-standing) composite types SELECT typ.oid, att.attname, att.atttypid FROM pg_type AS typ JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace) JOIN pg_class AS cls ON (cls.oid = typ.typrelid) JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid) WHERE (typ.typ"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.1142,
+  "rows": 1,
+  "query": "SELECT pg_stat_statements_reset()"
+ },
+ {
+  "calls": 2,
+  "total_ms": 0.1,
+  "mean_ms": 0.0395,
+  "rows": 2,
+  "query": "SELECT xact_commit, xact_rollback FROM pg_stat_database WHERE datname = current_database()"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.061,
+  "rows": 1,
+  "query": "UPDATE core.batch_job_run SET finished_at = now() WHERE batch_job_run_pk = $1"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.0,
+  "mean_ms": 0.0468,
+  "rows": 10,
+  "query": "SELECT value.code, value.reference_value_pk FROM core.reference_value value JOIN core.reference_type type ON type.reference_type_pk = value.reference_type_fk WHERE type.code = $1"
+ }
+]

@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 500000,
+  "total_ms": 238615.3,
+  "mean_ms": 0.4772,
+  "rows": 500000,
+  "query": "INSERT INTO core.event ( event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash ) VALUES ($1"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 69874.3,
+  "mean_ms": 0.1397,
+  "rows": 1500000,
+  "query": "SELECT \"ar\".\"account_balance_bucket\".\"account_balance_bucket_pk\", \"ar\".\"account_balance_bucket\".\"account_fk\", \"ar\".\"account_balance_bucket\".\"balance_bucket_definition_fk\", \"ar\".\"account_balance_bucket\".\"balance_minor_units\", \"ar\".\"balance_bucket_definition\".\"balance_bucket_definition_pk\", \"ar\".\"bala"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 66644.0,
+  "mean_ms": 0.1333,
+  "rows": 500000,
+  "query": "UPDATE \"ar\".\"account_balance_bucket\" SET \"account_fk\" = $1::uuid, \"balance_bucket_definition_fk\" = $2::uuid, \"balance_minor_units\" = $3 WHERE \"ar\".\"account_balance_bucket\".\"account_balance_bucket_pk\" = $4::uuid"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 61219.5,
+  "mean_ms": 0.1224,
+  "rows": 500000,
+  "query": "UPDATE \"ar\".\"account\" SET \"aggregate_sequence_number\" = $1, \"client_account_number\" = $2, \"debt_type\" = $3, \"contract_type\" = $4, \"currency_code\" = $5, \"status\" = $6, \"is_disputed\" = $7, \"list_date\" = $8::date, \"itemization_date\" = $9::date, \"interest_accrued_through\" = $10::date, \"queue_code\" = $11"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 57652.1,
+  "mean_ms": 0.1153,
+  "rows": 500000,
+  "query": "SELECT \"ar\".\"account\".\"aggregate_sequence_number\", \"ar\".\"account\".\"account_pk\", \"ar\".\"account\".\"client_account_number\", \"ar\".\"account\".\"debt_type\", \"ar\".\"account\".\"contract_type\", \"ar\".\"account\".\"currency_code\", \"ar\".\"account\".\"status\", \"ar\".\"account\".\"is_disputed\", \"ar\".\"account\".\"list_date\", \"ar\"."
+ },
+ {
+  "calls": 500000,
+  "total_ms": 45233.1,
+  "mean_ms": 0.0905,
+  "rows": 500000,
+  "query": "SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = $1::uuid ORDER BY aggregate_sequence_number DESC LIMIT $2"
+ },
+ {
+  "calls": 394967,
+  "total_ms": 24267.7,
+  "mean_ms": 0.0614,
+  "rows": 394967,
+  "query": "SELECT \"ar\".\"account_summary_read_model\".\"account_summary_read_model_pk\", \"ar\".\"account_summary_read_model\".\"client_account_number\", \"ar\".\"account_summary_read_model\".\"status\", \"ar\".\"account_summary_read_model\".\"is_disputed\", \"ar\".\"account_summary_read_model\".\"currency_code\", \"ar\".\"account_summary_r"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 22796.8,
+  "mean_ms": 0.0456,
+  "rows": 500000,
+  "query": "SELECT reference_value_pk FROM core.reference_value value JOIN core.reference_type type ON type.reference_type_pk = value.reference_type_fk WHERE type.code = $1 AND value.code = $2"
+ },
+ {
+  "calls": 394966,
+  "total_ms": 19377.4,
+  "mean_ms": 0.0491,
+  "rows": 394966,
+  "query": "UPDATE \"ar\".\"account_summary_read_model\" SET \"client_account_number\" = $1, \"status\" = $2, \"is_disputed\" = $3, \"currency_code\" = $4, \"debt_type\" = $5, \"contract_type\" = $6, \"list_date\" = $7::date, \"balance_minor_units\" = $8, \"balance_buckets\" = $9::jsonb, \"last_payment_at\" = $10, \"last_payment_minor_"
+ },
+ {
+  "calls": 4765,
+  "total_ms": 13424.7,
+  "mean_ms": 2.8174,
+  "rows": 1395176,
+  "query": "SELECT \"core\".\"event\".\"event_pk\", \"core\".\"event\".\"global_sequence_number\", \"core\".\"event\".\"aggregate_sequence_number\", \"core\".\"event\".\"event_type\", \"core\".\"event\".\"schema_version\", \"core\".\"event\".\"aggregate_pk_ref\", \"core\".\"event\".\"aggregate_type\", \"core\".\"event\".\"occurred_at\", \"core\".\"event\".\"recor"
+ },
+ {
+  "calls": 6740,
+  "total_ms": 4678.8,
+  "mean_ms": 0.6942,
+  "rows": 0,
+  "query": "SELECT event_pk, global_sequence_number, event_type, aggregate_pk_ref, aggregate_type, occurred_at, new_value, metadata FROM core.event WHERE global_sequence_number > $1 AND global_sequence_number <= $2 AND event_type = ANY($3) AND (hashtext(aggregate_pk_ref::text) & $4) % $5 = $6 ORDER BY global_se"
+ },
+ {
+  "calls": 500,
+  "total_ms": 3037.1,
+  "mean_ms": 6.0743,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1::uuid AND $2::uuid ORDER BY account_pk"
+ },
+ {
+  "calls": 88370,
+  "total_ms": 2329.2,
+  "mean_ms": 0.0264,
+  "rows": 88370,
+  "query": "SELECT CASE WHEN is_called THEN last_value ELSE $1 END, pg_postmaster_start_time()::text || $2 || current_database() FROM core.seq_event_global_sequence"
+ },
+ {
+  "calls": 1395086,
+  "total_ms": 1006.2,
+  "mean_ms": 0.0007,
+  "rows": 0,
+  "query": "SET CONSTRAINTS ALL IMMEDIATE"
+ },
+ {
+  "calls": 34507,
+  "total_ms": 899.7,
+  "mean_ms": 0.0261,
+  "rows": 0,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= clock_timestamp() AND (hashtext(pending_event_pk::text) & $2) % $3 = $4 ORDER BY due_at LIMIT $5"
+ },
+ {
+  "calls": 33854,
+  "total_ms": 784.6,
+  "mean_ms": 0.0232,
+  "rows": 33846,
+  "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ },
+ {
+  "calls": 32851,
+  "total_ms": 764.8,
+  "mean_ms": 0.0233,
+  "rows": 32851,
+  "query": "SELECT last_global_sequence_number, definition_digest, failed_at, failure_kind, failed_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ },
+ {
+  "calls": 11504,
+  "total_ms": 747.2,
+  "mean_ms": 0.065,
+  "rows": 11504,
+  "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $1, updated_at = now() WHERE projection_name = $2"
+ },
+ {
+  "calls": 561456,
+  "total_ms": 696.8,
+  "mean_ms": 0.0012,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 43581,
+  "total_ms": 689.1,
+  "mean_ms": 0.0158,
+  "rows": 43581,
+  "query": "SELECT pg_current_xact_id()::text::bigint"
+ },
+ {
+  "calls": 1,
+  "total_ms": 587.1,
+  "mean_ms": 587.0585,
+  "rows": 500,
+  "query": "WITH numbered AS ( SELECT account_pk AS k, (row_number() OVER (ORDER BY account_pk) - $1) / $2 AS n FROM ar.account ) INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $3::uuid, first.n, first.k, last.k, $4 FROM (SELECT DISTINCT ON (n) "
+ },
+ {
+  "calls": 43945,
+  "total_ms": 578.3,
+  "mean_ms": 0.0132,
+  "rows": 43945,
+  "query": "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint"
+ },
+ {
+  "calls": 7323,
+  "total_ms": 560.2,
+  "mean_ms": 0.0765,
+  "rows": 0,
+  "query": "SELECT component, schema_release, minimum_code_release, live_release FROM core.component_release ORDER BY component"
+ },
+ {
+  "calls": 17343,
+  "total_ms": 556.6,
+  "mean_ms": 0.0321,
+  "rows": 4765,
+  "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1 AND failed_at IS NULL FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 561457,
+  "total_ms": 545.4,
+  "mean_ms": 0.001,
+  "rows": 0,
+  "query": "BEGIN"
+ }
+]

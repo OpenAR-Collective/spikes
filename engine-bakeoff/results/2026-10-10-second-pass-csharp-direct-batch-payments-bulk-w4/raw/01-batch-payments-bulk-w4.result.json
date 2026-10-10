@@ -1,0 +1,574 @@
+{
+ "index": 1,
+ "side": "csharp-direct",
+ "workload": "batch-payments-bulk",
+ "workers": 4,
+ "accounts": 500000,
+ "placements": null,
+ "engine_args": "--rule-workers 16",
+ "engine_paused": false,
+ "hashing": "on",
+ "pgbouncer": false,
+ "bench": {
+  "workload": "batch-payments-bulk",
+  "workers": 4,
+  "sent": 500000,
+  "sent_total": 500000,
+  "succeeded": 500000,
+  "rejected": 0,
+  "failed": 0,
+  "retried": 0,
+  "elapsed_s": 38.254,
+  "latency_ms": {
+   "p50": 265.99,
+   "p95": 375.184,
+   "p99": 476.968,
+   "max": 795.562
+  },
+  "run_pk": "834554f0-ecd0-472f-be4a-e37c83d280fd",
+  "transactions": 500,
+  "fallback_chunks": 0,
+  "append": "direct",
+  "hashing": "on"
+ },
+ "bench_exit_code": 0,
+ "window_s": 41.242,
+ "sent_total": 500000,
+ "cpu_s": {
+  "db": 218.072,
+  "bench": 45.26,
+  "engine": 52.45
+ },
+ "cpu_ms_per_command": {
+  "db": 0.436,
+  "bench": 0.091,
+  "engine": 0.105
+ },
+ "engine_catchup_cpu_s": 36.263,
+ "statements": 619994,
+ "statements_per_command": 1.24,
+ "top_statements": [
+  {
+   "calls": 500,
+   "total_ms": 43256.0,
+   "mean_ms": 86.512,
+   "rows": 1000000,
+   "query": "INSERT INTO core.mt_events (seq_id, id, stream_id, version, data, type, tenant_id, timestamp, mt_dotnet_type, is_archived, headers) SELECT nextval($8), e.id, e.stream_id, e.version, e.data, e.type, $9, now(), e.dotnet_type, $10, e.headers FROM (SELECT * FROM unnest($1, $2, $3, $4, $5, $6, $7) WITH O"
+  },
+  {
+   "calls": 1746,
+   "total_ms": 20251.2,
+   "mean_ms": 11.5986,
+   "rows": 1121000,
+   "query": "select d.data, d.type, d.mt_dotnet_type, d.bdata, d.seq_id, d.id, d.stream_id, d.version, d.timestamp, d.tenant_id, d.headers, d.is_archived, s.type as stream_type from core.mt_events as d inner join core.mt_streams as s on d.stream_id = s.id where d.seq_id > $1 and d.seq_id <= $2 and d.type = ANY($"
+  },
+  {
+   "calls": 214500,
+   "total_ms": 9242.3,
+   "mean_ms": 0.0431,
+   "rows": 214500,
+   "query": "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, currency_code, received_at, status, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $"
+  },
+  {
+   "calls": 258203,
+   "total_ms": 8734.2,
+   "mean_ms": 0.0338,
+   "rows": 258203,
+   "query": "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) ON CONFLICT (payment_read_model_pk) DO UPDATE SET amount_minor_units = EX"
+  },
+  {
+   "calls": 141086,
+   "total_ms": 6882.4,
+   "mean_ms": 0.0488,
+   "rows": 141086,
+   "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $7) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3, last_payment_at = $4, last_payment_minor_units = $5 WHERE acc"
+  },
+  {
+   "calls": 500,
+   "total_ms": 6195.5,
+   "mean_ms": 12.3909,
+   "rows": 583334,
+   "query": "UPDATE ar.account_balance_bucket b SET balance_minor_units = v.balance FROM unnest($1, $2) AS v(pk, balance) WHERE b.account_balance_bucket_pk = v.pk"
+  },
+  {
+   "calls": 500,
+   "total_ms": 4498.0,
+   "mean_ms": 8.9961,
+   "rows": 500000,
+   "query": "SELECT s.id, s.version, e.headers ->> $2 FROM core.mt_streams s JOIN core.mt_events e ON e.stream_id = s.id AND e.version = s.version WHERE s.id = ANY($1)"
+  },
+  {
+   "calls": 500,
+   "total_ms": 4061.6,
+   "mean_ms": 8.1232,
+   "rows": 1500000,
+   "query": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+  },
+  {
+   "calls": 500,
+   "total_ms": 3261.7,
+   "mean_ms": 6.5234,
+   "rows": 500000,
+   "query": "UPDATE ar.account a SET aggregate_sequence_number = v.version FROM unnest($1, $2) AS v(pk, version) WHERE a.account_pk = v.pk"
+  },
+  {
+   "calls": 500,
+   "total_ms": 2931.4,
+   "mean_ms": 5.8627,
+   "rows": 500000,
+   "query": "UPDATE core.mt_streams s SET version = v.version, timestamp = now() FROM unnest($1, $2) AS v(id, version) WHERE s.id = v.id"
+  },
+  {
+   "calls": 500,
+   "total_ms": 2842.6,
+   "mean_ms": 5.6852,
+   "rows": 500000,
+   "query": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units) SELECT $6, pk, amount, $7, $8, received_at, distribution, unapplied FROM unnest($1, $2, $3, $4, $5) AS p(pk, amount, received_at, distribution, "
+  },
+  {
+   "calls": 500,
+   "total_ms": 2747.8,
+   "mean_ms": 5.4955,
+   "rows": 500000,
+   "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+  },
+  {
+   "calls": 500,
+   "total_ms": 2708.0,
+   "mean_ms": 5.416,
+   "rows": 500000,
+   "query": "INSERT INTO core.mt_streams (id, type, version, timestamp, tenant_id) SELECT id, $2, $3, now(), $4 FROM unnest($1) AS s(id)"
+  },
+  {
+   "calls": 500,
+   "total_ms": 2036.0,
+   "mean_ms": 4.0721,
+   "rows": 500000,
+   "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+  },
+  {
+   "calls": 117,
+   "total_ms": 1235.1,
+   "mean_ms": 10.5565,
+   "rows": 117,
+   "query": "select (select min(seq_id) from core.mt_events where seq_id > $1) as first_after, (select seq_id from (select seq_id, lead(seq_id) over (order by seq_id) as next_seq from core.mt_events where seq_id >= $1) gaps where next_seq is not null and next_seq - seq_id > $2 order by seq_id limit $3) as gap_ed"
+  },
+  {
+   "calls": 500,
+   "total_ms": 1074.9,
+   "mean_ms": 2.1498,
+   "rows": 0,
+   "query": "SELECT payment_pk FROM ar.payment WHERE payment_pk = ANY($1)"
+  },
+  {
+   "calls": 1,
+   "total_ms": 331.4,
+   "mean_ms": 331.3995,
+   "rows": 500,
+   "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+  },
+  {
+   "calls": 6189,
+   "total_ms": 88.5,
+   "mean_ms": 0.0143,
+   "rows": 0,
+   "query": "DISCARD ALL"
+  },
+  {
+   "calls": 504,
+   "total_ms": 78.7,
+   "mean_ms": 0.1561,
+   "rows": 500,
+   "query": "UPDATE core.batch_job_chunk SET status = $3, claimed_by_instance = $2, claim_expires_at = now() + interval $4 WHERE batch_job_chunk_pk = (SELECT batch_job_chunk_pk FROM core.batch_job_chunk WHERE batch_job_run_fk = $1 AND status = $5 ORDER BY chunk_sequence_number LIMIT $6 FOR UPDATE SKIP LOCKED) RE"
+  },
+  {
+   "calls": 24,
+   "total_ms": 74.0,
+   "mean_ms": 3.0844,
+   "rows": 24,
+   "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+  },
+  {
+   "calls": 500,
+   "total_ms": 67.7,
+   "mean_ms": 0.1355,
+   "rows": 500,
+   "query": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job_chunk_pk = $1"
+  },
+  {
+   "calls": 1733,
+   "total_ms": 61.1,
+   "mean_ms": 0.0352,
+   "rows": 1733,
+   "query": "update core.mt_event_progression set last_seq_id = $1, last_updated = transaction_timestamp() where name = $2 and last_seq_id = $3"
+  },
+  {
+   "calls": 117,
+   "total_ms": 39.7,
+   "mean_ms": 0.3397,
+   "rows": 117,
+   "query": "select core.mt_mark_event_progression($2, $1)"
+  },
+  {
+   "calls": 2234,
+   "total_ms": 20.5,
+   "mean_ms": 0.0092,
+   "rows": 0,
+   "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+  },
+  {
+   "calls": 125,
+   "total_ms": 6.8,
+   "mean_ms": 0.0545,
+   "rows": 125,
+   "query": "select (select last_value from core.mt_events_sequence) as highest_sequence, transaction_timestamp() as \"timestamp\", pg_snapshot_xmax(pg_current_snapshot())::text::bigint as current_xmax, p.last_seq_id, p.last_updated, (select case when is_called then last_value else last_value - $1 end from core.mt"
+  }
+ ],
+ "commits_per_command": 0.02,
+ "rollbacks": 0,
+ "lag_samples": [
+  [
+   0.7,
+   0
+  ],
+  [
+   2.4,
+   8000
+  ],
+  [
+   4.2,
+   38999
+  ],
+  [
+   6.0,
+   66000
+  ],
+  [
+   7.8,
+   98000
+  ],
+  [
+   9.6,
+   131000
+  ],
+  [
+   11.4,
+   167000
+  ],
+  [
+   13.2,
+   205000
+  ],
+  [
+   15.1,
+   244999
+  ],
+  [
+   16.8,
+   283000
+  ],
+  [
+   18.6,
+   321999
+  ],
+  [
+   20.4,
+   360000
+  ],
+  [
+   22.2,
+   400000
+  ],
+  [
+   24.0,
+   436000
+  ],
+  [
+   25.8,
+   473000
+  ],
+  [
+   27.6,
+   514000
+  ],
+  [
+   29.4,
+   551999
+  ],
+  [
+   31.2,
+   590000
+  ],
+  [
+   33.0,
+   626000
+  ],
+  [
+   34.8,
+   666000
+  ],
+  [
+   36.6,
+   706000
+  ],
+  [
+   38.8,
+   749000
+  ],
+  [
+   40.5,
+   745000
+  ],
+  [
+   42.2,
+   730000
+  ],
+  [
+   43.9,
+   714000
+  ],
+  [
+   45.7,
+   697000
+  ],
+  [
+   47.5,
+   681000
+  ],
+  [
+   49.2,
+   667000
+  ],
+  [
+   50.9,
+   650000
+  ],
+  [
+   52.6,
+   635000
+  ],
+  [
+   54.3,
+   619000
+  ],
+  [
+   56.0,
+   604000
+  ],
+  [
+   57.7,
+   589000
+  ],
+  [
+   59.4,
+   573000
+  ],
+  [
+   61.1,
+   557000
+  ],
+  [
+   62.8,
+   541000
+  ],
+  [
+   64.5,
+   525999
+  ],
+  [
+   66.2,
+   511000
+  ],
+  [
+   68.0,
+   495000
+  ],
+  [
+   69.7,
+   480000
+  ],
+  [
+   71.4,
+   463000
+  ],
+  [
+   73.1,
+   447000
+  ],
+  [
+   74.8,
+   431000
+  ],
+  [
+   76.5,
+   414999
+  ],
+  [
+   78.2,
+   399000
+  ],
+  [
+   79.9,
+   382000
+  ],
+  [
+   81.6,
+   365000
+  ],
+  [
+   83.4,
+   348999
+  ],
+  [
+   85.0,
+   331999
+  ],
+  [
+   86.7,
+   315998
+  ],
+  [
+   88.5,
+   298999
+  ],
+  [
+   90.2,
+   281999
+  ],
+  [
+   91.9,
+   264999
+  ],
+  [
+   93.6,
+   249000
+  ],
+  [
+   95.3,
+   232000
+  ],
+  [
+   97.0,
+   216000
+  ],
+  [
+   98.8,
+   200999
+  ],
+  [
+   100.4,
+   185000
+  ],
+  [
+   102.1,
+   168000
+  ],
+  [
+   103.8,
+   152000
+  ],
+  [
+   105.5,
+   135000
+  ],
+  [
+   107.2,
+   118000
+  ],
+  [
+   108.9,
+   101999
+  ],
+  [
+   110.6,
+   87000
+  ],
+  [
+   112.3,
+   70000
+  ],
+  [
+   114.0,
+   53000
+  ],
+  [
+   115.7,
+   36999
+  ],
+  [
+   117.4,
+   19999
+  ],
+  [
+   119.1,
+   5000
+  ],
+  [
+   120.9,
+   0
+  ]
+ ],
+ "max_lag_events": 749000,
+ "end_head": 1500000,
+ "catchup_s": 79.0,
+ "settle_s": 79.3,
+ "verify": {
+  "workload": "verify-chain",
+  "aggregates": 1000000,
+  "events": 1500000,
+  "problems": 0,
+  "ok": true,
+  "first_problems": [],
+  "elapsed_s": 19.052
+ },
+ "gates": {
+  "one payment per account, keyed for this run": true,
+  "balances fell by exactly 2,500 x N": true,
+  "every hash chain verifies": true,
+  "every account summary matches the account and its buckets": true,
+  "every payment read model row matches its payment": true,
+  "every payment line's applied amount matches the payment's distribution": true
+ },
+ "gates_skipped": [],
+ "gates_pass": true,
+ "rule_latency_ms": {
+  "all": {
+   "count": 0,
+   "p50": null,
+   "p95": null,
+   "p99": null,
+   "max": null
+  }
+ },
+ "register_lateness_ms": {
+  "count": 0,
+  "p50": null,
+  "p95": null,
+  "p99": null,
+  "max": null
+ },
+ "events_written": 1000000,
+ "images": {
+  "db": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+  "bench": "sha256:b9e721c70a9426d9f3028e655c785b9ee5581572d025dca1aad6925e97dad891",
+  "engine": "sha256:b9e721c70a9426d9f3028e655c785b9ee5581572d025dca1aad6925e97dad891"
+ },
+ "limits": {
+  "db": {
+   "cpus": 6.0,
+   "mem_bytes": 12884901888
+  },
+  "bench": {
+   "cpus": 4.0,
+   "mem_bytes": 4294967296
+  },
+  "engine": {
+   "cpus": 2.0,
+   "mem_bytes": 2147483648
+  }
+ },
+ "clock": {
+  "start": "2026-10-10 11:44:46.937792+00",
+  "end": "2026-10-10 11:45:28.183385+00"
+ }
+}

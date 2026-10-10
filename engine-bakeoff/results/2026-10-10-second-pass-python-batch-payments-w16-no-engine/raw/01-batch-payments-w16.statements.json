@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 1000000,
+  "total_ms": 421149.3,
+  "mean_ms": 0.4211,
+  "rows": 1000000,
+  "query": "INSERT INTO core.event ( event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash ) VALUES ($1"
+ },
+ {
+  "calls": 1000000,
+  "total_ms": 86100.3,
+  "mean_ms": 0.0861,
+  "rows": 500000,
+  "query": "SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = $1::uuid ORDER BY aggregate_sequence_number DESC LIMIT $2"
+ },
+ {
+  "calls": 583334,
+  "total_ms": 85382.6,
+  "mean_ms": 0.1464,
+  "rows": 583334,
+  "query": "UPDATE \"ar\".\"account_balance_bucket\" SET \"account_fk\" = $1::uuid, \"balance_bucket_definition_fk\" = $2::uuid, \"balance_minor_units\" = $3 WHERE \"ar\".\"account_balance_bucket\".\"account_balance_bucket_pk\" = $4::uuid"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 79847.9,
+  "mean_ms": 0.1597,
+  "rows": 1500000,
+  "query": "SELECT \"ar\".\"account_balance_bucket\".\"account_balance_bucket_pk\", \"ar\".\"account_balance_bucket\".\"account_fk\", \"ar\".\"account_balance_bucket\".\"balance_bucket_definition_fk\", \"ar\".\"account_balance_bucket\".\"balance_minor_units\", \"ar\".\"balance_bucket_definition\".\"balance_bucket_definition_pk\", \"ar\".\"bala"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 67394.9,
+  "mean_ms": 0.1348,
+  "rows": 500000,
+  "query": "UPDATE \"ar\".\"account\" SET \"aggregate_sequence_number\" = $1, \"client_account_number\" = $2, \"debt_type\" = $3, \"contract_type\" = $4, \"currency_code\" = $5, \"status\" = $6, \"is_disputed\" = $7, \"list_date\" = $8::date, \"itemization_date\" = $9::date, \"interest_accrued_through\" = $10::date, \"queue_code\" = $11"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 61791.2,
+  "mean_ms": 0.1236,
+  "rows": 500000,
+  "query": "SELECT \"ar\".\"account\".\"aggregate_sequence_number\", \"ar\".\"account\".\"account_pk\", \"ar\".\"account\".\"client_account_number\", \"ar\".\"account\".\"debt_type\", \"ar\".\"account\".\"contract_type\", \"ar\".\"account\".\"currency_code\", \"ar\".\"account\".\"status\", \"ar\".\"account\".\"is_disputed\", \"ar\".\"account\".\"list_date\", \"ar\"."
+ },
+ {
+  "calls": 500000,
+  "total_ms": 47053.5,
+  "mean_ms": 0.0941,
+  "rows": 0,
+  "query": "SELECT $1 AS \"a\" FROM \"ar\".\"payment\" WHERE \"ar\".\"payment\".\"payment_pk\" = $2::uuid LIMIT $3"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 36518.7,
+  "mean_ms": 0.073,
+  "rows": 0,
+  "query": "UPDATE \"ar\".\"payment\" SET \"aggregate_sequence_number\" = $1, \"amount_minor_units\" = $2, \"currency_code\" = $3, \"status\" = $4, \"received_at\" = $5::timestamptz, \"distribution\" = $6::jsonb, \"unapplied_minor_units\" = $7 WHERE \"ar\".\"payment\".\"payment_pk\" = $8::uuid"
+ },
+ {
+  "calls": 1000000,
+  "total_ms": 35815.0,
+  "mean_ms": 0.0358,
+  "rows": 1000000,
+  "query": "SELECT reference_value_pk FROM core.reference_value value JOIN core.reference_type type ON type.reference_type_pk = value.reference_type_fk WHERE type.code = $1 AND value.code = $2"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 35236.3,
+  "mean_ms": 0.0705,
+  "rows": 500000,
+  "query": "INSERT INTO \"ar\".\"payment\" (\"aggregate_sequence_number\", \"payment_pk\", \"amount_minor_units\", \"currency_code\", \"status\", \"received_at\", \"distribution\", \"unapplied_minor_units\") VALUES ($1, $2::uuid, $3, $4, $5, $6::timestamptz, $7::jsonb, $8)"
+ },
+ {
+  "calls": 500,
+  "total_ms": 3660.9,
+  "mean_ms": 7.3217,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1::uuid AND $2::uuid ORDER BY account_pk"
+ },
+ {
+  "calls": 500517,
+  "total_ms": 769.0,
+  "mean_ms": 0.0015,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 500517,
+  "total_ms": 628.5,
+  "mean_ms": 0.0013,
+  "rows": 0,
+  "query": "BEGIN"
+ },
+ {
+  "calls": 1,
+  "total_ms": 532.7,
+  "mean_ms": 532.7157,
+  "rows": 500,
+  "query": "WITH numbered AS ( SELECT account_pk AS k, (row_number() OVER (ORDER BY account_pk) - $1) / $2 AS n FROM ar.account ) INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $3::uuid, first.n, first.k, last.k, $4 FROM (SELECT DISTINCT ON (n) "
+ },
+ {
+  "calls": 6639,
+  "total_ms": 469.0,
+  "mean_ms": 0.0706,
+  "rows": 0,
+  "query": "SELECT component, schema_release, minimum_code_release, live_release FROM core.component_release ORDER BY component"
+ },
+ {
+  "calls": 516,
+  "total_ms": 162.9,
+  "mean_ms": 0.3156,
+  "rows": 500,
+  "query": "SELECT batch_job_chunk_pk, range_start, range_end FROM core.batch_job_chunk WHERE batch_job_run_fk = $1::uuid AND (status = $2 OR (status = $3 AND claim_expires_at < clock_timestamp())) ORDER BY chunk_sequence_number LIMIT $4 FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 500,
+  "total_ms": 129.7,
+  "mean_ms": 0.2595,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $1, completed_at = clock_timestamp() WHERE batch_job_chunk_pk = $2::uuid"
+ },
+ {
+  "calls": 500,
+  "total_ms": 100.7,
+  "mean_ms": 0.2013,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $1, claimed_by_instance = $2, claim_expires_at = clock_timestamp() + make_interval(secs => $3) WHERE batch_job_chunk_pk = $4::uuid"
+ },
+ {
+  "calls": 1071,
+  "total_ms": 76.1,
+  "mean_ms": 0.071,
+  "rows": 1071,
+  "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.4,
+  "mean_ms": 0.3954,
+  "rows": 1,
+  "query": "INSERT INTO core.batch_job_run (batch_job_run_pk, job_name) VALUES ($1::uuid, $2)"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.3,
+  "mean_ms": 0.3121,
+  "rows": 1,
+  "query": "UPDATE core.batch_job_run SET finished_at = clock_timestamp() WHERE batch_job_run_pk = $1::uuid AND NOT EXISTS (SELECT $2 FROM core.batch_job_chunk WHERE batch_job_run_fk = $3::uuid AND status <> $4)"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.2,
+  "mean_ms": 0.245,
+  "rows": 1,
+  "query": "SELECT coalesce(sum(calls), $1) FROM pg_stat_statements WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.2,
+  "mean_ms": 0.2188,
+  "rows": 1,
+  "query": "SELECT pg_stat_statements_reset()"
+ },
+ {
+  "calls": 2,
+  "total_ms": 0.1,
+  "mean_ms": 0.0518,
+  "rows": 2,
+  "query": "SELECT xact_commit, xact_rollback FROM pg_stat_database WHERE datname = current_database()"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.0807,
+  "rows": 1,
+  "query": "SELECT count(*) FROM core.batch_job_chunk WHERE batch_job_run_fk = $1::uuid"
+ }
+]

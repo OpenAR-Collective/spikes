@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 276905,
+  "total_ms": 186670.0,
+  "mean_ms": 0.6741,
+  "rows": 276905,
+  "query": "INSERT INTO core.mt_events (seq_id, id, stream_id, version, data, type, tenant_id, timestamp, mt_dotnet_type, is_archived, headers) VALUES (nextval($8), $1, $2, $3, $4, $5, $9, now(), $6, $10, $7)"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 51839.8,
+  "mean_ms": 0.5184,
+  "rows": 300000,
+  "query": "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) SELECT * FROM unnest($1::uuid[], $2::bigint[], $3::uuid[], $4::uuid[])"
+ },
+ {
+  "calls": 176906,
+  "total_ms": 36132.7,
+  "mean_ms": 0.2042,
+  "rows": 176906,
+  "query": "SELECT s.id, s.version, e.headers ->> $2 FROM core.mt_streams s JOIN core.mt_events e ON e.stream_id = s.id AND e.version = s.version WHERE s.id = ANY($1)"
+ },
+ {
+  "calls": 176904,
+  "total_ms": 30773.8,
+  "mean_ms": 0.174,
+  "rows": 176904,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrued_through = $4, queue_code = $5::text WHERE account_pk = $6"
+ },
+ {
+  "calls": 339534,
+  "total_ms": 27552.9,
+  "mean_ms": 0.0811,
+  "rows": 339534,
+  "query": "SELECT $2 FROM ONLY \"ar\".\"account\" x WHERE \"account_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+ },
+ {
+  "calls": 176915,
+  "total_ms": 26720.1,
+  "mean_ms": 0.151,
+  "rows": 176915,
+  "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 176905,
+  "total_ms": 21721.5,
+  "mean_ms": 0.1228,
+  "rows": 176905,
+  "query": "UPDATE core.mt_streams SET version = $2, timestamp = now() WHERE id = $1"
+ },
+ {
+  "calls": 300000,
+  "total_ms": 19962.3,
+  "mean_ms": 0.0665,
+  "rows": 300000,
+  "query": "SELECT $2 FROM ONLY \"ar\".\"balance_bucket_definition\" x WHERE \"balance_bucket_definition_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 17902.3,
+  "mean_ms": 0.179,
+  "rows": 100000,
+  "query": "INSERT INTO ar.account_summary_read_model (account_summary_read_model_pk, client_account_number, status, is_disputed, currency_code, debt_type, contract_type, list_date, balance_buckets, balance_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11) ON"
+ },
+ {
+  "calls": 68672,
+  "total_ms": 17656.9,
+  "mean_ms": 0.2571,
+  "rows": 68672,
+  "query": "UPDATE core.pending_event SET status = $2, fired_at = clock_timestamp() WHERE pending_event_pk = $1"
+ },
+ {
+  "calls": 2270,
+  "total_ms": 15768.0,
+  "mean_ms": 6.9463,
+  "rows": 211832,
+  "query": "select d.data, d.type, d.mt_dotnet_type, d.bdata, d.seq_id, d.id, d.stream_id, d.version, d.timestamp, d.tenant_id, d.headers, d.is_archived, s.type as stream_type from core.mt_events as d inner join core.mt_streams as s on d.stream_id = s.id where d.seq_id > $1 and d.seq_id <= $2 and d.type = ANY($"
+ },
+ {
+  "calls": 68699,
+  "total_ms": 11158.9,
+  "mean_ms": 0.1624,
+  "rows": 68699,
+  "query": "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, due_at, status, scheduled_by_event) VALUES ($1, $2, $6, $3, $4, $7, $5::uuid)"
+ },
+ {
+  "calls": 68682,
+  "total_ms": 10516.0,
+  "mean_ms": 0.1531,
+  "rows": 68682,
+  "query": "SELECT aggregate_pk_ref, target_event_type, due_at, status FROM core.pending_event WHERE pending_event_pk = $1 FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 9769.1,
+  "mean_ms": 0.0977,
+  "rows": 100000,
+  "query": "INSERT INTO ar.account (aggregate_sequence_number, account_pk, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 9750.4,
+  "mean_ms": 0.0975,
+  "rows": 100000,
+  "query": "INSERT INTO core.mt_streams (id, type, version, timestamp, tenant_id) VALUES ($1, $3, $2, now(), $4)"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 7638.0,
+  "mean_ms": 0.0764,
+  "rows": 100000,
+  "query": "SELECT EXISTS (SELECT $2 FROM ar.account WHERE account_pk = $1)"
+ },
+ {
+  "calls": 286978,
+  "total_ms": 6938.8,
+  "mean_ms": 0.0242,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 6280.9,
+  "mean_ms": 0.0628,
+  "rows": 300000,
+  "query": "SELECT code, balance_bucket_definition_pk FROM ar.balance_bucket_definition WHERE code = ANY($1)"
+ },
+ {
+  "calls": 68700,
+  "total_ms": 3855.5,
+  "mean_ms": 0.0561,
+  "rows": 0,
+  "query": "SELECT aggregate_pk_ref, target_event_type FROM core.pending_event WHERE pending_event_pk = $1"
+ },
+ {
+  "calls": 39534,
+  "total_ms": 3610.9,
+  "mean_ms": 0.0913,
+  "rows": 39534,
+  "query": "INSERT INTO ar.task (task_pk, account_fk, task_type, status, created_at) VALUES ($1, $2, $3, $5, $4)"
+ },
+ {
+  "calls": 279182,
+  "total_ms": 3334.1,
+  "mean_ms": 0.0119,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 2692,
+  "total_ms": 2620.1,
+  "mean_ms": 0.9733,
+  "rows": 68691,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= now() ORDER BY due_at LIMIT $2"
+ },
+ {
+  "calls": 39534,
+  "total_ms": 2508.0,
+  "mean_ms": 0.0634,
+  "rows": 0,
+  "query": "SELECT account_fk, task_type FROM ar.task WHERE task_pk = $1"
+ },
+ {
+  "calls": 718,
+  "total_ms": 1291.5,
+  "mean_ms": 1.7988,
+  "rows": 718,
+  "query": "select (select min(seq_id) from core.mt_events where seq_id > $1) as first_after, (select seq_id from (select seq_id, lead(seq_id) over (order by seq_id) as next_seq from core.mt_events where seq_id >= $1) gaps where next_seq is not null and next_seq - seq_id > $2 order by seq_id limit $3) as gap_ed"
+ },
+ {
+  "calls": 718,
+  "total_ms": 469.5,
+  "mean_ms": 0.6539,
+  "rows": 718,
+  "query": "select core.mt_mark_event_progression($2, $1)"
+ }
+]

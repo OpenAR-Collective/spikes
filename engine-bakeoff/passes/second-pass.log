@@ -1,0 +1,1358 @@
+
+===== 1 second-pass-csharp-direct-batch-accrual-w32 2026-10-09T21:07:52
+python bakeoff_harness.py run --side csharp-direct --workload batch-accrual --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-accrual-w32 --record
+[harness 21:08:26] run 1: csharp-direct batch-accrual with 32 workers
+[harness 21:17:02]   500000 sent, 500000 succeeded, 479.11 s; gates PASS
+[harness 21:17:02] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-direct-batch-accrual-w32
+# second-pass-csharp-direct-batch-accrual-w32
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:08:04, finished 2026-10-09T21:17:02.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 1043.602 | 19.965 | 78.538 | 0.935 | 0.122 | 5.742 | 11.06 | 2.08 | 500000 (0) | 51809 | 6.3 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 2 second-pass-csharp-realtime-w4 2026-10-09T21:17:08
+python bakeoff_harness.py run --side csharp --workload realtime --workers 4 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-realtime-w4 --record --warmup 60 --duration 180
+[harness 21:17:41] run 1: csharp realtime with 4 workers
+[harness 21:23:15]   83377 sent, 82951 succeeded, 180 s; gates PASS
+[harness 21:23:15] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-realtime-w4
+# second-pass-csharp-realtime-w4
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:17:20, finished 2026-10-09T21:23:15.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 460.839 | 7.619 | 20.561 | 1.417 | 0.816 | 6.275 | 18.46 | 3.09 | 82951 (0) | 1381 | 3.3 | 231.9 / 1010.4 | 115.4 / 257.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 3 second-pass-python-realtime-w32 2026-10-09T21:23:19
+python bakeoff_harness.py run --side python --workload realtime --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-realtime-w32 --record --warmup 60 --duration 180
+[harness 21:23:54] run 1: python realtime with 32 workers
+[harness 21:31:24]   48437 sent, 48302 succeeded, 180.305 s; gates PASS
+[harness 21:31:24] wrote engine-bakeoff\results\2026-10-09-second-pass-python-realtime-w32
+# second-pass-python-realtime-w32
+
+Recorded run. Side: python. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:23:31, finished 2026-10-09T21:31:24.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 267.891 | 105.2 | 281.79 | 16.37 | 7.832 | 12.834 | 28.69 | 2.9 | 48302 (0) | 89993 | 133.2 | 1983.1 / 3116.1 | 231.4 / 1217.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 4 second-pass-csharp-batch-accrual-w8 2026-10-09T21:31:25
+python bakeoff_harness.py run --side csharp --workload batch-accrual --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-accrual-w8 --record
+[harness 21:31:58] run 1: csharp batch-accrual with 8 workers
+[harness 21:42:33]   500000 sent, 500000 succeeded, 599.129 s; gates PASS
+[harness 21:42:33] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-batch-accrual-w8
+# second-pass-csharp-batch-accrual-w8
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:31:37, finished 2026-10-09T21:42:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 834.545 | 9.015 | 18.511 | 1.154 | 0.107 | 3.713 | 10.13 | 2.1 | 500000 (0) | 1182 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 5 second-pass-csharp-batch-payments-w32 2026-10-09T21:42:36
+python bakeoff_harness.py run --side csharp --workload batch-payments --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-payments-w32 --record
+[harness 21:43:09] run 1: csharp batch-payments with 32 workers
+[harness 21:57:25]   500000 sent, 500000 succeeded, 803.905 s; gates PASS
+[harness 21:57:25] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-batch-payments-w32
+# second-pass-csharp-batch-payments-w32
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:42:48, finished 2026-10-09T21:57:25.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 621.964 | 42.894 | 103.942 | 1.495 | 0.397 | 9.638 | 15.35 | 2.15 | 500000 (0) | 3083 | 2.9 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 6 second-pass-csharp-direct-realtime-w32 2026-10-09T21:57:27
+python bakeoff_harness.py run --side csharp-direct --workload realtime --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-realtime-w32 --record --warmup 60 --duration 180
+[harness 21:58:02] run 1: csharp-direct realtime with 32 workers
+[harness 22:03:37]   108245 sent, 107559 succeeded, 180 s; gates PASS
+[harness 22:03:37] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-direct-realtime-w32
+# second-pass-csharp-direct-realtime-w32
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T21:57:40, finished 2026-10-09T22:03:37.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 597.55 | 53.631 | 116.982 | 1.218 | 0.958 | 9.936 | 20.74 | 3.08 | 107559 (0) | 3095 | 3.3 | 411.0 / 1413.4 | 94.2 / 286.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 7 second-pass-python-batch-accrual-w32 2026-10-09T22:03:38
+python bakeoff_harness.py run --side python --workload batch-accrual --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-accrual-w32 --record
+[harness 22:04:16] run 1: python batch-accrual with 32 workers
+[harness 22:26:33]   500000 sent, 500000 succeeded, 1066.352 s; gates PASS
+[harness 22:26:33] wrote engine-bakeoff\results\2026-10-09-second-pass-python-batch-accrual-w32
+# second-pass-python-batch-accrual-w32
+
+Recorded run. Side: python. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:03:50, finished 2026-10-09T22:26:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 468.888 | 77.78 | 158.82 | 8.745 | 2.245 | 6.206 | 14.29 | 1.55 | 500000 (0) | 107914 | 191.9 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 8 second-pass-csharp-wax-realtime-w32 2026-10-09T22:26:35
+python bakeoff_harness.py run --side csharp-wax --workload realtime --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-realtime-w32 --record --warmup 60 --duration 180
+[harness 22:27:13] run 1: csharp-wax realtime with 32 workers
+[harness 22:32:45]   113788 sent, 113042 succeeded, 180 s; gates PASS
+[harness 22:32:45] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-wax-realtime-w32
+# second-pass-csharp-wax-realtime-w32
+
+Recorded run. Side: csharp-wax. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:26:48, finished 2026-10-09T22:32:45.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 628.011 | 43.547 | 109.16 | 1.222 | 1.023 | 9.472 | 19.55 | 3.82 | 113042 (0) | 10148 | 3.4 | 800.2 / 1834.4 | 83.5 / 277.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 9 second-pass-python-realtime-w16 2026-10-09T22:32:51
+python bakeoff_harness.py run --side python --workload realtime --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-realtime-w16 --record --warmup 60 --duration 180
+[harness 22:33:26] run 1: python realtime with 16 workers
+[harness 22:41:59]   59650 sent, 59440 succeeded, 180.128 s; gates PASS
+[harness 22:41:59] wrote engine-bakeoff\results\2026-10-09-second-pass-python-realtime-w16
+# second-pass-python-realtime-w16
+
+Recorded run. Side: python. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:33:03, finished 2026-10-09T22:41:59.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 329.988 | 39.42 | 92.78 | 12.714 | 6.446 | 10.876 | 23.31 | 2.49 | 59440 (0) | 145959 | 212.0 | 6572.8 / 10703.7 | 375.0 / 7740.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 10 second-pass-csharp-wax-realtime-w16 2026-10-09T22:42:02
+python bakeoff_harness.py run --side csharp-wax --workload realtime --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-realtime-w16 --record --warmup 60 --duration 180
+[harness 22:42:35] run 1: csharp-wax realtime with 16 workers
+[harness 22:48:07]   117104 sent, 116315 succeeded, 180 s; gates PASS
+[harness 22:48:07] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-wax-realtime-w16
+# second-pass-csharp-wax-realtime-w16
+
+Recorded run. Side: csharp-wax. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:42:14, finished 2026-10-09T22:48:07.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 646.194 | 17.409 | 75.479 | 1.26 | 1.348 | 8.975 | 21.4 | 5.01 | 116315 (0) | 1754 | 3.4 | 327.1 / 688.8 | 65.1 / 269.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 11 second-pass-csharp-wax-batch-accrual-w32 2026-10-09T22:48:13
+python bakeoff_harness.py run --side csharp-wax --workload batch-accrual --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-accrual-w32 --record
+[harness 22:48:45] run 1: csharp-wax batch-accrual with 32 workers
+[harness 22:57:33]   500000 sent, 500000 succeeded, 474.478 s; gates PASS
+[harness 22:57:33] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-wax-batch-accrual-w32
+# second-pass-csharp-wax-batch-accrual-w32
+
+Recorded run. Side: csharp-wax. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:48:24, finished 2026-10-09T22:57:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 1053.79 | 19.786 | 77.479 | 0.969 | 0.242 | 5.69 | 10.56 | 2.53 | 500000 (0) | 119974 | 25.7 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 12 second-pass-csharp-batch-payments-w8 2026-10-09T22:57:39
+python bakeoff_harness.py run --side csharp --workload batch-payments --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-payments-w8 --record
+[harness 22:58:19] run 1: csharp batch-payments with 8 workers
+[harness 23:11:27]   500000 sent, 500000 succeeded, 736.146 s; gates PASS
+[harness 23:11:27] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-batch-payments-w8
+# second-pass-csharp-batch-payments-w8
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T22:57:52, finished 2026-10-09T23:11:27.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 679.213 | 10.75 | 21.766 | 1.356 | 0.304 | 5.149 | 15.34 | 2.13 | 500000 (0) | 2006 | 3.3 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 13 second-pass-csharp-wax-batch-accrual-w8 2026-10-09T23:11:30
+python bakeoff_harness.py run --side csharp-wax --workload batch-accrual --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-accrual-w8 --record
+[harness 23:12:03] run 1: csharp-wax batch-accrual with 8 workers
+[harness 23:22:34]   500000 sent, 500000 succeeded, 599.693 s; gates PASS
+[harness 23:22:34] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-wax-batch-accrual-w8
+# second-pass-csharp-wax-batch-accrual-w8
+
+Recorded run. Side: csharp-wax. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T23:11:42, finished 2026-10-09T23:22:34.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 833.76 | 9.217 | 17.844 | 1.056 | 0.568 | 3.907 | 12.05 | 3.29 | 500000 (0) | 568 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 14 second-pass-csharp-direct-realtime-w8 2026-10-09T23:22:36
+python bakeoff_harness.py run --side csharp-direct --workload realtime --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-realtime-w8 --record --warmup 60 --duration 180
+[harness 23:23:12] run 1: csharp-direct realtime with 8 workers
+[harness 23:28:50]   118938 sent, 118123 succeeded, 180 s; gates PASS
+[harness 23:28:50] wrote engine-bakeoff\results\2026-10-09-second-pass-csharp-direct-realtime-w8
+# second-pass-csharp-direct-realtime-w8
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T23:22:48, finished 2026-10-09T23:28:50.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 656.239 | 10.662 | 39.392 | 1.263 | 0.737 | 6.434 | 20.67 | 3.06 | 118123 (0) | 2513 | 3.2 | 227.6 / 1029.5 | 98.3 / 256.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 15 second-pass-python-batch-payments-w8 2026-10-09T23:28:52
+python bakeoff_harness.py run --side python --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-w8 --record
+[harness 23:29:33] run 1: python batch-payments with 8 workers
+[harness 00:02:59]   500000 sent, 500000 succeeded, 1171.661 s; gates PASS
+[harness 00:02:59] wrote engine-bakeoff\results\2026-10-09-second-pass-python-batch-payments-w8
+# second-pass-python-batch-payments-w8
+
+Recorded run. Side: python. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-09T23:29:04, finished 2026-10-10T00:02:59.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 426.745 | 18.02 | 27.21 | 8.075 | 4.721 | 7.385 | 28.19 | 2.62 | 500000 (0) | 505524 | 750.9 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 16 second-pass-csharp-wax-batch-payments-w8 2026-10-10T00:03:04
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w8 --record
+[harness 00:03:43] run 1: csharp-wax batch-payments with 8 workers
+[harness 00:14:53]   500000 sent, 500000 succeeded, 622.123 s; gates PASS
+[harness 00:14:53] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w8
+# second-pass-csharp-wax-batch-payments-w8
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:03:17, finished 2026-10-10T00:14:53.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 803.7 | 9.365 | 18.684 | 1.07 | 0.792 | 4.636 | 18.28 | 4.02 | 500000 (0) | 1090 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 17 second-pass-csharp-wax-batch-accrual-w16 2026-10-10T00:14:55
+python bakeoff_harness.py run --side csharp-wax --workload batch-accrual --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-accrual-w16 --record
+[harness 00:15:29] run 1: csharp-wax batch-accrual with 16 workers
+[harness 00:21:23]   500000 sent, 500000 succeeded, 323.257 s; gates PASS
+[harness 00:21:23] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-accrual-w16
+# second-pass-csharp-wax-batch-accrual-w16
+
+Recorded run. Side: csharp-wax. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:15:07, finished 2026-10-10T00:21:23.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1546.757 | 9.643 | 18.607 | 0.737 | 0.247 | 3.421 | 10.92 | 2.61 | 500000 (0) | 1100 | 3.0 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 18 second-pass-csharp-direct-batch-payments-w32 2026-10-10T00:21:26
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-w32 --record
+[harness 00:22:06] run 1: csharp-direct batch-payments with 32 workers
+[harness 00:35:03]   500000 sent, 500000 succeeded, 723.871 s; gates PASS
+[harness 00:35:03] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-w32
+# second-pass-csharp-direct-batch-payments-w32
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:21:38, finished 2026-10-10T00:35:03.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 690.731 | 33.141 | 97.277 | 1.245 | 0.383 | 8.679 | 17.33 | 2.13 | 500000 (0) | 3129 | 3.2 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 19 second-pass-csharp-direct-batch-accrual-w8 2026-10-10T00:35:07
+python bakeoff_harness.py run --side csharp-direct --workload batch-accrual --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-accrual-w8 --record
+[harness 00:35:41] run 1: csharp-direct batch-accrual with 8 workers
+[harness 00:46:51]   500000 sent, 500000 succeeded, 635.269 s; gates PASS
+[harness 00:46:51] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-accrual-w8
+# second-pass-csharp-direct-batch-accrual-w8
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:35:19, finished 2026-10-10T00:46:51.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 787.068 | 9.678 | 18.592 | 1.091 | 0.115 | 3.65 | 11.13 | 2.1 | 500000 (0) | 1139 | 3.4 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 20 second-pass-python-realtime-w4 2026-10-10T00:46:53
+python bakeoff_harness.py run --side python --workload realtime --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-realtime-w4 --record --warmup 60 --duration 180
+[harness 00:47:34] run 1: python realtime with 4 workers
+[harness 00:53:49]   42786 sent, 42680 succeeded, 180.013 s; gates PASS
+[harness 00:53:49] wrote engine-bakeoff\results\2026-10-10-second-pass-python-realtime-w4
+# second-pass-python-realtime-w4
+
+Recorded run. Side: python. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:47:05, finished 2026-10-10T00:53:49.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 237.094 | 15.93 | 31.94 | 7.245 | 8.726 | 9.185 | 34.86 | 3.13 | 42680 (0) | 40064 | 57.2 | 1289.3 / 5526.6 | 168.7 / 1332.9 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 21 second-pass-csharp-wax-batch-payments-w16 2026-10-10T00:53:54
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w16 --record
+[harness 00:54:31] run 1: csharp-wax batch-payments with 16 workers
+[harness 01:03:42]   500000 sent, 500000 succeeded, 504.002 s; gates PASS
+[harness 01:03:42] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w16
+# second-pass-csharp-wax-batch-payments-w16
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T00:54:06, finished 2026-10-10T01:03:42.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 992.06 | 12.054 | 60.802 | 1.001 | 0.642 | 5.922 | 17.43 | 3.43 | 500000 (0) | 1747 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 22 second-pass-csharp-wax-batch-accrual-w4 2026-10-10T01:03:45
+python bakeoff_harness.py run --side csharp-wax --workload batch-accrual --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-accrual-w4 --record
+[harness 01:04:20] run 1: csharp-wax batch-accrual with 4 workers
+[harness 01:25:12]   500000 sent, 500000 succeeded, 1220.229 s; gates PASS
+[harness 01:25:12] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-accrual-w4
+# second-pass-csharp-wax-batch-accrual-w4
+
+Recorded run. Side: csharp-wax. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T01:03:59, finished 2026-10-10T01:25:12.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 409.759 | 9.583 | 18.365 | 1.361 | 1.317 | 4.742 | 14.48 | 4.77 | 500000 (0) | 291 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 23 second-pass-python-batch-accrual-w8 2026-10-10T01:25:16
+python bakeoff_harness.py run --side python --workload batch-accrual --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-accrual-w8 --record
+[harness 01:25:57] run 1: python batch-accrual with 8 workers
+[harness 01:45:22]   500000 sent, 500000 succeeded, 899.748 s; gates PASS
+[harness 01:45:22] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-accrual-w8
+# second-pass-python-batch-accrual-w8
+
+Recorded run. Side: python. Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T01:25:29, finished 2026-10-10T01:45:22.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 555.711 | 14.15 | 23.19 | 4.954 | 1.949 | 4.07 | 14.11 | 1.47 | 500000 (0) | 118284 | 209.9 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 24 second-pass-csharp-batch-accrual-w32 2026-10-10T01:45:28
+python bakeoff_harness.py run --side csharp --workload batch-accrual --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-accrual-w32 --record
+[harness 01:46:10] run 1: csharp batch-accrual with 32 workers
+[harness 01:55:50]   500000 sent, 500000 succeeded, 543.859 s; gates PASS
+[harness 01:55:50] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-batch-accrual-w32
+# second-pass-csharp-batch-accrual-w32
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: batch-accrual. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T01:45:40, finished 2026-10-10T01:55:50.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 919.356 | 24.522 | 81.39 | 1.178 | 0.141 | 6.514 | 10.13 | 2.1 | 500000 (0) | 2792 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 25 second-pass-csharp-realtime-w32 2026-10-10T01:55:54
+python bakeoff_harness.py run --side csharp --workload realtime --workers 32 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-realtime-w32 --record --warmup 60 --duration 180
+[harness 01:56:32] run 1: csharp realtime with 32 workers
+[harness 02:02:05]   88045 sent, 87580 succeeded, 180 s; gates PASS
+[harness 02:02:05] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-realtime-w32
+# second-pass-csharp-realtime-w32
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T01:56:06, finished 2026-10-10T02:02:05.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 486.556 | 75.332 | 162.297 | 1.571 | 1.124 | 11.704 | 18.47 | 3.09 | 87580 (0) | 1709 | 3.7 | 419.4 / 1402.7 | 102.1 / 294.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 26 second-pass-python-batch-payments-w32 2026-10-10T02:02:10
+python bakeoff_harness.py run --side python --workload batch-payments --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-w32 --record
+[harness 02:02:51] run 1: python batch-payments with 32 workers
+[harness 02:44:27]   500000 sent, 500000 succeeded, 1814.097 s; gates PASS
+[harness 02:44:27] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-payments-w32
+# second-pass-python-batch-payments-w32
+
+Recorded run. Side: python. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T02:02:22, finished 2026-10-10T02:44:27.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 275.619 | 103.82 | 262.73 | 14.731 | 7.307 | 12.09 | 31.01 | 2.89 | 500000 (0) | 390375 | 574.8 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 27 second-pass-csharp-direct-realtime-w16 2026-10-10T02:44:31
+python bakeoff_harness.py run --side csharp-direct --workload realtime --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-realtime-w16 --record --warmup 60 --duration 180
+[harness 02:45:14] run 1: csharp-direct realtime with 16 workers
+[harness 02:50:50]   116436 sent, 115619 succeeded, 180 s; gates PASS
+[harness 02:50:50] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-realtime-w16
+# second-pass-csharp-direct-realtime-w16
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T02:44:45, finished 2026-10-10T02:50:50.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 642.328 | 17.106 | 84.754 | 1.26 | 0.875 | 8.621 | 20.65 | 3.05 | 115619 (0) | 3531 | 3.3 | 302.2 / 1112.1 | 76.8 / 262.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 28 second-pass-csharp-wax-batch-payments-w32 2026-10-10T02:50:52
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 32 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w32 --record
+[harness 02:51:31] run 1: csharp-wax batch-payments with 32 workers
+[harness 03:04:11]   500000 sent, 500000 succeeded, 712.801 s; gates PASS
+[harness 03:04:11] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w32
+# second-pass-csharp-wax-batch-payments-w32
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T02:51:04, finished 2026-10-10T03:04:11.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 32 | 701.458 | 32.065 | 96.364 | 1.198 | 0.532 | 8.551 | 16.58 | 2.96 | 500000 (0) | 55001 | 3.9 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 29 second-pass-csharp-wax-realtime-w4 2026-10-10T03:04:14
+python bakeoff_harness.py run --side csharp-wax --workload realtime --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-realtime-w4 --record --warmup 60 --duration 180
+[harness 03:04:47] run 1: csharp-wax realtime with 4 workers
+[harness 03:10:17]   92597 sent, 92094 succeeded, 180 s; gates PASS
+[harness 03:10:17] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-realtime-w4
+# second-pass-csharp-wax-realtime-w4
+
+Recorded run. Side: csharp-wax. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:04:24, finished 2026-10-10T03:10:17.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 511.633 | 7.241 | 15.131 | 1.305 | 1.905 | 6.023 | 24.76 | 7.0 | 92094 (0) | 768 | 3.3 | 226.1 / 517.2 | 116.6 / 254.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 30 second-pass-csharp-wax-batch-payments-w4 2026-10-10T03:10:20
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w4 --record
+[harness 03:10:55] run 1: csharp-wax batch-payments with 4 workers
+[harness 03:31:47]   500000 sent, 500000 succeeded, 1204.205 s; gates PASS
+[harness 03:31:47] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w4
+# second-pass-csharp-wax-batch-payments-w4
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:10:33, finished 2026-10-10T03:31:47.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 415.212 | 9.086 | 18.682 | 1.379 | 1.698 | 5.825 | 21.69 | 6.14 | 500000 (0) | 644 | 3.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 31 second-pass-csharp-realtime-w16 2026-10-10T03:31:51
+python bakeoff_harness.py run --side csharp --workload realtime --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-realtime-w16 --record --warmup 60 --duration 180
+[harness 03:32:33] run 1: csharp realtime with 16 workers
+[harness 03:38:08]   101246 sent, 100637 succeeded, 180 s; gates PASS
+[harness 03:38:08] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-realtime-w16
+# second-pass-csharp-realtime-w16
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:32:04, finished 2026-10-10T03:38:08.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 559.094 | 19.618 | 89.923 | 1.561 | 1.062 | 10.121 | 18.48 | 3.09 | 100637 (0) | 2673 | 4.5 | 288.2 / 1159.7 | 80.7 / 273.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 32 second-pass-csharp-realtime-w8 2026-10-10T03:38:12
+python bakeoff_harness.py run --side csharp --workload realtime --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-realtime-w8 --record --warmup 60 --duration 180
+[harness 03:38:49] run 1: csharp realtime with 8 workers
+[harness 03:44:23]   117178 sent, 116399 succeeded, 180 s; gates PASS
+[harness 03:44:23] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-realtime-w8
+# second-pass-csharp-realtime-w8
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:38:23, finished 2026-10-10T03:44:23.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 646.661 | 10.479 | 53.045 | 1.394 | 0.787 | 6.914 | 18.42 | 3.06 | 116399 (0) | 1929 | 3.3 | 221.3 / 1019.0 | 98.2 / 257.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 33 second-pass-csharp-wax-realtime-w8 2026-10-10T03:44:28
+python bakeoff_harness.py run --side csharp-wax --workload realtime --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-realtime-w8 --record --warmup 60 --duration 180
+[harness 03:45:03] run 1: csharp-wax realtime with 8 workers
+[harness 03:50:38]   185359 sent, 183540 succeeded, 180 s; gates PASS
+[harness 03:50:38] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-realtime-w8
+# second-pass-csharp-wax-realtime-w8
+
+Recorded run. Side: csharp-wax. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:44:41, finished 2026-10-10T03:50:38.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 1019.667 | 7.299 | 14.202 | 0.978 | 0.979 | 4.733 | 21.15 | 4.91 | 183540 (0) | 1540 | 3.5 | 223.1 / 517.0 | 112.2 / 252.8 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 34 second-pass-csharp-direct-batch-payments-w8 2026-10-10T03:50:39
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments --workers 8 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-w8 --record
+[harness 03:51:14] run 1: csharp-direct batch-payments with 8 workers
+[harness 04:03:31]   500000 sent, 500000 succeeded, 686.249 s; gates PASS
+[harness 04:03:31] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-w8
+# second-pass-csharp-direct-batch-payments-w8
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T03:50:52, finished 2026-10-10T04:03:31.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 728.599 | 10.04 | 21.168 | 1.183 | 0.301 | 4.713 | 17.32 | 2.12 | 500000 (0) | 2109 | 3.2 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 35 second-pass-python-realtime-w8 2026-10-10T04:03:36
+python bakeoff_harness.py run --side python --workload realtime --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-realtime-w8 --record --warmup 60 --duration 180
+[harness 04:04:17] run 1: python realtime with 8 workers
+[harness 04:13:12]   73536 sent, 73239 succeeded, 180.03 s; gates PASS
+[harness 04:13:12] wrote engine-bakeoff\results\2026-10-10-second-pass-python-realtime-w8
+# second-pass-python-realtime-w8
+
+Recorded run. Side: python. Workload: realtime. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:03:47, finished 2026-10-10T04:13:12.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 406.816 | 19.36 | 34.28 | 8.139 | 5.0 | 7.692 | 24.62 | 2.54 | 73239 (0) | 170850 | 239.8 | 2874.2 / 5209.4 | 286.1 / 3086.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 36 second-pass-csharp-direct-realtime-w4 2026-10-10T04:13:17
+python bakeoff_harness.py run --side csharp-direct --workload realtime --workers 4 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-realtime-w4 --record --warmup 60 --duration 180
+[harness 04:13:50] run 1: csharp-direct realtime with 4 workers
+[harness 04:19:25]   71512 sent, 71185 succeeded, 180 s; gates PASS
+[harness 04:19:25] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-realtime-w4
+# second-pass-csharp-direct-realtime-w4
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:13:28, finished 2026-10-10T04:19:25.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 395.472 | 9.507 | 21.478 | 1.389 | 0.853 | 6.317 | 20.78 | 3.12 | 71185 (0) | 1287 | 3.2 | 236.8 / 1032.0 | 115.6 / 255.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 37 second-pass-csharp-wax-batch-payments-w16-hash-off 2026-10-10T04:19:28
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w16-hash-off --record --hash off
+[harness 04:20:06] run 1: csharp-wax batch-payments with 16 workers
+[harness 04:27:45]   500000 sent, 500000 succeeded, 426.448 s; gates PASS
+[harness 04:27:45] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w16-hash-off
+# second-pass-csharp-wax-batch-payments-w16-hash-off
+
+Recorded run. Side: csharp-wax (WAX_HASH=off). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:19:40, finished 2026-10-10T04:27:45.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1172.476 | 11.148 | 53.154 | 0.888 | 0.559 | 4.875 | 17.3 | 3.33 | 500000 (0) | 1734 | 3.2 | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every hash chain verifies.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 38 second-pass-csharp-batch-payments-w16-no-engine 2026-10-10T04:27:49
+python bakeoff_harness.py run --side csharp --workload batch-payments --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-payments-w16-no-engine --record --no-engine
+[harness 04:28:22] run 1: csharp batch-payments with 16 workers
+[harness 04:37:19]   500000 sent, 500000 succeeded, 493.329 s; gates PASS
+[harness 04:37:19] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-batch-payments-w16-no-engine
+# second-pass-csharp-batch-payments-w16-no-engine
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Engine paused: the engine did not run, so nothing read the stream and there is no catch-up. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:28:01, finished 2026-10-10T04:37:19.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1013.522 | 14.721 | 43.375 | 1.309 | None | 5.641 | 12.17 | 2.01 | 500000 (0) | 1000000 | None | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every account summary matches the account and its buckets; every payment line's applied amount matches the payment's distribution; every payment read model row matches its payment.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 39 second-pass-csharp-wax-batch-payments-w16-no-engine 2026-10-10T04:37:25
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-w16-no-engine --record --no-engine
+[harness 04:37:58] run 1: csharp-wax batch-payments with 16 workers
+[harness 04:45:00]   500000 sent, 500000 succeeded, 384.355 s; gates PASS
+[harness 04:45:00] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-w16-no-engine
+# second-pass-csharp-wax-batch-payments-w16-no-engine
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Engine paused: the engine did not run, so nothing read the stream and there is no catch-up. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:37:37, finished 2026-10-10T04:45:00.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1300.881 | 10.973 | 24.516 | 0.96 | None | 3.989 | 12.17 | 2.01 | 500000 (0) | 1000000 | None | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every account summary matches the account and its buckets; every payment line's applied amount matches the payment's distribution; every payment read model row matches its payment.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 40 second-pass-csharp-direct-batch-payments-w16-hash-off 2026-10-10T04:45:06
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-w16-hash-off --record --hash off
+[harness 04:45:40] run 1: csharp-direct batch-payments with 16 workers
+[harness 04:53:13]   500000 sent, 500000 succeeded, 420.07 s; gates PASS
+[harness 04:53:13] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-w16-hash-off
+# second-pass-csharp-direct-batch-payments-w16-hash-off
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct, WAX_HASH=off). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:45:18, finished 2026-10-10T04:53:13.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1190.278 | 11.282 | 45.692 | 0.96 | 0.253 | 4.648 | 17.27 | 2.08 | 500000 (0) | 3810 | 3.5 | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every hash chain verifies.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 41 second-pass-csharp-batch-payments-w16-hash-off 2026-10-10T04:53:17
+python bakeoff_harness.py run --side csharp --workload batch-payments --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-batch-payments-w16-hash-off --record --hash off
+[harness 04:53:53] run 1: csharp batch-payments with 16 workers
+[harness 05:02:12]   500000 sent, 500000 succeeded, 466.649 s; gates PASS
+[harness 05:02:12] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-batch-payments-w16-hash-off
+# second-pass-csharp-batch-payments-w16-hash-off
+
+Recorded run. Side: csharp (BAKEOFF_APPEND=marten, WAX_APPEND=marten, WAX_HASH=off). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T04:53:30, finished 2026-10-10T05:02:12.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1071.469 | 12.183 | 52.632 | 1.106 | 0.257 | 5.339 | 15.28 | 2.09 | 500000 (0) | 3527 | 3.2 | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every hash chain verifies.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 42 second-pass-python-batch-payments-w16-no-engine 2026-10-10T05:02:18
+python bakeoff_harness.py run --side python --workload batch-payments --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-w16-no-engine --record --no-engine
+[harness 05:02:56] run 1: python batch-payments with 16 workers
+[harness 05:39:20]   500000 sent, 500000 succeeded, 2099.679 s; gates PASS
+[harness 05:39:20] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-payments-w16-no-engine
+# second-pass-python-batch-payments-w16-no-engine
+
+Recorded run. Side: python. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Engine paused: the engine did not run, so nothing read the stream and there is no catch-up. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T05:02:31, finished 2026-10-10T05:39:20.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 238.132 | 78.88 | 104.21 | 16.812 | None | 10.369 | 15.19 | 1.02 | 500000 (0) | 1000000 | None | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every account summary matches the account and its buckets; every payment line's applied amount matches the payment's distribution; every payment read model row matches its payment.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 43 second-pass-csharp-direct-batch-payments-w16-no-engine 2026-10-10T05:39:25
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-w16-no-engine --record --no-engine
+[harness 05:40:05] run 1: csharp-direct batch-payments with 16 workers
+[harness 05:48:17]   500000 sent, 500000 succeeded, 448.728 s; gates PASS
+[harness 05:48:17] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-w16-no-engine
+# second-pass-csharp-direct-batch-payments-w16-no-engine
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Engine paused: the engine did not run, so nothing read the stream and there is no catch-up. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T05:39:37, finished 2026-10-10T05:48:17.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 1114.261 | 13.034 | 33.454 | 1.078 | None | 4.998 | 14.17 | 2.01 | 500000 (0) | 1000000 | None | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every account summary matches the account and its buckets; every payment line's applied amount matches the payment's distribution; every payment read model row matches its payment.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 44 second-pass-python-batch-payments-w16-hash-off 2026-10-10T05:48:21
+python bakeoff_harness.py run --side python --workload batch-payments --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-w16-hash-off --record --hash off
+[harness 05:49:01] run 1: python batch-payments with 16 workers
+[harness 06:22:49]   500000 sent, 500000 succeeded, 1236.485 s; gates PASS
+[harness 06:22:49] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-payments-w16-hash-off
+# second-pass-python-batch-payments-w16-hash-off
+
+Recorded run. Side: python (WAX_HASH=off). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Hashing off: WAX_HASH=off, so events carry a placeholder hash and verify-chain did not run. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T05:48:33, finished 2026-10-10T06:22:49.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 404.372 | 27.06 | 84.69 | 9.915 | 5.006 | 8.12 | 26.18 | 2.64 | 500000 (0) | 502832 | 750.9 | None / None | None / None | pass |
+
+Gates skipped because of the diagnostic: every hash chain verifies.
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 45 second-pass-csharp-direct-placement-w4 2026-10-10T06:22:52
+python bakeoff_harness.py run --side csharp-direct --workload placement --workers 4 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-placement-w4 --record --placements 100000
+[harness 06:23:36] run 1: csharp-direct placement with 4 workers
+[harness 06:29:46]   100000 sent, 100000 succeeded, 331.695 s; gates PASS
+[harness 06:29:46] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-placement-w4
+# second-pass-csharp-direct-placement-w4
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: placement. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:23:06, finished 2026-10-10T06:29:46.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 301.482 | 11.222 | 53.334 | 1.596 | 3.488 | 16.373 | 47.53 | 8.43 | 100000 (0) | 2065 | 3.3 | 337.5 / 1201.8 | 38.1 / 259.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 46 second-pass-csharp-direct-placement-bulk-w16 2026-10-10T06:29:48
+python bakeoff_harness.py run --side csharp-direct --workload placement-bulk --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-placement-bulk-w16 --record --placements 100000
+[harness 06:30:26] run 1: csharp-direct placement-bulk with 16 workers
+[harness 06:34:32]   100000 sent, 100000 succeeded, 8.28 s; gates PASS
+[harness 06:34:32] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-placement-bulk-w16
+# second-pass-csharp-direct-placement-bulk-w16
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: placement-bulk. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:30:00, finished 2026-10-10T06:34:32.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 12077.295 | 1195.422 | 2375.003 | 0.091 | 0.088 | 0.553 | 7.03 | 0.04 | 100 (0) | 193852 | 134.3 | 86721.8 / 132730.2 | 74768.4 / 138839.6 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 47 second-pass-csharp-wax-batch-payments-bulk-w16 2026-10-10T06:34:35
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments-bulk --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-bulk-w16 --record
+[harness 06:35:12] run 1: csharp-wax batch-payments-bulk with 16 workers
+[harness 06:38:29]   500000 sent, 500000 succeeded, 42.756 s; gates PASS
+[harness 06:38:29] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-bulk-w16
+# second-pass-csharp-wax-batch-payments-bulk-w16
+
+Recorded run. Side: csharp-wax. Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:34:46, finished 2026-10-10T06:38:29.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 11694.265 | 1252.056 | 1756.379 | 0.107 | 0.046 | 0.504 | 0.47 | 0.07 | 500 (0) | 939999 | 110.8 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 48 second-pass-csharp-wax-placement-w16 2026-10-10T06:38:31
+python bakeoff_harness.py run --side csharp-wax --workload placement --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-placement-w16 --record --placements 100000
+[harness 06:39:06] run 1: csharp-wax placement with 16 workers
+[harness 06:44:07]   100000 sent, 100000 succeeded, 198.897 s; gates PASS
+[harness 06:44:07] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-placement-w16
+# second-pass-csharp-wax-placement-w16
+
+Recorded run. Side: csharp-wax. Workload: placement. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:38:43, finished 2026-10-10T06:44:07.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 502.773 | 19.906 | 79.919 | 1.269 | 2.015 | 11.98 | 32.77 | 5.97 | 100000 (0) | 119072 | 56.9 | 50525.5 / 74451.5 | 55805.4 / 72835.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 49 second-pass-csharp-direct-batch-payments-bulk-w4 2026-10-10T06:44:12
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments-bulk --workers 4 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-bulk-w4 --record
+[harness 06:44:47] run 1: csharp-direct batch-payments-bulk with 4 workers
+[harness 06:47:32]   500000 sent, 500000 succeeded, 38.254 s; gates PASS
+[harness 06:47:32] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-bulk-w4
+# second-pass-csharp-direct-batch-payments-bulk-w4
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:44:24, finished 2026-10-10T06:47:32.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 13070.529 | 265.99 | 476.968 | 0.091 | 0.105 | 0.436 | 1.24 | 0.02 | 500 (0) | 749000 | 79.0 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 50 second-pass-csharp-direct-placement-bulk-w4 2026-10-10T06:47:38
+python bakeoff_harness.py run --side csharp-direct --workload placement-bulk --workers 4 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-placement-bulk-w4 --record --placements 100000
+[harness 06:48:11] run 1: csharp-direct placement-bulk with 4 workers
+[harness 06:52:20]   100000 sent, 100000 succeeded, 20.878 s; gates PASS
+[harness 06:52:20] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-placement-bulk-w4
+# second-pass-csharp-direct-placement-bulk-w4
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: placement-bulk. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:47:50, finished 2026-10-10T06:52:20.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 4789.731 | 766.973 | 1791.773 | 0.074 | 0.277 | 1.291 | 8.57 | 0.33 | 100 (0) | 191845 | 130.2 | 86815.8 / 129460.9 | 75652.7 / 129706.8 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 51 second-pass-csharp-direct-placement-w16 2026-10-10T06:52:24
+python bakeoff_harness.py run --side csharp-direct --workload placement --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-placement-w16 --record --placements 100000
+[harness 06:52:58] run 1: csharp-direct placement with 16 workers
+[harness 06:58:28]   100000 sent, 100000 succeeded, 212.421 s; gates PASS
+[harness 06:58:28] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-placement-w16
+# second-pass-csharp-direct-placement-w16
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: placement. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:52:36, finished 2026-10-10T06:58:28.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 470.763 | 21.265 | 81.599 | 1.341 | 2.134 | 12.786 | 34.12 | 5.55 | 100000 (0) | 109788 | 61.6 | 63255.8 / 84967.5 | 68911.4 / 83059.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 52 second-pass-python-batch-payments-bulk-w16 2026-10-10T06:58:30
+python bakeoff_harness.py run --side python --workload batch-payments-bulk --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-bulk-w16 --record
+[harness 06:59:10] run 1: python batch-payments-bulk with 16 workers
+[harness 07:29:01]   500000 sent, 500000 succeeded, 41.49 s; gates PASS
+[harness 07:29:01] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-payments-bulk-w16
+# second-pass-python-batch-payments-bulk-w16
+
+Recorded run. Side: python. Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T06:58:42, finished 2026-10-10T07:29:01.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 12051.097 | 1098.09 | 2094.36 | 0.433 | 0.23 | 0.411 | 0.56 | 0.34 | 500 (0) | 992500 | 1657.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 53 second-pass-python-placement-bulk-w4 2026-10-10T07:29:07
+python bakeoff_harness.py run --side python --workload placement-bulk --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-placement-bulk-w4 --record --placements 100000
+[harness 07:29:45] run 1: python placement-bulk with 4 workers
+[harness 08:00:34]   100000 sent, 100000 succeeded, 6.394 s; gates PASS
+[harness 08:00:34] wrote engine-bakeoff\results\2026-10-10-second-pass-python-placement-bulk-w4
+# second-pass-python-placement-bulk-w4
+
+Recorded run. Side: python. Workload: placement-bulk. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T07:29:20, finished 2026-10-10T08:00:34.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 15639.662 | 235.47 | 307.62 | 0.139 | 0.243 | 0.229 | 6.3 | 0.01 | 100 (0) | 325491 | 1731.3 | 742643.8 / 1086034.5 | 558132.2 / 1083557.8 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 54 second-pass-python-batch-payments-bulk-w4 2026-10-10T08:00:38
+python bakeoff_harness.py run --side python --workload batch-payments-bulk --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-batch-payments-bulk-w4 --record
+[harness 08:01:20] run 1: python batch-payments-bulk with 4 workers
+[harness 08:31:48]   500000 sent, 500000 succeeded, 42.404 s; gates PASS
+[harness 08:31:48] wrote engine-bakeoff\results\2026-10-10-second-pass-python-batch-payments-bulk-w4
+# second-pass-python-batch-payments-bulk-w4
+
+Recorded run. Side: python. Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T08:00:52, finished 2026-10-10T08:31:48.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 11791.34 | 288.97 | 422.79 | 0.216 | 0.194 | 0.328 | 0.49 | 0.29 | 500 (0) | 993500 | 1704.1 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 55 second-pass-csharp-direct-batch-payments-bulk-w16 2026-10-10T08:31:49
+python bakeoff_harness.py run --side csharp-direct --workload batch-payments-bulk --workers 16 --accounts 500000 --engine-args=--rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-direct-batch-payments-bulk-w16 --record
+[harness 08:32:32] run 1: csharp-direct batch-payments-bulk with 16 workers
+[harness 08:35:57]   500000 sent, 500000 succeeded, 58.299 s; gates PASS
+[harness 08:35:57] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-batch-payments-bulk-w16
+# second-pass-csharp-direct-batch-payments-bulk-w16
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T08:32:03, finished 2026-10-10T08:35:57.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 8576.476 | 1695.049 | 2287.892 | 0.098 | 0.08 | 0.683 | 0.43 | 0.02 | 500 (0) | 930995 | 98.8 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 56 second-pass-csharp-wax-placement-bulk-w4 2026-10-10T08:36:01
+python bakeoff_harness.py run --side csharp-wax --workload placement-bulk --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-placement-bulk-w4 --record --placements 100000
+[harness 08:36:39] run 1: csharp-wax placement-bulk with 4 workers
+[harness 08:40:42]   100000 sent, 100000 succeeded, 13.368 s; gates PASS
+[harness 08:40:42] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-placement-bulk-w4
+# second-pass-csharp-wax-placement-bulk-w4
+
+Recorded run. Side: csharp-wax. Workload: placement-bulk. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T08:36:13, finished 2026-10-10T08:40:42.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 7480.551 | 472.241 | 945.952 | 0.07 | 0.158 | 0.858 | 8.27 | 0.31 | 100 (0) | 203168 | 132.8 | 83741.2 / 126774.3 | 69903.6 / 130304.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 57 second-pass-python-placement-w4 2026-10-10T08:40:47
+python bakeoff_harness.py run --side python --workload placement --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --catchup-timeout 3600 --label second-pass-python-placement-w4 --record --placements 100000
+[harness 08:41:27] run 1: python placement with 4 workers
+[harness 09:11:29]   100000 sent, 100000 succeeded, 382.273 s; gates PASS
+[harness 09:11:29] wrote engine-bakeoff\results\2026-10-10-second-pass-python-placement-w4
+# second-pass-python-placement-w4
+
+Recorded run. Side: python. Workload: placement. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 8`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T08:40:59, finished 2026-10-10T09:11:29.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 261.593 | 14.43 | 30.64 | 5.351 | 7.76 | 7.839 | 28.11 | 1.92 | 100000 (0) | 271910 | 1319.3 | 518215.9 / 858187.9 | 408591.3 / 854755.7 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 58 second-pass-csharp-wax-placement-w4 2026-10-10T09:11:33
+python bakeoff_harness.py run --side csharp-wax --workload placement --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-placement-w4 --record --placements 100000
+[harness 09:12:11] run 1: csharp-wax placement with 4 workers
+[harness 09:17:15]   100000 sent, 100000 succeeded, 269.933 s; gates PASS
+[harness 09:17:15] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-placement-w4
+# second-pass-csharp-wax-placement-w4
+
+Recorded run. Side: csharp-wax. Workload: placement. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T09:11:45, finished 2026-10-10T09:17:15.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 370.462 | 9.599 | 48.737 | 1.279 | 3.975 | 13.943 | 51.25 | 13.65 | 100000 (0) | 1949 | 3.3 | 236.5 / 829.0 | 17.4 / 253.8 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 60 second-pass-csharp-wax-placement-bulk-w16 2026-10-10T09:17:19
+python bakeoff_harness.py run --side csharp-wax --workload placement-bulk --workers 16 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-placement-bulk-w16 --record --placements 100000
+[harness 09:17:54] run 1: csharp-wax placement-bulk with 16 workers
+[harness 09:22:00]   100000 sent, 100000 succeeded, 11.324 s; gates PASS
+[harness 09:22:00] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-placement-bulk-w16
+# second-pass-csharp-wax-placement-bulk-w16
+
+Recorded run. Side: csharp-wax. Workload: placement-bulk. Accounts: 500,000. New accounts placed per run: 100,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T09:17:31, finished 2026-10-10T09:22:00.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 8830.802 | 1658.764 | 3080.465 | 0.086 | 0.08 | 0.756 | 7.01 | 0.08 | 100 (0) | 207684 | 144.3 | 88626.6 / 131100.0 | 79155.6 / 140770.9 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 62 second-pass-csharp-wax-batch-payments-bulk-w4 2026-10-10T09:22:05
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments-bulk --workers 4 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --catchup-timeout 3600 --label second-pass-csharp-wax-batch-payments-bulk-w4 --record
+[harness 09:22:38] run 1: csharp-wax batch-payments-bulk with 4 workers
+[harness 09:25:27]   500000 sent, 500000 succeeded, 30.868 s; gates PASS
+[harness 09:25:27] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-wax-batch-payments-bulk-w4
+# second-pass-csharp-wax-batch-payments-bulk-w4
+
+Recorded run. Side: csharp-wax. Workload: batch-payments-bulk. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T09:22:17, finished 2026-10-10T09:25:27.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 4 | 16198.004 | 206.126 | 410.058 | 0.094 | 0.063 | 0.347 | 1.01 | 0.09 | 500 (0) | 813516 | 94.2 | None / None | None / None | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 63 second-pass-csharp-direct-realtime-w16-untuned 2026-10-10T09:25:31
+python bakeoff_harness.py run --side csharp-direct --workload realtime --workers 16 --accounts 500000 --engine-args=--rule-workers 4 --catchup-timeout 3600 --label second-pass-csharp-direct-realtime-w16-untuned --record --warmup 60 --duration 180
+[harness 09:26:14] run 1: csharp-direct realtime with 16 workers
+[harness 09:31:51]   114236 sent, 113516 succeeded, 180 s; gates PASS
+[harness 09:31:51] wrote engine-bakeoff\results\2026-10-10-second-pass-csharp-direct-realtime-w16-untuned
+# second-pass-csharp-direct-realtime-w16-untuned
+
+Recorded run. Side: csharp-direct (BAKEOFF_APPEND=direct, WAX_APPEND=direct). Workload: realtime. Accounts: 500,000. Engine arguments: `--rule-workers 4`. pgBouncer: no. Warm-up runs per worker count: 0; measured runs: 1. Started 2026-10-10T09:25:43, finished 2026-10-10T09:31:51.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.7.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.90.0 (238679). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit 604223b71af7fa4b175b0053165aa7fc1c2c61d5. Other containers running: 0.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 630.644 | 19.031 | 71.467 | 1.371 | 1.021 | 9.067 | 20.36 | 2.96 | 113516 (0) | 36122 | 13.5 | 13159.8 / 25767.9 | 174.9 / 22434.7 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
