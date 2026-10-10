@@ -50,7 +50,8 @@ def estimate_s(plan, entry):
     if workload == "realtime":
         return plan["warmup_s"] + plan["duration_s"] + OVERHEAD_S + (400 if fam == "python" else 120)
     if workload in ("batch-payments", "batch-accrual"):
-        window = plan["accounts"] / RATE[(fam, workload)][workers]
+        rates = RATE[(fam, workload)]
+        window = plan["accounts"] / rates[max(w for w in rates if w <= workers)]
         if entry["diagnostic"] == "no-engine":
             catchup = 0
         elif fam == "python":
@@ -59,7 +60,8 @@ def estimate_s(plan, entry):
             catchup = 60
         return window + catchup + OVERHEAD_S
     if workload == "batch-payments-bulk":
-        return 700 if fam == "csharp" else 1450
+        # Bulk time, verify-chain, and catch-up all grow with the seed.
+        return (700 if fam == "csharp" else 1450) * max(1, plan["accounts"] / 500_000)
     if workload == "placement":
         return 980 if fam == "csharp" else 1880
     if workload == "placement-bulk":
@@ -110,6 +112,10 @@ def command(plan, entry):
         args += ["--warmup", str(plan["warmup_s"]), "--duration", str(plan["duration_s"])]
     if entry["workload"].startswith("placement"):
         args += ["--placements", str(plan["placements"])]
+    if plan.get("caps", "standard") != "standard":
+        args += ["--caps", plan["caps"]]
+    if plan.get("pool_size"):
+        args += ["--pgbouncer", "--pool-size", str(plan["pool_size"])]
     if entry["diagnostic"] == "no-engine":
         args += ["--no-engine"]
     if entry["diagnostic"] == "hash-off":
@@ -157,6 +163,57 @@ def outcome(entry):
                                 if run["bench"].get("elapsed_s") else None for run in runs]}
 
 
+def harness_module():
+    sys.path.insert(0, str(HARNESS))
+    import bakeoff_harness
+    return bakeoff_harness
+
+
+def clean_databases(plan):
+    """Drop every run database left in any side's cluster, so nothing an
+    earlier or interrupted run left behind is vacuumed or checkpointed during
+    this pass. Templates (bakeoff_seed_*) and the default databases stay."""
+    harness = harness_module()
+    projects = set()
+    for name in dict.fromkeys(entry["side"] for entry in plan["runs"]):
+        # Only a plan with non-default caps or PgBouncer passes them, so the
+        # standard passes need nothing from the harness beyond Side(name).
+        options = {}
+        if plan.get("pool_size"):
+            options["pgbouncer"] = True
+        if plan.get("caps", "standard") != "standard":
+            options["caps"] = plan["caps"]
+        side = harness.Side(name, **options)
+        if side.project in projects:
+            continue
+        projects.add(side.project)
+        stop_databases()
+        side.up_db()
+        leftovers = side.psql("postgres", "SELECT datname FROM pg_database WHERE datname LIKE 'bakeoff_run_%'") or ""
+        for database in leftovers.split():
+            side.psql("postgres", f'DROP DATABASE IF EXISTS "{database}" WITH (FORCE)')
+        print(f"{side.project}: dropped {len(leftovers.split())} leftover run databases", flush=True)
+    stop_databases()
+
+
+def preflight(docker_root, min_free_gb):
+    """On a host where Docker's data must live on a particular disk, such as a
+    cloud host's local NVMe, refuse to start unless it does and has room. A
+    data root that silently fell back to the boot disk would make every run
+    measure the wrong disk."""
+    if not docker_root:
+        return
+    actual = sh(["docker", "info", "--format", "{{.DockerRootDir}}"]).stdout.strip()
+    if os.path.normpath(actual) != os.path.normpath(docker_root):
+        raise SystemExit(f"Docker's data root is {actual!r}, not {docker_root!r}; refusing to start")
+    if os.stat(docker_root).st_dev == os.stat(os.path.abspath(os.sep)).st_dev:
+        raise SystemExit(f"{docker_root} is on the same disk as the root file system, not its own mount; refusing to start")
+    free_gb = shutil.disk_usage(docker_root).free / 2**30
+    if free_gb < min_free_gb:
+        raise SystemExit(f"{docker_root} has {free_gb:.0f} GB free, under the {min_free_gb} GB minimum; refusing to start")
+    print(f"preflight: Docker data root {docker_root} on its own disk, {free_gb:.0f} GB free", flush=True)
+
+
 def prepare(plan):
     """Seed each side's template at the plan's size; not measured. Sides that
     share a Compose project share a template, so each project is seeded once."""
@@ -185,11 +242,14 @@ def main():
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--groups", help="comma-separated priority groups to run; default every group")
     parser.add_argument("--history", default="", help="comma-separated earlier passes whose run times feed the deadline check")
+    parser.add_argument("--docker-root", help="require Docker's data root to be this path, on its own disk (a cloud host's NVMe)")
+    parser.add_argument("--min-free-gb", type=float, default=50, help="with --docker-root, the free space required there")
     args = parser.parse_args()
     plan = json.loads((HERE / f"{args.name}.plan.json").read_text(encoding="utf-8"))
     if args.groups:
         groups = {int(group) for group in args.groups.split(",")}
         plan["runs"] = [entry for entry in plan["runs"] if entry["group"] in groups]
+    preflight(args.docker_root, args.min_free_gb)
     if args.prepare_only:
         prepare(plan)
         return
@@ -204,6 +264,8 @@ def main():
     def save():
         status_path.write_text(json.dumps(status, indent=1) + "\n", encoding="utf-8", newline="\n")
 
+    if not args.dry_run:
+        clean_databases(plan)
     clock = datetime.now()
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
     with opened as log:
