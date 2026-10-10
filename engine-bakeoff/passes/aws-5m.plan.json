@@ -1,0 +1,122 @@
+{
+ "name": "aws-5m",
+ "seed": 20261014,
+ "layout": "aws-5m",
+ "accounts": 5000000,
+ "placements": 100000,
+ "warmup_s": 60,
+ "duration_s": 180,
+ "catchup_timeout_s": 3600,
+ "caps": "scaled",
+ "engine_args": {
+  "tuned": {
+   "csharp": "--rule-workers 32",
+   "csharp-direct": "--rule-workers 32",
+   "csharp-wax": "--projection-workers 3 --rule-workers 32",
+   "python": "--projection-workers 3 --rule-workers 16"
+  },
+  "untuned": "--rule-workers 4"
+ },
+ "runs": [
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "batch-payments-bulk",
+   "workers": 8,
+   "diagnostic": null,
+   "order": 1,
+   "label": "aws-5m-csharp-direct-batch-payments-bulk-w8",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "batch-payments-bulk",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 2,
+   "label": "aws-5m-csharp-direct-batch-payments-bulk-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 3,
+   "label": "aws-5m-csharp-realtime-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 4,
+   "label": "aws-5m-csharp-direct-realtime-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "realtime",
+   "workers": 16,
+   "diagnostic": null,
+   "order": 5,
+   "label": "aws-5m-csharp-realtime-w16",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "batch-payments-bulk",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 6,
+   "label": "aws-5m-csharp-wax-batch-payments-bulk-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "realtime",
+   "workers": 16,
+   "diagnostic": null,
+   "order": 7,
+   "label": "aws-5m-csharp-direct-realtime-w16",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 8,
+   "label": "aws-5m-csharp-wax-realtime-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "batch-payments-bulk",
+   "workers": 8,
+   "diagnostic": null,
+   "order": 9,
+   "label": "aws-5m-csharp-wax-batch-payments-bulk-w8",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "realtime",
+   "workers": 16,
+   "diagnostic": null,
+   "order": 10,
+   "label": "aws-5m-csharp-wax-realtime-w16",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  }
+ ]
+}

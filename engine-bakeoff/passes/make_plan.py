@@ -7,8 +7,11 @@ list. The plan is committed before the pass starts.
 writes second-pass.plan.json and second-pass.plan.md beside this file. The
 third argument picks the layout: "laptop" for passes on Rob's laptop, which
 has the first pass as its baseline; "third" for the pass after the second,
-which carries over the second pass's skipped runs; or "pc", the default, for
-the full grid a separate benchmark PC would need. Runs that share a block
+which carries over the second pass's skipped runs; "pc", the default, for
+the full grid a separate benchmark PC would need; or one of the AWS layouts,
+"aws-anchor" at the standard caps, "aws-scaled" at the scaled caps,
+"aws-pgbouncer" at the scaled caps through PgBouncer, and "aws-5m" at the
+scaled caps with 5,000,000 accounts. Runs that share a block
 stay together, back to back: the blocks are shuffled within their group, and
 the runs within each block.
 """
@@ -52,6 +55,18 @@ TUNED = {
 }
 # The first pass ran every side with these, untuned.
 UNTUNED = "--rule-workers 4"
+
+# The engines' settings at the scaled caps, where the engine has 4 CPUs
+# instead of 2 and the bench drives up to 64 workers. Provisional: each is
+# confirmed by a short trial on the AWS host before the scaled pass, and the
+# AWS host's runbook, which is not part of this repository, says how to
+# change one.
+SCALED_TUNED = {
+    "csharp": "--rule-workers 32",
+    "csharp-direct": "--rule-workers 32",
+    "csharp-wax": "--projection-workers 3 --rule-workers 32",
+    "python": "--projection-workers 3 --rule-workers 16",
+}
 
 
 def run(group, side, workload, workers, diagnostic=None, block=None, suffix=None):
@@ -118,6 +133,54 @@ def laptop_runs():
     return planned
 
 
+def aws_anchor_runs():
+    # Profile (a): the core comparison at the standard caps on a 32-vCPU host,
+    # to see whether the laptop's ordering of the sides holds on server CPUs.
+    return [run(1, side, workload, workers) for side in SIDES
+            for workload in ("batch-payments", "batch-accrual", "realtime") for workers in (4, 8, 16)]
+
+
+def aws_scaled_runs():
+    # Profile (b): where each side stops scaling with a 16-CPU database. The
+    # bulk workloads are where 6,900 commands per second is plausible on one
+    # database, so they come second, at a low and a high worker count.
+    planned = [run(1, side, workload, workers) for side in SIDES
+               for workload in ("batch-payments", "realtime") for workers in (8, 16, 32, 64)]
+    planned += [run(2, side, workload, workers) for side in BULK_SIDES
+                for workload in ("batch-payments-bulk", "placement-bulk") for workers in (8, 32)]
+    return planned
+
+
+def aws_pgbouncer_runs():
+    # The scaled pass's top worker counts again through PgBouncer with a small
+    # transaction pool, to separate each side's ceiling from the contention
+    # that many concurrent sessions cause.
+    return [run(1, side, workload, workers) for side in SIDES
+            for workload in ("batch-payments", "realtime") for workers in (32, 64)]
+
+
+def aws_5m_runs():
+    # A later check on the C# sides only: does a working set ten times larger,
+    # beyond shared_buffers, change the cost per command?
+    planned = [run(1, side, "batch-payments-bulk", workers) for side in ("csharp-direct", "csharp-wax")
+               for workers in (8, 32)]
+    planned += [run(1, side, "realtime", workers) for side in ("csharp", "csharp-direct", "csharp-wax")
+                for workers in (16, 32)]
+    return planned
+
+
+# Each layout's runs and the plan settings that differ from the defaults.
+LAYOUTS = {
+    "laptop": (lambda: laptop_runs(), {}),
+    "third": (lambda: third_runs(), {}),
+    "pc": (lambda: pc_runs(), {}),
+    "aws-anchor": (aws_anchor_runs, {}),
+    "aws-scaled": (aws_scaled_runs, {"caps": "scaled"}),
+    "aws-pgbouncer": (aws_pgbouncer_runs, {"caps": "scaled", "pool_size": 32}),
+    "aws-5m": (aws_5m_runs, {"caps": "scaled", "accounts": 5_000_000}),
+}
+
+
 def pc_runs():
     planned = []
     # 1. The core comparison: both batch jobs and the real-time mix at every
@@ -152,7 +215,9 @@ def main():
     name, seed = sys.argv[1], int(sys.argv[2])
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
-    planned = {"laptop": laptop_runs, "third": third_runs, "pc": pc_runs}[layout]()
+    runs, settings = LAYOUTS[layout]
+    planned = runs()
+    tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
     ordered = []
     for group in sorted({entry["group"] for entry in planned}):
         members = [entry for entry in planned if entry["group"] == group]
@@ -171,11 +236,13 @@ def main():
     for index, entry in enumerate(ordered, start=1):
         entry["order"] = index
         entry["label"] = label(name, entry)
-        entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else TUNED[entry["side"]]
+        entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else tuned[entry["side"]]
     plan = {
-        "name": name, "seed": seed, "layout": layout, "accounts": ACCOUNTS, "placements": PLACEMENTS,
-        "warmup_s": WARMUP_S, "duration_s": DURATION_S, "catchup_timeout_s": CATCHUP_TIMEOUT_S,
-        "engine_args": {"tuned": TUNED, "untuned": UNTUNED}, "runs": ordered,
+        "name": name, "seed": seed, "layout": layout, "accounts": settings.get("accounts", ACCOUNTS),
+        "placements": PLACEMENTS, "warmup_s": WARMUP_S, "duration_s": DURATION_S,
+        "catchup_timeout_s": CATCHUP_TIMEOUT_S,
+        **{key: settings[key] for key in ("caps", "pool_size") if key in settings},
+        "engine_args": {"tuned": tuned, "untuned": UNTUNED}, "runs": ordered,
     }
     (HERE / f"{name}.plan.json").write_text(json.dumps(plan, indent=1) + "\n", encoding="utf-8", newline="\n")
     lines = [

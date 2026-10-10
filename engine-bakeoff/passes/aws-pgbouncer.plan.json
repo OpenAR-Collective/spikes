@@ -1,0 +1,183 @@
+{
+ "name": "aws-pgbouncer",
+ "seed": 20261013,
+ "layout": "aws-pgbouncer",
+ "accounts": 500000,
+ "placements": 100000,
+ "warmup_s": 60,
+ "duration_s": 180,
+ "catchup_timeout_s": 3600,
+ "caps": "scaled",
+ "pool_size": 32,
+ "engine_args": {
+  "tuned": {
+   "csharp": "--rule-workers 32",
+   "csharp-direct": "--rule-workers 32",
+   "csharp-wax": "--projection-workers 3 --rule-workers 32",
+   "python": "--projection-workers 3 --rule-workers 16"
+  },
+  "untuned": "--rule-workers 4"
+ },
+ "runs": [
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "batch-payments",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 1,
+   "label": "aws-pgbouncer-csharp-direct-batch-payments-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 2,
+   "label": "aws-pgbouncer-csharp-realtime-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "python",
+   "workload": "realtime",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 3,
+   "label": "aws-pgbouncer-python-realtime-w64",
+   "engine_args": "--projection-workers 3 --rule-workers 16"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 4,
+   "label": "aws-pgbouncer-csharp-wax-realtime-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "python",
+   "workload": "batch-payments",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 5,
+   "label": "aws-pgbouncer-python-batch-payments-w64",
+   "engine_args": "--projection-workers 3 --rule-workers 16"
+  },
+  {
+   "group": 1,
+   "side": "python",
+   "workload": "batch-payments",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 6,
+   "label": "aws-pgbouncer-python-batch-payments-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 16"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "batch-payments",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 7,
+   "label": "aws-pgbouncer-csharp-wax-batch-payments-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "batch-payments",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 8,
+   "label": "aws-pgbouncer-csharp-batch-payments-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 9,
+   "label": "aws-pgbouncer-csharp-direct-realtime-w32",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "batch-payments",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 10,
+   "label": "aws-pgbouncer-csharp-batch-payments-w64",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "realtime",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 11,
+   "label": "aws-pgbouncer-csharp-direct-realtime-w64",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-direct",
+   "workload": "batch-payments",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 12,
+   "label": "aws-pgbouncer-csharp-direct-batch-payments-w64",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "realtime",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 13,
+   "label": "aws-pgbouncer-csharp-wax-realtime-w64",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp-wax",
+   "workload": "batch-payments",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 14,
+   "label": "aws-pgbouncer-csharp-wax-batch-payments-w64",
+   "engine_args": "--projection-workers 3 --rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "csharp",
+   "workload": "realtime",
+   "workers": 64,
+   "diagnostic": null,
+   "order": 15,
+   "label": "aws-pgbouncer-csharp-realtime-w64",
+   "engine_args": "--rule-workers 32"
+  },
+  {
+   "group": 1,
+   "side": "python",
+   "workload": "realtime",
+   "workers": 32,
+   "diagnostic": null,
+   "order": 16,
+   "label": "aws-pgbouncer-python-realtime-w32",
+   "engine_args": "--projection-workers 3 --rule-workers 16"
+  }
+ ]
+}
