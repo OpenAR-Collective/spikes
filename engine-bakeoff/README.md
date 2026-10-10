@@ -83,6 +83,15 @@ Within each group the order is shuffled from a recorded seed, so that a side's p
 
 Each engine runs with the settings its tuning trial chose, which the plan file records. The trials ran on the same laptop at 50,000 accounts and are not recorded. Marten's daemon runs each projection as its own agent, so the two sides through Marten have no projection-worker setting. On the other two sides, one reader advances all three projections in turn, as Andy's prototype does, and `--projection-workers` sets how many workers share that reading.
 
+**The third pass.** The second pass showed two things that change how the next one runs. The laptop's speed drifted during the night, and Python's driver was at its 4-CPU limit at 16 and 32 workers, so the second pass's diagnostics at 16 workers did not isolate the engine or the hashing on every side. The third pass runs the same tuned engines on the same laptop, with each run's seed copy, gates, and measurements unchanged, and it adds two records to every run: a host-speed probe, the median time of five sums of 20,000,000 integers in the run's database, taken just before the bench and outside the measured window, and each container's CPU-throttle counters from its cgroup. A run on a slowed host then shows in its own result. Its runs fall into four groups, in priority order:
+
+1. Every run the second pass skipped for time: the first pass's batch runs at 4 and 16 workers on its three sides, which complete the tuned results at every worker count; Python's placement and bulk placement at 16 workers; and the remaining untuned real-time runs.
+2. The diagnostics again, on the payment file at 8 workers, below Python's limit, as triples run back to back on each side: a normal run, the engine paused, and hashing off, in a shuffled order within each triple, so the host's drift between them is small.
+3. The core comparison again, in a new shuffle, for a second sample of every configuration.
+4. A second round of the triples, if the window leaves time.
+
+The [plan](passes/third-pass.plan.md) is generated with the seed 20261010 and committed before the pass starts. The runner now judges whether a run fits before the deadline from the second pass's actual run times plus 15 percent, instead of from rough estimates.
+
 The measurements are these:
 
 - Sustained commands per second over the measured run.

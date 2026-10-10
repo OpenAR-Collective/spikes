@@ -65,6 +65,40 @@ def estimate_s(plan, entry):
     raise ValueError(workload)
 
 
+def history(names):
+    """How long each kind of run took in earlier passes, in minutes, keyed by
+    side and by family, so the deadline check can use real times."""
+    seen = {}
+    for name in names:
+        status = json.loads((HERE / f"{name}.status.json").read_text(encoding="utf-8"))
+        runs = {entry["label"]: entry for entry in
+                json.loads((HERE / f"{name}.plan.json").read_text(encoding="utf-8"))["runs"]}
+        for record in status["runs"]:
+            if record["state"] != "done":
+                continue
+            entry = runs[record["label"]]
+            took = (datetime.fromisoformat(record["finished"]) - datetime.fromisoformat(record["started"])).total_seconds()
+            for key in history_keys(entry):
+                seen[key] = max(seen.get(key, 0), took)
+    return seen
+
+
+def history_keys(entry):
+    # A triple's normal run and an untuned run take as long as a plain one.
+    diagnostic = entry["diagnostic"] if entry["diagnostic"] in ("no-engine", "hash-off") else ""
+    return [(entry["side"], entry["workload"], entry["workers"], diagnostic),
+            (family(entry["side"]), entry["workload"], entry["workers"], diagnostic)]
+
+
+def estimate(plan, entry, seen):
+    """The longest earlier run of the same kind plus 15 percent, or the rough
+    estimate when no earlier run matches."""
+    for key in history_keys(entry):
+        if key in seen:
+            return seen[key] * 1.15
+    return estimate_s(plan, entry)
+
+
 def command(plan, entry):
     args = [sys.executable, "bakeoff_harness.py", "run", "--side", entry["side"], "--workload", entry["workload"],
             "--workers", str(entry["workers"]), "--accounts", str(plan["accounts"]),
@@ -143,6 +177,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--groups", help="comma-separated priority groups to run; default every group")
+    parser.add_argument("--history", default="", help="comma-separated earlier passes whose run times feed the deadline check")
     args = parser.parse_args()
     plan = json.loads((HERE / f"{args.name}.plan.json").read_text(encoding="utf-8"))
     if args.groups:
@@ -154,6 +189,7 @@ def main():
     if not args.deadline:
         parser.error("--deadline is required")
     deadline = datetime.strptime(args.deadline, "%Y-%m-%d %H:%M")
+    seen = history([name for name in args.history.split(",") if name])
     status_path, log_path = HERE / f"{args.name}.status.json", HERE / f"{args.name}.log"
     status = {"name": args.name, "seed": plan["seed"], "deadline": args.deadline, "groups": args.groups or "all",
               "started": f"{datetime.now():%Y-%m-%dT%H:%M:%S}", "runs": []}
@@ -165,17 +201,17 @@ def main():
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
     with opened as log:
         for entry in plan["runs"]:
-            estimate = timedelta(seconds=estimate_s(plan, entry))
+            expected = timedelta(seconds=estimate(plan, entry, seen))
             record = {"order": entry["order"], "group": entry["group"], "label": entry["label"],
-                      "estimate_min": round(estimate.total_seconds() / 60, 1)}
+                      "estimate_min": round(expected.total_seconds() / 60, 1)}
             now = clock if args.dry_run else datetime.now()
-            if now + estimate > deadline:
+            if now + expected > deadline:
                 record["state"] = "skipped: would not finish before the deadline"
                 status["runs"].append(record)
                 print(f"[{now:%H:%M}] {entry['order']:>3} skip {entry['label']} ({record['estimate_min']} min)", flush=True)
                 continue
             if args.dry_run:
-                clock = now + estimate
+                clock = now + expected
                 record["state"] = "would run"
                 status["runs"].append(record)
                 print(f"[{now:%H:%M}] {entry['order']:>3} run  {entry['label']} ({record['estimate_min']} min)", flush=True)

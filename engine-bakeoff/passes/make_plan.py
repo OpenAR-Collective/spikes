@@ -6,8 +6,11 @@ list. The plan is committed before the pass starts.
 
 writes second-pass.plan.json and second-pass.plan.md beside this file. The
 third argument picks the layout: "laptop" for passes on Rob's laptop, which
-has the first pass as its baseline, or "pc", the default, for the full grid
-a separate benchmark PC would need.
+has the first pass as its baseline; "third" for the pass after the second,
+which carries over the second pass's skipped runs; or "pc", the default, for
+the full grid a separate benchmark PC would need. Runs that share a block
+stay together, back to back: the blocks are shuffled within their group, and
+the runs within each block.
 """
 
 import json
@@ -47,8 +50,39 @@ TUNED = {
 UNTUNED = "--rule-workers 4"
 
 
-def run(group, side, workload, workers, diagnostic=None):
-    return {"group": group, "side": side, "workload": workload, "workers": workers, "diagnostic": diagnostic}
+def run(group, side, workload, workers, diagnostic=None, block=None, suffix=None):
+    entry = {"group": group, "side": side, "workload": workload, "workers": workers, "diagnostic": diagnostic}
+    if block:
+        entry["block"] = block
+    if suffix:
+        entry["suffix"] = suffix
+    return entry
+
+
+def triples(group, suffix=None):
+    """The diagnostics as back-to-back triples at 8 workers, below Python's
+    bench cap: a normal run, the engine paused, and hashing off, on each side."""
+    return [run(group, side, "batch-payments", 8, diagnostic, block=side, suffix=suffix)
+            for side in SIDES for diagnostic in ("normal", "no-engine", "hash-off")]
+
+
+def third_runs():
+    planned = []
+    # 1. Every run the second pass skipped for time, to complete its plan.
+    status = json.loads((HERE / "second-pass.status.json").read_text(encoding="utf-8"))
+    earlier = {entry["label"]: entry for entry in
+               json.loads((HERE / "second-pass.plan.json").read_text(encoding="utf-8"))["runs"]}
+    for record in status["runs"]:
+        if record["state"].startswith("skipped"):
+            entry = earlier[record["label"]]
+            planned.append(run(1, entry["side"], entry["workload"], entry["workers"], entry["diagnostic"]))
+    # 2. The diagnostics again, as triples at 8 workers.
+    planned += triples(2)
+    # 3. The core comparison again, for a second sample.
+    planned += [dict(entry, group=3) for entry in laptop_runs() if entry["group"] == 1]
+    # 4. A second round of triples, if time is left.
+    planned += triples(4, suffix="r2")
+    return planned
 
 
 def laptop_runs():
@@ -107,19 +141,29 @@ def pc_runs():
 
 def label(name, entry):
     parts = [name, entry["side"], entry["workload"], f"w{entry['workers']}"]
-    return "-".join(parts + ([entry["diagnostic"]] if entry["diagnostic"] else []))
+    return "-".join(parts + [part for part in (entry["diagnostic"], entry.get("suffix")) if part])
 
 
 def main():
     name, seed = sys.argv[1], int(sys.argv[2])
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
-    planned = {"laptop": laptop_runs, "pc": pc_runs}[layout]()
+    planned = {"laptop": laptop_runs, "third": third_runs, "pc": pc_runs}[layout]()
     ordered = []
     for group in sorted({entry["group"] for entry in planned}):
         members = [entry for entry in planned if entry["group"] == group]
-        rng.shuffle(members)
-        ordered.extend(members)
+        if not any("block" in entry for entry in members):
+            rng.shuffle(members)
+            ordered.extend(members)
+            continue
+        blocks = {}
+        for entry in members:
+            blocks.setdefault(entry.get("block") or id(entry), []).append(entry)
+        blocks = list(blocks.values())
+        rng.shuffle(blocks)
+        for block in blocks:
+            rng.shuffle(block)
+            ordered.extend(block)
     for index, entry in enumerate(ordered, start=1):
         entry["order"] = index
         entry["label"] = label(name, entry)
