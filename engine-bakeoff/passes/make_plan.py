@@ -37,7 +37,11 @@ BULK_SIDES = ["csharp-direct", "csharp-wax", "python"]
 # fell from 345 s with one worker to 100 s; at 8 rule workers the real-time
 # rule delay kept up at 16 and 32 bench workers (p99 3.4 s and 3.0 s), at 4
 # it fell behind (p99 23 s), and 16, one process each, crowded the engine's
-# 2 CPUs (p99 14 s). The csharp-wax trial, with 3 projection workers: at 8
+# 2 CPUs (p99 14 s). Re-tested on 2026-10-10 at 500,000 accounts with the
+# engine-readiness wait: at 4 rule workers the rule delay's p99 was 25 s at 8
+# bench workers and 18 s at 16; at 8 it was 5.3 s and 7.9 s, so 8 stays.
+# Neither keeps fully up: the engine was at its 2-CPU limit about 90 percent
+# of the time either way. The csharp-wax trial, with 3 projection workers: at 8
 # rule workers the rules fell behind at 32 bench workers (p50 4.2 s); at 16
 # they kept up at 16 and 32 (p99 0.7 s and 1.9 s).
 TUNED = {
