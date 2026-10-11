@@ -15,9 +15,9 @@ scaled caps with 5,000,000 accounts; or "efcore", the EF Core mini-pass,
 whose fourth argument is the commit it measures:
 
     py -3 make_plan.py efcore-pass 20261011 efcore <commit>
- Runs that share a block
-stay together, back to back: the blocks are shuffled within their group, and
-the runs within each block.
+
+Runs that share a block stay together, back to back: the blocks are shuffled
+within their group, and the runs within each block.
 """
 
 import json
