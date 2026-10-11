@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 500000,
+  "total_ms": 230439.9,
+  "mean_ms": 0.4609,
+  "rows": 500000,
+  "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+ },
+ {
+  "calls": 500000,
+  "total_ms": 39694.8,
+  "mean_ms": 0.0794,
+  "rows": 500000,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, interest_accrued_through = $2 WHERE account_pk = $3 AND aggregate_sequence_number = $4"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 33269.1,
+  "mean_ms": 0.0665,
+  "rows": 1500000,
+  "query": "SELECT a.account_balance_bucket_pk, a.account_fk, a.balance_minor_units, a.balance_bucket_definition_fk, b.code AS \"Code\", b.waterfall_priority AS \"Priority\" FROM ar.account_balance_bucket AS a INNER JOIN ar.balance_bucket_definition AS b ON a.balance_bucket_definition_fk = b.balance_bucket_definiti"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 31135.5,
+  "mean_ms": 0.0623,
+  "rows": 500000,
+  "query": "SELECT * FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 31007.3,
+  "mean_ms": 0.062,
+  "rows": 500000,
+  "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 29524.3,
+  "mean_ms": 0.059,
+  "rows": 500000,
+  "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $5) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3 WHERE account_summary_read_model_pk = $4"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 23071.1,
+  "mean_ms": 0.0461,
+  "rows": 500000,
+  "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+ },
+ {
+  "calls": 836487,
+  "total_ms": 10646.8,
+  "mean_ms": 0.0127,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 57064,
+  "total_ms": 7780.1,
+  "mean_ms": 0.1363,
+  "rows": 500000,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 43450,
+  "total_ms": 7098.0,
+  "mean_ms": 0.1634,
+  "rows": 0,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 100514,
+  "total_ms": 6028.4,
+  "mean_ms": 0.06,
+  "rows": 100514,
+  "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2, updated_at = now() WHERE projection_name = $1"
+ },
+ {
+  "calls": 500,
+  "total_ms": 4099.7,
+  "mean_ms": 8.1994,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+ },
+ {
+  "calls": 625218,
+  "total_ms": 3153.8,
+  "mean_ms": 0.005,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 74391,
+  "total_ms": 2196.9,
+  "mean_ms": 0.0295,
+  "rows": 74391,
+  "query": "SELECT last_global_sequence_number, definition_digest, failed_at IS NOT NULL, failure_kind, failed_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ },
+ {
+  "calls": 57119,
+  "total_ms": 2068.0,
+  "mean_ms": 0.0362,
+  "rows": 57064,
+  "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1 AND failed_at IS NULL FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 69254,
+  "total_ms": 1373.9,
+  "mean_ms": 0.0198,
+  "rows": 69254,
+  "query": "SELECT CASE WHEN is_called THEN last_value ELSE $1 END, pg_postmaster_start_time()::text || $2 || current_database() FROM core.event_global_sequence_seq"
+ },
+ {
+  "calls": 44454,
+  "total_ms": 1181.9,
+  "mean_ms": 0.0266,
+  "rows": 44454,
+  "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ },
+ {
+  "calls": 68098,
+  "total_ms": 773.9,
+  "mean_ms": 0.0114,
+  "rows": 68098,
+  "query": "SELECT CASE WHEN is_called THEN last_value ELSE $1 END FROM core.event_global_sequence_seq"
+ },
+ {
+  "calls": 519016,
+  "total_ms": 725.8,
+  "mean_ms": 0.0014,
+  "rows": 0,
+  "query": "SAVEPOINT $1"
+ },
+ {
+  "calls": 68098,
+  "total_ms": 644.8,
+  "mean_ms": 0.0095,
+  "rows": 68098,
+  "query": "SELECT pg_current_xact_id()::text::bigint"
+ },
+ {
+  "calls": 519016,
+  "total_ms": 581.0,
+  "mean_ms": 0.0011,
+  "rows": 0,
+  "query": "RELEASE SAVEPOINT $1"
+ },
+ {
+  "calls": 68101,
+  "total_ms": 486.0,
+  "mean_ms": 0.0071,
+  "rows": 68101,
+  "query": "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint"
+ },
+ {
+  "calls": 625163,
+  "total_ms": 456.6,
+  "mean_ms": 0.0007,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 1,
+  "total_ms": 350.6,
+  "mean_ms": 350.5526,
+  "rows": 500,
+  "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+ },
+ {
+  "calls": 2888,
+  "total_ms": 115.1,
+  "mean_ms": 0.0398,
+  "rows": 0,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= now() ORDER BY due_at LIMIT $2"
+ }
+]

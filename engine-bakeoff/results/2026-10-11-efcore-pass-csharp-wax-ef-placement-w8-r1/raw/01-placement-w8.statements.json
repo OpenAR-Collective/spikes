@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 315478,
+  "total_ms": 219651.6,
+  "mean_ms": 0.6963,
+  "rows": 315478,
+  "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+ },
+ {
+  "calls": 215470,
+  "total_ms": 29675.9,
+  "mean_ms": 0.1377,
+  "rows": 215470,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1 WHERE account_pk = $2 AND aggregate_sequence_number = $3"
+ },
+ {
+  "calls": 215484,
+  "total_ms": 23608.4,
+  "mean_ms": 0.1096,
+  "rows": 215484,
+  "query": "SELECT * FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 215481,
+  "total_ms": 22144.6,
+  "mean_ms": 0.1028,
+  "rows": 215481,
+  "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+ },
+ {
+  "calls": 300000,
+  "total_ms": 20070.0,
+  "mean_ms": 0.0669,
+  "rows": 300000,
+  "query": "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, account_fk, balance_minor_units, balance_bucket_definition_fk) VALUES ($1, $2, $3, $4)"
+ },
+ {
+  "calls": 358396,
+  "total_ms": 18222.9,
+  "mean_ms": 0.0508,
+  "rows": 358396,
+  "query": "SELECT $2 FROM ONLY \"ar\".\"account\" x WHERE \"account_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+ },
+ {
+  "calls": 78526,
+  "total_ms": 11985.4,
+  "mean_ms": 0.1526,
+  "rows": 78526,
+  "query": "UPDATE core.pending_event SET fired_at = $1, status = $2 WHERE pending_event_pk = $3"
+ },
+ {
+  "calls": 100349,
+  "total_ms": 9773.1,
+  "mean_ms": 0.0974,
+  "rows": 100349,
+  "query": "INSERT INTO ar.account_summary_read_model (account_summary_read_model_pk, client_account_number, status, is_disputed, currency_code, debt_type, contract_type, list_date, balance_buckets, balance_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11) ON"
+ },
+ {
+  "calls": 78527,
+  "total_ms": 8429.6,
+  "mean_ms": 0.1073,
+  "rows": 78527,
+  "query": "SELECT * FROM core.pending_event WHERE pending_event_pk = $1 FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 406,
+  "total_ms": 8114.3,
+  "mean_ms": 19.986,
+  "rows": 141291,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 300000,
+  "total_ms": 7437.8,
+  "mean_ms": 0.0248,
+  "rows": 300000,
+  "query": "SELECT $2 FROM ONLY \"ar\".\"balance_bucket_definition\" x WHERE \"balance_bucket_definition_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+ },
+ {
+  "calls": 7858,
+  "total_ms": 6918.4,
+  "mean_ms": 0.8804,
+  "rows": 316418,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 78548,
+  "total_ms": 6826.4,
+  "mean_ms": 0.0869,
+  "rows": 78548,
+  "query": "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, due_at, fired_at, scheduled_by_event, status, target_event_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 6771.9,
+  "mean_ms": 0.0677,
+  "rows": 100000,
+  "query": "INSERT INTO ar.account (account_pk, aggregate_sequence_number, client_account_number, contract_type, currency_code, debt_type, interest_accrued_through, is_disputed, itemization_date, list_date, queue_code, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+ },
+ {
+  "calls": 348342,
+  "total_ms": 6755.1,
+  "mean_ms": 0.0194,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 4588,
+  "total_ms": 5219.7,
+  "mean_ms": 1.1377,
+  "rows": 78545,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= now() ORDER BY due_at LIMIT $2"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 4811.6,
+  "mean_ms": 0.0481,
+  "rows": 100000,
+  "query": "SELECT EXISTS ( SELECT $2 FROM ar.account AS a WHERE a.account_pk = $1)"
+ },
+ {
+  "calls": 78553,
+  "total_ms": 4195.3,
+  "mean_ms": 0.0534,
+  "rows": 0,
+  "query": "SELECT p.aggregate_pk_ref AS \"Key\", p.target_event_type AS \"Text\" FROM core.pending_event AS p WHERE p.pending_event_pk = $1 LIMIT $2"
+ },
+ {
+  "calls": 58396,
+  "total_ms": 3009.6,
+  "mean_ms": 0.0515,
+  "rows": 58396,
+  "query": "INSERT INTO ar.task (task_pk, account_fk, created_at, status, task_type) VALUES ($1, $2, $3, $4, $5)"
+ },
+ {
+  "calls": 58399,
+  "total_ms": 3009.4,
+  "mean_ms": 0.0515,
+  "rows": 0,
+  "query": "SELECT t.account_fk AS \"Key\", t.task_type AS \"Text\" FROM ar.task AS t WHERE t.task_pk = $1 LIMIT $2"
+ },
+ {
+  "calls": 100000,
+  "total_ms": 2729.6,
+  "mean_ms": 0.0273,
+  "rows": 300000,
+  "query": "SELECT b.balance_bucket_definition_pk, b.code, b.waterfall_priority FROM ar.balance_bucket_definition AS b WHERE b.code = ANY ($1)"
+ },
+ {
+  "calls": 328754,
+  "total_ms": 2513.1,
+  "mean_ms": 0.0076,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 8248,
+  "total_ms": 834.6,
+  "mean_ms": 0.1012,
+  "rows": 8248,
+  "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2, updated_at = now() WHERE projection_name = $1"
+ },
+ {
+  "calls": 318011,
+  "total_ms": 665.0,
+  "mean_ms": 0.0021,
+  "rows": 0,
+  "query": "SAVEPOINT $1"
+ },
+ {
+  "calls": 12885,
+  "total_ms": 599.6,
+  "mean_ms": 0.0465,
+  "rows": 12885,
+  "query": "SELECT last_global_sequence_number, definition_digest, failed_at IS NOT NULL, failure_kind, failed_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ }
+]

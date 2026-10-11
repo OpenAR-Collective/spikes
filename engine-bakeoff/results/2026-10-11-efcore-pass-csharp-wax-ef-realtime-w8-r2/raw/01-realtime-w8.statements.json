@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 436433,
+  "total_ms": 117655.9,
+  "mean_ms": 0.2696,
+  "rows": 436433,
+  "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+ },
+ {
+  "calls": 267433,
+  "total_ms": 17400.5,
+  "mean_ms": 0.0651,
+  "rows": 267433,
+  "query": "SELECT * FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 223731,
+  "total_ms": 14198.0,
+  "mean_ms": 0.0635,
+  "rows": 223731,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1 WHERE account_pk = $2 AND aggregate_sequence_number = $3"
+ },
+ {
+  "calls": 267433,
+  "total_ms": 11733.4,
+  "mean_ms": 0.0439,
+  "rows": 267433,
+  "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+ },
+ {
+  "calls": 203343,
+  "total_ms": 10682.2,
+  "mean_ms": 0.0525,
+  "rows": 203343,
+  "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+ },
+ {
+  "calls": 164569,
+  "total_ms": 8429.1,
+  "mean_ms": 0.0512,
+  "rows": 493707,
+  "query": "SELECT a.account_balance_bucket_pk, a.account_fk, a.balance_minor_units, a.balance_bucket_definition_fk, b.code AS \"Code\", b.waterfall_priority AS \"Priority\" FROM ar.account_balance_bucket AS a INNER JOIN ar.balance_bucket_definition AS b ON a.balance_bucket_definition_fk = b.balance_bucket_definiti"
+ },
+ {
+  "calls": 160529,
+  "total_ms": 8394.9,
+  "mean_ms": 0.0523,
+  "rows": 160529,
+  "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $7) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3, last_payment_at = $4, last_payment_minor_units = $5 WHERE acc"
+ },
+ {
+  "calls": 36173,
+  "total_ms": 8112.7,
+  "mean_ms": 0.2243,
+  "rows": 213960,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 163662,
+  "total_ms": 7471.0,
+  "mean_ms": 0.0456,
+  "rows": 163662,
+  "query": "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, currency_code, received_at, status, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $"
+ },
+ {
+  "calls": 15696,
+  "total_ms": 6042.9,
+  "mean_ms": 0.385,
+  "rows": 600095,
+  "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+ },
+ {
+  "calls": 164569,
+  "total_ms": 5669.5,
+  "mean_ms": 0.0345,
+  "rows": 164569,
+  "query": "SELECT EXISTS ( SELECT $2 FROM ar.payment AS p WHERE p.payment_pk = $1)"
+ },
+ {
+  "calls": 487219,
+  "total_ms": 5429.9,
+  "mean_ms": 0.0111,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 163662,
+  "total_ms": 5413.8,
+  "mean_ms": 0.0331,
+  "rows": 163662,
+  "query": "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) ON CONFLICT (payment_read_model_pk) DO UPDATE SET amount_minor_units = EX"
+ },
+ {
+  "calls": 163662,
+  "total_ms": 4081.2,
+  "mean_ms": 0.0249,
+  "rows": 163662,
+  "query": "INSERT INTO ar.payment (payment_pk, aggregate_sequence_number, amount_minor_units, currency_code, distribution, received_at, status, unapplied_minor_units) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+ },
+ {
+  "calls": 51869,
+  "total_ms": 3290.4,
+  "mean_ms": 0.0634,
+  "rows": 51869,
+  "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2, updated_at = now() WHERE projection_name = $1"
+ },
+ {
+  "calls": 24681,
+  "total_ms": 1875.2,
+  "mean_ms": 0.076,
+  "rows": 24681,
+  "query": "UPDATE core.pending_event SET fired_at = $1, status = $2 WHERE pending_event_pk = $3"
+ },
+ {
+  "calls": 41753,
+  "total_ms": 1434.4,
+  "mean_ms": 0.0344,
+  "rows": 41753,
+  "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+ },
+ {
+  "calls": 341473,
+  "total_ms": 1364.6,
+  "mean_ms": 0.004,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 24681,
+  "total_ms": 1223.7,
+  "mean_ms": 0.0496,
+  "rows": 24681,
+  "query": "SELECT * FROM core.pending_event WHERE pending_event_pk = $1 FOR UPDATE SKIP LOCKED"
+ },
+ {
+  "calls": 28776,
+  "total_ms": 1207.5,
+  "mean_ms": 0.042,
+  "rows": 28776,
+  "query": "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, due_at, fired_at, scheduled_by_event, status, target_event_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+ },
+ {
+  "calls": 19031,
+  "total_ms": 1200.5,
+  "mean_ms": 0.0631,
+  "rows": 19031,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, is_disputed = $2 WHERE account_pk = $3 AND aggregate_sequence_number = $4"
+ },
+ {
+  "calls": 29235,
+  "total_ms": 1141.8,
+  "mean_ms": 0.0391,
+  "rows": 29235,
+  "query": "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, account_fk, balance_minor_units, balance_bucket_definition_fk) VALUES ($1, $2, $3, $4)"
+ },
+ {
+  "calls": 3775,
+  "total_ms": 1059.9,
+  "mean_ms": 0.2808,
+  "rows": 24681,
+  "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = $1 AND due_at <= now() ORDER BY due_at LIMIT $2"
+ },
+ {
+  "calls": 38980,
+  "total_ms": 1049.5,
+  "mean_ms": 0.0269,
+  "rows": 38980,
+  "query": "SELECT $2 FROM ONLY \"ar\".\"account\" x WHERE \"account_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+ },
+ {
+  "calls": 14910,
+  "total_ms": 960.4,
+  "mean_ms": 0.0644,
+  "rows": 14910,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1, queue_code = $2 WHERE account_pk = $3 AND aggregate_sequence_number = $4"
+ }
+]

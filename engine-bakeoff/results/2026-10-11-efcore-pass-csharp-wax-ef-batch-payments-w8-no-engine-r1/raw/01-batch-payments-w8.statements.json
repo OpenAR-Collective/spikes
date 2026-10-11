@@ -1,0 +1,177 @@
+[
+ {
+  "calls": 1000000,
+  "total_ms": 279656.1,
+  "mean_ms": 0.2797,
+  "rows": 1000000,
+  "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+ },
+ {
+  "calls": 500000,
+  "total_ms": 39049.2,
+  "mean_ms": 0.0781,
+  "rows": 500000,
+  "query": "UPDATE ar.account SET aggregate_sequence_number = $1 WHERE account_pk = $2 AND aggregate_sequence_number = $3"
+ },
+ {
+  "calls": 583334,
+  "total_ms": 33311.0,
+  "mean_ms": 0.0571,
+  "rows": 583334,
+  "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 31765.2,
+  "mean_ms": 0.0635,
+  "rows": 1500000,
+  "query": "SELECT a.account_balance_bucket_pk, a.account_fk, a.balance_minor_units, a.balance_bucket_definition_fk, b.code AS \"Code\", b.waterfall_priority AS \"Priority\" FROM ar.account_balance_bucket AS a INNER JOIN ar.balance_bucket_definition AS b ON a.balance_bucket_definition_fk = b.balance_bucket_definiti"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 25134.4,
+  "mean_ms": 0.0503,
+  "rows": 500000,
+  "query": "SELECT * FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 22824.2,
+  "mean_ms": 0.0456,
+  "rows": 500000,
+  "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 21398.7,
+  "mean_ms": 0.0428,
+  "rows": 500000,
+  "query": "SELECT EXISTS ( SELECT $2 FROM ar.payment AS p WHERE p.payment_pk = $1)"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 14674.7,
+  "mean_ms": 0.0293,
+  "rows": 500000,
+  "query": "INSERT INTO ar.payment (payment_pk, aggregate_sequence_number, amount_minor_units, currency_code, distribution, received_at, status, unapplied_minor_units) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+ },
+ {
+  "calls": 501503,
+  "total_ms": 5902.5,
+  "mean_ms": 0.0118,
+  "rows": 0,
+  "query": "DISCARD ALL"
+ },
+ {
+  "calls": 500,
+  "total_ms": 3908.7,
+  "mean_ms": 7.8175,
+  "rows": 500000,
+  "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+ },
+ {
+  "calls": 500001,
+  "total_ms": 2131.6,
+  "mean_ms": 0.0043,
+  "rows": 0,
+  "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 684.4,
+  "mean_ms": 0.0014,
+  "rows": 0,
+  "query": "SAVEPOINT $1"
+ },
+ {
+  "calls": 500000,
+  "total_ms": 560.6,
+  "mean_ms": 0.0011,
+  "rows": 0,
+  "query": "RELEASE SAVEPOINT $1"
+ },
+ {
+  "calls": 500001,
+  "total_ms": 353.8,
+  "mean_ms": 0.0007,
+  "rows": 0,
+  "query": "COMMIT"
+ },
+ {
+  "calls": 1,
+  "total_ms": 327.5,
+  "mean_ms": 327.5347,
+  "rows": 500,
+  "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+ },
+ {
+  "calls": 508,
+  "total_ms": 84.0,
+  "mean_ms": 0.1653,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $3, claimed_by_instance = $2, claim_expires_at = now() + interval $4 WHERE batch_job_chunk_pk = (SELECT batch_job_chunk_pk FROM core.batch_job_chunk WHERE batch_job_run_fk = $1 AND status = $5 ORDER BY chunk_sequence_number LIMIT $6 FOR UPDATE SKIP LOCKED) RE"
+ },
+ {
+  "calls": 500,
+  "total_ms": 60.5,
+  "mean_ms": 0.121,
+  "rows": 500,
+  "query": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job_chunk_pk = $1"
+ },
+ {
+  "calls": 449,
+  "total_ms": 19.4,
+  "mean_ms": 0.0432,
+  "rows": 449,
+  "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+ },
+ {
+  "calls": 1,
+  "total_ms": 1.8,
+  "mean_ms": 1.7659,
+  "rows": 172,
+  "query": "SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid FROM ( -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a -- We first do this for the type (innerest-most subquery), and then for its element type -- This also returns"
+ },
+ {
+  "calls": 2,
+  "total_ms": 0.7,
+  "mean_ms": 0.3494,
+  "rows": 2,
+  "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT schemaname || $2 || relname AS name, n_tup_ins, n_tup_upd, n_tup_hot_upd, n_tup_del, n_dead_tup, autovacuum_count, autoanalyze_count FROM pg_stat_user_tables) t"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.3,
+  "mean_ms": 0.2675,
+  "rows": 1,
+  "query": "INSERT INTO core.batch_job_run (batch_job_run_pk, job_name) VALUES ($1, $2)"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.2,
+  "mean_ms": 0.1902,
+  "rows": 1,
+  "query": "SELECT coalesce(sum(calls), $1) FROM pg_stat_statements WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())"
+ },
+ {
+  "calls": 2,
+  "total_ms": 0.1,
+  "mean_ms": 0.0609,
+  "rows": 2,
+  "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT * FROM pg_stat_wal) t"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.1129,
+  "rows": 1,
+  "query": "SELECT pg_stat_statements_reset()"
+ },
+ {
+  "calls": 1,
+  "total_ms": 0.1,
+  "mean_ms": 0.11,
+  "rows": 0,
+  "query": "-- Load field definitions for (free-standing) composite types SELECT typ.oid, att.attname, att.atttypid FROM pg_type AS typ JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace) JOIN pg_class AS cls ON (cls.oid = typ.typrelid) JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid) WHERE (typ.typ"
+ }
+]
