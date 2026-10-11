@@ -2,11 +2,11 @@
 
 This folder holds a variant of the [engine bake-off](../README.md)'s C# side: the same Wax command path in C# on .NET 10, with Marten removed entirely. Events go into `core.event`, the table [WAX-0001 Enriched Event Sourcing](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0001-enriched-event-sourcing.md) specifies, and a reader ported from Andy Troiano's prototype keeps the read models and runs the rules. The only database library is Npgsql, the same version the Marten side uses.
 
-Status: built and tested. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 38 tests pass. No measured runs have been made.
+Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 38 tests pass. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
 
 ## Why this side exists
 
-[WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) chose C# largely for Marten, and four Wax decisions name Marten as the event store's implementation. The bake-off so far has two C# sides, and both still depend on Marten. The champion appends through Marten. The direct-append variant writes Marten's own tables with plain SQL, but Marten's serializer still writes the event bodies, and Marten's daemon still keeps the read models and runs the rules.
+[WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) chose C# largely for Marten, and five Wax decisions mention Marten: three name it as the event store's implementation, one relies on its upcasters, and one cites it in choosing Wolverine. Before this side, the bake-off's two C# sides both depended on Marten. The champion appends through Marten. The direct-append variant writes Marten's own tables with plain SQL, but Marten's serializer still writes the event bodies, and Marten's daemon still keeps the read models and runs the rules.
 
 This side answers a different question: what Wax would have to own if it did not use Marten, and how that version performs. It starts from the champion's code ([csharp-marten](../csharp-marten/README.md) at 7088e4d, copied unchanged in its own commit so the next diff shows exactly what removing Marten changed) and keeps everything that is not Marten: the handlers, the allocation and waterfall, the hashes, the batch runner, the seeder's approach, the bulk writer, and the driver. It replaces three things.
 
@@ -67,7 +67,7 @@ The partition is `(hashtext(aggregate_pk_ref::text) & 2147483647) % K`, the same
 | Upcasting | Not built; nothing here needs it yet |
 | Rebuilding a projection | Not built; a new version starts at zero and builds beside the old one |
 
-The new code is about 1,200 lines of C# and 190 lines of SQL: the reader is about 700 lines, the event store 240, the rule runner 210, and the stored event's type 60. The `src` tree is about 780 lines longer than the champion's in all.
+The new code is about 1,200 lines of C# and a 190-line SQL schema: the reader is about 700 lines, the event store 240, the rule runner 210, and the stored event's type 60. The `src` tree is about 780 lines longer than the champion's in all.
 
 ## How it matches the other sides
 
@@ -75,7 +75,8 @@ The new code is about 1,200 lines of C# and 190 lines of SQL: the reader is abou
 - **The same state and hashes.** The `ar` tables, their constraints, and the hash computation are the champion's, and the tests check the hashes against [shared/hash-vectors.json](../shared/hash-vectors.json).
 - **The same harness views.** `core.bakeoff_event_log` maps `core.event` column for column, and `core.bakeoff_progress` has a row per projection version and per rule runner partition, as on the Python side.
 - **The same database and limits.** The Compose file uses the same PostgreSQL image, settings, and roles, under its own project name, `hivear-bakeoff-csharp-wax`, so its database and network never meet the other sides'.
-- **The same driver.** `Bench.cs` is the champion's, and prints the same JSON, with `append` reported as `wax`.
+- **The same driver.** `Bench.cs` is the champion's, and prints the same JSON, with `append` reported as `wax` and `hashing` as `on` or `off`.
+- **The same diagnostics.** `WAX_HASH=off` (in Compose, `BAKEOFF_HASH=off`) stores a fixed placeholder hash and skips the read of the aggregate's previous hash, exactly as on the Marten sides; see `src/Wax/Hashing/EventHashing.cs`. A run with it cannot pass verify-chain and is a diagnostic only.
 
 ## Tests
 

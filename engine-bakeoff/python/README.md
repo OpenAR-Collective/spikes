@@ -2,7 +2,7 @@
 
 This folder holds the challenger side of the [engine bake-off](../README.md): the Wax command path in Python, adapted from the HiveAR prototype Andy Troiano published with his proposal to build Wax in Python on Django, plus the Foundation-written code that the bake-off's [workloads](../WORKLOADS.md) need beyond his prototype.
 
-Status: built to [WORKLOADS.md](../WORKLOADS.md). It builds, its 50 tests pass, and the commands the harness calls run end to end. No result has been recorded.
+Status: built to [WORKLOADS.md](../WORKLOADS.md). It builds, its 57 tests pass, and the commands the harness calls run end to end. It made 28 of round 1's 100 runs, and every one passed every correctness gate that applied to it. The results are in [results](../results/README.md), and [REPORT-ROUND-1.md](../REPORT-ROUND-1.md) discusses them.
 
 ## Provenance
 
@@ -14,7 +14,7 @@ The first commit that adds a file from the prototype adds it unchanged and is au
 
 ## Foundation-written code
 
-Rob Grafrath's direction is to build the Python side to the best of the Foundation's ability, publish it, and invite Andy to review it and fix anything that was not built properly for his side. Everything below was written by the Foundation, in Andy's patterns, and is not his: a result that depends on it should say so.
+The Foundation builds the Python side to the best of its ability, publishes it, and invites Andy to review it and fix anything that was not built properly for his side. Everything below was written by the Foundation, in Andy's patterns, and is not his: a result that depends on it should say so.
 
 - **The six commands** in `hivear/commands.py` and `hivear/handlers.py`: AccrueInterest, ChangeAccountStatus, ScheduleFutureEvent, FirePendingEvent, CreateTask, and AssignToQueue. Each takes the account's row lock, decides under it, and writes its event and state in one transaction through Andy's `dispatch`. FirePendingEvent claims its register row with `SELECT ... FOR UPDATE SKIP LOCKED`.
 - **The schema additions:** `wax/migrations/0003_pending_event_and_batch.py` (the Pending Event Register and the batch tables, hand-written SQL as Andy's core migrations are), `hivear/migrations/0006_bakeoff_additions.py` (the account's `interest_accrued_through` and `queue_code`, the task table, and six reason codes), the matching model changes, and `bakeoff/migrations/0001_harness_views.py` (the harness's `core.bakeoff_event_log` view and a `core.bakeoff_progress` view).
@@ -36,11 +36,16 @@ python -m bakeoff seed --accounts N
 python -m bakeoff bench batch-payments --workers W
 python -m bakeoff bench batch-accrual --workers W
 python -m bakeoff bench realtime --workers W --warmup S --duration S --random-seed R
+python -m bakeoff bench batch-payments-bulk --workers W
+python -m bakeoff bench placement --workers W --accounts M
+python -m bakeoff bench placement-bulk --workers W --accounts M
 python -m bakeoff run-engine --seconds-per-day 2 --poll-interval-ms 250 --rule-workers 1 --projection-workers 1
 python -m bakeoff verify-chain
 ```
 
 `run-engine` starts J projection workers (Andy's own reader loop), K rule runner partitions, and K register poller partitions, each in its own process; K sets both, as on the C# side. The rule runners, pollers, and projection reader sleep the poll interval when they find nothing to do. The database name comes from `BAKEOFF_DATABASE` (default `hivear`), as on the C# side.
+
+Round 1 ran Python's engine with three projection workers and eight rule workers when tuned, and with one and four when untuned. Every engine process imports Django when it starts, so start-up takes about half a minute at the engine's 2-CPU limit, and the harness now waits for it to settle before measuring. With `WAX_HASH=off` in the environment, the bench and engine store a placeholder hash instead of reading the previous one and computing a new one, for the harness's hashing-off diagnostic.
 
 ## What was kept, changed, and left out of the prototype
 
@@ -86,7 +91,7 @@ These stay in Andy's fork at commit 361b6aa.
 ### Judgment calls at the edges
 
 - `wax/release.py` is kept even though its main job is the blue-green schema interlock, because `dispatch` and the projection reader call it. Its cost in the command path is one cached lookup every five seconds per process. Andy, as the Python side's advocate, may remove it, and a result should record whether it ran.
-- pgBouncer is out of the base Compose file because connection pooling is a deployment choice, not part of the engine. The `DATABASE_POOLED` setting is kept, so a run can put it back as tuning.
+- pgBouncer is out of the base Compose file because connection pooling is a deployment choice, not part of the engine. The harness's `--pgbouncer` puts it back, and `DATABASE_POOLED=1`, which it sets, makes Django use it in transaction-pooling mode. A 5,000-account check through it passed every gate, and no round 1 pass used it.
 - `seed_demo` is kept because the payment-posting slice needs a bucket registry, and the prototype has no other way to load one.
 - The `projections` management command is kept because it reports the reader's position.
 - The `bakeoff` package's `verify-chain` streams the event table once instead of querying each aggregate, as Andy's `verify_chain` does, because his takes a query per aggregate at the bake-off's sizes. Both apply the same three checks, and his command is still here.
@@ -101,7 +106,7 @@ docker compose up -d db
 docker compose run --rm tools
 ```
 
-That runs the 50 tests. To run the workloads by hand on a small seed:
+That runs the 57 tests. To run the workloads by hand on a small seed:
 
 ```
 docker compose up -d migrate
@@ -114,4 +119,4 @@ docker compose --profile tools --profile bakeoff down -v
 
 Measured runs go through the [harness](../harness/README.md), which applies the shared limits and database settings.
 
-Checked on 2026-10-08 with Docker Desktop: all 50 tests pass. A hand run on 2,000 seeded accounts posted the payment file and the accrual with no failures, ran the real-time mix for ten seconds, and left every reader at the head of the stream, every due first-contact entry fired with exactly one task, and every chain verified.
+Last checked on 2026-10-09 with Docker Desktop: all 57 tests pass. On 2026-10-08 a hand run on 2,000 seeded accounts posted the payment file and the accrual with no failures, ran the real-time mix for ten seconds, and left every reader at the head of the stream, every due first-contact entry fired with exactly one task, and every chain verified.

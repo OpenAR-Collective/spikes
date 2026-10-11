@@ -2,7 +2,7 @@
 
 This folder holds the champion side of the [engine bake-off](../README.md): the Wax command path written in C# on .NET 10, the current LTS release, with Marten 9 as the event store on PostgreSQL, the stack [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md) adopts.
 
-Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, the set-based bulk writer, and the driver that the workloads need. Its 32 tests pass in both append modes. The first measured pass is summarized in the [bake-off README](../README.md#results).
+Status: built and tested at parity with the Python side, with the workloads in [WORKLOADS.md](../WORKLOADS.md) implemented. It implements the prototype's four commands with the same rules, writes the same tables, and computes byte-for-byte the same event hashes. It also has the six commands, the rule runner, the register poller, the batch runner, the bulk seeder, the set-based bulk writer, and the driver that the workloads need. Its 32 tests pass in both append modes. Both append modes ran in all three passes of round 1, and every run passed every gate that applied to it. The results are in the [round 1 report](../REPORT-ROUND-1.md).
 
 ## What it is
 
@@ -10,7 +10,7 @@ The code is in three projects, plus a test project:
 
 - `src/Wax` is the framework: the event store over Marten, the hash computation that stands in for the Wax Security Module, the command dispatcher, the chain verifier, and the schema migrator.
 - `src/HiveAR` is the accounts receivable slice, ported rule for rule from the prototype's `hivear/` package: placing an account, opening a dispute, posting a payment across accounts with the allocation and waterfall rules of HIVE-0007, reversing a payment, and the three read models.
-- `src/Bakeoff.Host` is the command line, which mirrors the Python side's management commands: `migrate`, `seed-demo`, `run-projections`, `projections`, `verify-chain`, and `about`.
+- `src/Bakeoff.Host` is the command line, which mirrors the Python side's management commands: `migrate`, `seed-demo`, `run-projections`, `projections`, `verify-chain`, and `about`, plus `seed`, `bench`, and `run-engine` for the workloads below.
 - `tests/Bakeoff.Tests` holds the tests.
 
 ## How WAX-0001 maps onto Marten
@@ -35,7 +35,7 @@ The dispatcher opens one connection and one transaction per command and hands th
 
 1. It reads what it needs and takes its row locks in a single round trip. For a payment, that one batch checks whether the payment exists, locks the accounts' state rows with `SELECT FOR UPDATE` in key order, reads their buckets, and reads the head of each account's stream. The head is the stream's version and its last event's hash.
 2. It applies the business rules in memory. They are ported line for line from the prototype, with the same checks in the same order and the same refusal codes.
-3. It records each event and queues the state writes. Recording checks the expected version against the stream head, computes the hash over the fields WAX-0013 lists, and puts the hash and the prior hash in the event's headers. Marten then sends every event and every state write in one batch, and the dispatcher commits.
+3. It records each event and queues the state writes. Recording checks the expected version against the stream head, computes the hash over the fields WAX-0013 listed before its 2026-10-08 change to a full-payload hash (see the round 1 report's limits), and puts the hash and the prior hash in the event's headers. Marten then sends every event and every state write in one batch, and the dispatcher commits.
 
 A conflict with a concurrent writer is retried from the start, up to three attempts, as on the Python side. The conflicts are a stale version, a stream or row that now exists, or a deadlock.
 
@@ -50,7 +50,7 @@ Everything in this section was written by the Foundation for the bake-off, not p
 - **The register poller** (`src/Wax/Rules/PendingEventPoller.cs`) looks for due entries on its interval. Each FirePendingEvent claims its entry with `SELECT ... FOR UPDATE SKIP LOCKED`.
 - **The batch runner** (`src/Wax/Batches/BatchRunner.cs`) builds the chunks in SQL, in PostgreSQL's key order, and its workers claim them with `SKIP LOCKED`, as WAX-0024 describes.
 - **The seeder** (`src/HiveAR/Seeder.cs`) writes the seed with `COPY`, with a valid hash on every event, and moves every projection and the rule runner to the head.
-- **The driver** (`src/Bakeoff.Host/Bench.cs`) answers `seed`, `bench batch-payments`, `bench batch-accrual`, and `bench realtime`, and prints one line of JSON. `run-engine` runs the projection daemon, the rule runner, and the poller in one process. `--rule-workers` sets both the rule runner's and the poller's parallelism. Marten runs one agent per projection, so `--projection-workers` does not apply here.
+- **The driver** (`src/Bakeoff.Host/Bench.cs`) answers `seed` and `bench` with `batch-payments`, `batch-accrual`, `batch-payments-bulk`, `placement`, `placement-bulk`, or `realtime`, and prints one line of JSON. `run-engine` runs the projection daemon, the rule runner, and the poller in one process. `--rule-workers` sets both the rule runner's and the poller's parallelism. Marten runs one agent per projection, so `--projection-workers` does not apply here.
 - **The Compose file** adds an `engine` service and a `bench` service. Both take their database from `BAKEOFF_DATABASE`, so the harness can point a run at a copy of the seed. The seed runs as the owner, so that it can ANALYZE.
 
 ## Two ways to append
@@ -60,9 +60,11 @@ The C# side can append a command's events in either of two ways, chosen by the e
 - **`marten`, the default.** Events go through a Marten session and Marten's `mt_quick_append_events` function, in one batch with the state writes. This is the stack WAX-0025 adopts.
 - **`direct`.** Events go into the same `mt_events` and `mt_streams` tables as plain SQL, in the same single batch, numbered from the same sequence inside the same transaction, as the Python side's own event store does. Marten's session and its append function are not used, though its JSON serializer still writes the bodies, so the stored events are identical.
 
-The direct mode exists to separate the language from the library. Marten's append function re-reads the stream's version, checks the stream's tenant in a separate query, and inserts each event in a loop, much of which repeats the lock and version check the command has already made. In a smoke check on 5,000 accounts, which is not a result, the database spent about 1.6 ms per payment in Marten mode, 1.2 ms of it appending, against about 0.8 ms in direct mode, 0.4 ms of it appending. At 8 workers that showed up as about 455 against 590 payments per second; at 4 workers the two were the same, because commit latency, not database work, set the pace.
+The direct mode exists to separate the language from the library. Marten's append function re-reads the stream's version, checks the stream's tenant in a separate query, and inserts each event in a loop, much of which repeats the lock and version check the command has already made. In round 1's statement records, Marten's append function took 3.2 to 4.8 times as long per call as the direct mode's plain insert into the same table, in every pair of runs, and the Marten mode used more database CPU per command in nine of ten same-pass comparisons; see the [round 1 report](../REPORT-ROUND-1.md).
 
 The whole test suite passes in both modes, including the reader tests, which in direct mode write through the direct append so that Marten's gap handling is tested against it: `WAX_APPEND=direct NETWORK=hivear-bakeoff-csharp_default ./build.sh dotnet test`.
+
+The hashing-off diagnostic, `WAX_HASH=off` (in Compose, `BAKEOFF_HASH=off`), stores a fixed placeholder hash and skips the read of the stream's head, trusting the locked state row's version with the unique index as the backstop; see `src/Wax/Hashing/EventHashing.cs`. A run with it cannot pass verify-chain and is a diagnostic only.
 
 ## The bulk workloads
 
