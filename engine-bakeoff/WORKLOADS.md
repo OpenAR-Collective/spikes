@@ -1,12 +1,12 @@
 # Workloads
 
-This is the specification both sides implement, so that they do the same work and a result means the same thing on each. The [README](README.md) says why the bake-off exists and how runs are judged; this file says exactly what runs. Where this file and a side's code disagree, this file is right and the code is a bug.
+This is the specification every side implements, so that they do the same work and a result means the same thing on each. The [README](README.md) says why the bake-off exists and how runs are judged; this file says exactly what runs. Where this file and a side's code disagree, this file is right and the code is a bug.
 
-Code written for these workloads beyond Andy Troiano's prototype, on either side, is Foundation-written. Each side's README marks which parts those are.
+Code written for these workloads beyond Andy Troiano's prototype, on any side, is Foundation-written. Each side's README marks which parts those are.
 
 ## Deterministic keys
 
-Every key the workloads need is derived, so both sides seed the same accounts and a retried command reuses its key. A derived UUID is the first 16 bytes of the SHA-256 of a UTF-8 name, with the version set to 4 and the variant set to RFC 4122:
+Every key the workloads need is derived, so every side seeds the same accounts and a retried command reuses its key. A derived UUID is the first 16 bytes of the SHA-256 of a UTF-8 name, with the version set to 4 and the variant set to RFC 4122:
 
 ```
 derived_uuid(name) = UUID(bytes = sha256(name)[0:16], version = 4)
@@ -16,7 +16,7 @@ In Python that is `uuid.UUID(bytes=hashlib.sha256(name.encode()).digest()[:16], 
 
 ## Schema additions
 
-Both sides add the same columns and tables to what the prototype had:
+Every side adds the same columns and tables to what the prototype had:
 
 - `ar.account.interest_accrued_through` (date, not null): the last day interest has been accrued for. PlaceAccount takes it as an optional field that defaults to the itemization date, and the `account.placed` event's `new_value` carries it.
 - `ar.account.queue_code` (text, null): the work queue the account is assigned to.
