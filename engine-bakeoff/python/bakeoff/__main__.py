@@ -20,6 +20,8 @@ import json
 import os
 import sys
 
+DIRECT_WORKLOADS = ("batch-payments", "batch-accrual", "realtime")
+
 
 def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -50,7 +52,19 @@ def main():
     args = parser.parse_args()
     exit_code = 0
 
-    if args.command == "bench":
+    # The python-direct side (direct/) runs the command path in plain SQL through
+    # psycopg, without Django, for the workloads it has been built for.
+    direct_path = os.environ.get("WAX_PATH") == "direct"
+    if args.command == "bench" and direct_path:
+        if args.workload not in DIRECT_WORKLOADS:
+            raise SystemExit(f"python-direct does not run {args.workload} yet; it runs {', '.join(DIRECT_WORKLOADS)}")
+        from direct import drivers as direct_drivers
+
+        if args.workload == "realtime":
+            result = direct_drivers.run_realtime(args.workers, args.warmup, args.duration, args.random_seed)
+        else:
+            result = direct_drivers.run_batch(args.workload, args.workers)
+    elif args.command == "bench":
         from bakeoff import drivers
 
         if args.workload == "realtime":

@@ -5,6 +5,15 @@
     "profile": "bakeoff",
     "cli": ["python", "-m", "bakeoff"]
   },
+  "python-direct": {
+    "compose": "../python/docker-compose.yml",
+    "project": "hivear-bakeoff-python",
+    "profile": "bakeoff",
+    "cli": ["python", "-m", "bakeoff"],
+    "compose_env": {"BAKEOFF_PATH": "direct"},
+    "container_env": {"WAX_PATH": "direct"},
+    "workloads_excluded": ["batch-payments-bulk", "placement", "placement-bulk"]
+  },
   "csharp": {
     "compose": "../csharp-marten/docker-compose.yml",
     "project": "hivear-bakeoff-csharp",

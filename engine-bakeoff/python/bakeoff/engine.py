@@ -9,6 +9,7 @@ side. Idle readers and pollers sleep the poll interval.
 
 import logging
 import multiprocessing as mp
+import os
 import signal
 import sys
 import time
@@ -20,6 +21,13 @@ logger = logging.getLogger("bakeoff.engine")
 
 
 def _projection_worker(poll_seconds):
+    # On the python-direct side the projection workers run direct/reader.py, which
+    # imports no Django; its rule runners and pollers still run on Django.
+    if os.environ.get("WAX_PATH") == "direct":
+        from direct.reader import run_forever
+
+        run_forever(poll_seconds)
+        return
     setup(count_retries=False)
     from django.core.management import call_command
 
