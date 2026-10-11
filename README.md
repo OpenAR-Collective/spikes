@@ -6,9 +6,11 @@ Nothing in this repository is the Wax framework or the HiveAR platform, and none
 
 ## Experiments
 
+*Each row is one experiment, with its question, the decision it informs, and its status.*
+
 | Folder | Question | Decision it informs | Status |
 | --- | --- | --- | --- |
-| [engine-bakeoff](engine-bakeoff/README.md) | Can the Wax command path keep up with a large agency's nightly batch in C# with Marten, in Python, or in both? | WAX-0025 Primary Programming Language, and the proposal to replace it with Python | Setting up |
+| [engine-bakeoff](engine-bakeoff/README.md) | Can the Wax command path keep up with a large agency's nightly batch, and in which language and with which event store? | WAX-0025 Primary Programming Language, the decisions that name Marten as the event store, the batch path in WAX-0024, and the proposal to replace C# with Python | Round 1 complete, with [a report](engine-bakeoff/REPORT-ROUND-1.md); round 2 planned |
 
 ## How an experiment works
 
