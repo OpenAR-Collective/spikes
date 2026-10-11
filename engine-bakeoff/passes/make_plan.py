@@ -5,13 +5,17 @@ list. The plan is committed before the pass starts.
     py -3 make_plan.py second-pass 20261009 laptop
 
 writes second-pass.plan.json and second-pass.plan.md beside this file. The
-third argument picks the layout: "laptop" for passes on Rob's laptop, which
+third argument picks the layout: "laptop" for passes on the laptop, which
 has the first pass as its baseline; "third" for the pass after the second,
 which carries over the second pass's skipped runs; "pc", the default, for
 the full grid a separate benchmark PC would need; or one of the AWS layouts,
 "aws-anchor" at the standard caps, "aws-scaled" at the scaled caps,
 "aws-pgbouncer" at the scaled caps through PgBouncer, and "aws-5m" at the
-scaled caps with 5,000,000 accounts. Runs that share a block
+scaled caps with 5,000,000 accounts; or "efcore", the EF Core mini-pass,
+whose fourth argument is the commit it measures:
+
+    py -3 make_plan.py efcore-pass 20261011 efcore <commit>
+ Runs that share a block
 stay together, back to back: the blocks are shuffled within their group, and
 the runs within each block.
 """
@@ -169,6 +173,54 @@ def aws_5m_runs():
     return planned
 
 
+# A mode side runs with the engine settings of the side it is a mode of.
+MODE_BASE = {"csharp-wax-ef": "csharp-wax", "python-direct": "python"}
+
+# The EF Core mini-pass's configurations, all at 8 workers: the payment
+# file, real time, the accrual, and the payment file with the engine paused,
+# which isolates the command path.
+EFCORE_CONFIGS = [("batch-payments", None), ("realtime", None), ("batch-accrual", None), ("batch-payments", "no-engine")]
+
+
+def efcore_runs():
+    """Plain csharp-wax against its EF Core mode, csharp-wax-ef. Each block is a
+    pair run back to back, its order drawn from the seed: three plain-and-EF
+    blocks per configuration, and one plain-against-plain block that measures
+    the noise floor. Placement, which also runs through the handlers, is one
+    optional block last."""
+    planned = []
+    for workload, diagnostic in EFCORE_CONFIGS:
+        key = f"{workload}-{diagnostic or 'normal'}"
+        for n in (1, 2, 3):
+            for side in ("csharp-wax", "csharp-wax-ef"):
+                planned.append(run(1, side, workload, 8, diagnostic, block=f"{key}-r{n}", suffix=f"r{n}"))
+        for n in (1, 2):
+            planned.append(run(1, "csharp-wax", workload, 8, diagnostic, block=f"{key}-noise", suffix=f"noise{n}"))
+    for side in ("csharp-wax", "csharp-wax-ef"):
+        planned.append(run(2, side, "placement", 8, block="placement-r1", suffix="r1"))
+    return planned
+
+
+# Lines a layout adds to its plan's Markdown, under the generation line.
+NOTES = {
+    "efcore": [
+        "The measured commit is `{measured_commit}`: the EF Core mode with the tuning the design allows (DbContext pooling, compiled queries, a compiled model, and no-tracking reads), merged with the published `main`. Before the first run the full test suite passes in both modes on that commit, the twin test included, and its output is kept beside this plan.",
+        "",
+        "Every configuration runs at 8 workers and 500,000 accounts with `--projection-workers 3 --rule-workers 16` in both modes. Group 1 is 16 blocks of two runs; group 2, one placement block, runs only if time allows. Every gate must pass in every run.",
+        "",
+        "The Foundation approved these criteria before any run. Each is judged on the median of a configuration's three blocks, and a difference smaller than the same configuration's plain-against-plain difference is reported as no difference. EF Core earns its keep on the command path only if it meets all of them:",
+        "",
+        "- database CPU per command within +10 percent of plain;",
+        "- application CPU per command within +50 percent of plain, or within +1.0 ms;",
+        "- commands per second within -10 percent of plain;",
+        "- command latency at the 99th percentile within +25 percent of plain;",
+        "- statements per command reported, with no threshold.",
+        "",
+        "Thirteen containers and development services unrelated to the bake-off stay up through the pass; every run records them, and the pass's figures compare only with each other.",
+    ],
+}
+
+
 # Each layout's runs and the plan settings that differ from the defaults.
 LAYOUTS = {
     "laptop": (lambda: laptop_runs(), {}),
@@ -178,6 +230,7 @@ LAYOUTS = {
     "aws-scaled": (aws_scaled_runs, {"caps": "scaled"}),
     "aws-pgbouncer": (aws_pgbouncer_runs, {"caps": "scaled", "pool_size": 32}),
     "aws-5m": (aws_5m_runs, {"caps": "scaled", "accounts": 5_000_000}),
+    "efcore": (efcore_runs, {}),
 }
 
 
@@ -216,6 +269,8 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
+    if layout == "efcore":
+        settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
     ordered = []
@@ -236,26 +291,31 @@ def main():
     for index, entry in enumerate(ordered, start=1):
         entry["order"] = index
         entry["label"] = label(name, entry)
-        entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else tuned[entry["side"]]
+        side = entry["side"] if entry["side"] in tuned else MODE_BASE[entry["side"]]
+        entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else tuned[side]
     plan = {
         "name": name, "seed": seed, "layout": layout, "accounts": settings.get("accounts", ACCOUNTS),
         "placements": PLACEMENTS, "warmup_s": WARMUP_S, "duration_s": DURATION_S,
         "catchup_timeout_s": CATCHUP_TIMEOUT_S,
-        **{key: settings[key] for key in ("caps", "pool_size") if key in settings},
+        **{key: settings[key] for key in ("caps", "pool_size", "measured_commit") if key in settings},
         "engine_args": {"tuned": tuned, "untuned": UNTUNED}, "runs": ordered,
     }
     (HERE / f"{name}.plan.json").write_text(json.dumps(plan, indent=1) + "\n", encoding="utf-8", newline="\n")
     lines = [
         f"# {name} run order",
         "",
-        f"Generated by `py -3 make_plan.py {name} {seed}{'' if layout == 'pc' else ' ' + layout}`. Runs go in this order, one at a time; each priority group is shuffled separately with the seed {seed}, and a run that cannot finish before the window ends is skipped, so the lowest group drops first.",
+        f"Generated by `py -3 make_plan.py {name} {seed}{'' if layout == 'pc' else ' ' + layout}"
+        f"{' ' + settings['measured_commit'] if 'measured_commit' in settings else ''}`. Runs go in this order, one at a time; each priority group is shuffled separately with the seed {seed}, and a run that cannot finish before the window ends is skipped, so the lowest group drops first.",
         "",
-        "| Order | Group | Side | Workload | Workers | Diagnostic | Engine |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        *[line.format(**settings) for line in NOTES.get(layout, [])],
+        *([""] if layout in NOTES else []),
+        "| Order | Group | Side | Workload | Workers | Diagnostic | Engine |" + (" Block |" if layout in NOTES else ""),
+        "| --- | --- | --- | --- | --- | --- | --- |" + (" --- |" if layout in NOTES else ""),
     ]
     for entry in ordered:
         lines.append(f"| {entry['order']} | {entry['group']} | {entry['side']} | {entry['workload']} | {entry['workers']} "
-                     f"| {entry['diagnostic'] or ''} | `{entry['engine_args']}` |")
+                     f"| {entry['diagnostic'] or ''} | `{entry['engine_args']}` |"
+                     + (f" {entry.get('suffix', '')} |" if layout in NOTES else ""))
     (HERE / f"{name}.plan.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"{len(ordered)} runs written")
 

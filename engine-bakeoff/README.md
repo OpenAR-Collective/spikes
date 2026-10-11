@@ -103,6 +103,7 @@ A pass is one session of recorded runs. From the second pass on, each pass has a
 - **First pass,** 2026-10-08 and 2026-10-09: 18 runs. Its scope was fixed in this README before the pass began, in original commit 66e919b (see [COMMIT-MAP.md](COMMIT-MAP.md)), and it has no plan file or runner log.
 - **Second pass,** 2026-10-09 and 2026-10-10: 61 of 82 planned runs. See the [plan](passes/second-pass.plan.md) and the [log](passes/second-pass.log).
 - **Third pass,** 2026-10-10, group 1 only: 21 runs. See the [plan](passes/third-pass.plan.md) and the [log](passes/third-pass.log).
+- **EF Core mini-pass,** 2026-10-11: the side without Marten against the same side with its state reads and writes through EF Core (`csharp-wax-ef`, a mode of csharp-wax), to test whether EF Core earns its keep on the command path, as [WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) would have it. It runs 32 runs at 8 workers in back-to-back pairs, with a plain-against-plain pair per configuration that measures the noise, and judges the result against criteria the Foundation approved before any run. The [plan](passes/efcore-pass.plan.md) lists the runs, the criteria, and the commit measured.
 
 [Appendix B of the report](REPORT-ROUND-1.md#appendix-b-notes-on-each-pass) says what each pass ran and what is particular to it.
 
