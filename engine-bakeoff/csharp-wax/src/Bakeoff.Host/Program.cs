@@ -94,7 +94,8 @@ switch (args.FirstOrDefault() ?? "run-projections")
     {
         // What a result records about this side: runtime, library versions, and settings.
         Console.WriteLine($".NET {Environment.Version}, {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
-        Console.WriteLine($"Npgsql {typeof(NpgsqlConnection).Assembly.GetName().Version}; no Marten: events append to core.event with plain SQL; hashing: {(EventHashing.Enabled ? "on" : "off")}");
+        Console.WriteLine($"Npgsql {typeof(NpgsqlConnection).Assembly.GetName().Version}; no Marten: events append to core.event with plain SQL; hashing: {(EventHashing.Enabled ? "on" : "off")}; state through: {HiveAR.Data.ArData.FromEnvironment()}");
+        Console.WriteLine($"EF Core {typeof(Microsoft.EntityFrameworkCore.DbContext).Assembly.GetName().Version}");
         Console.WriteLine($"server GC: {System.Runtime.GCSettings.IsServerGC}, processors: {Environment.ProcessorCount}");
         return 0;
     }
@@ -136,7 +137,7 @@ switch (args.FirstOrDefault() ?? "run-projections")
             parallelism: ruleWorkers,
             pollInterval: pollInterval,
             logger: services.GetRequiredService<ILogger<PendingEventPoller>>()));
-        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}, projection-workers {projectionWorkers}, hashing {(EventHashing.Enabled ? "on" : "off")}");
+        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}, projection-workers {projectionWorkers}, hashing {(EventHashing.Enabled ? "on" : "off")}, state {HiveAR.Data.ArData.FromEnvironment()}");
         await builder.Build().RunAsync();
         await engine.DisposeAsync();
         return 0;

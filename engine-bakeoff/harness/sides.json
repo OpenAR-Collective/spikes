@@ -27,5 +27,13 @@
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"]
+  },
+  "csharp-wax-ef": {
+    "compose": "../csharp-wax/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp-wax",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"WAX_STATE": "efcore"},
+    "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   }
 }

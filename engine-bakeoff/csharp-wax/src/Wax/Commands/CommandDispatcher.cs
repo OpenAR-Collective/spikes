@@ -20,8 +20,12 @@ public sealed class CommandDispatcher(
     static readonly HashSet<string> ActorTypes = ["user", "system", "integration", "batch"];
 
     readonly Dictionary<Type, Func<ICommand, CommandContext, CancellationToken, Task>> handlers = [];
+    readonly Dictionary<Type, object> services = [];
     readonly TimeProvider clock = clock ?? TimeProvider.System;
     long conflictRetries;
+
+    /// <summary>A service every command's context can reach, such as a module's data access.</summary>
+    public void Provide<T>(T service) where T : class => services[typeof(T)] = service;
 
     /// <summary>How many attempts were started again after a conflict, since this dispatcher was made.</summary>
     public long ConflictRetries => Interlocked.Read(ref conflictRetries);
@@ -64,11 +68,14 @@ public sealed class CommandDispatcher(
             await using var connection = await dataSource.OpenConnectionAsync(cancellation);
             await using var transaction = await connection.BeginTransactionAsync(cancellation);
             await using var writes = new WriteQueue(connection, transaction);
-            var context = new CommandContext(connection, transaction, writes, attribution, reasons);
+            var context = new CommandContext(connection, transaction, writes, attribution, reasons, services);
             try
             {
                 await handler(command, context, cancellation);
+                // The events and queued writes go out first, then any participant's
+                // own save, all in this one transaction.
                 await writes.FlushAsync(cancellation);
+                await context.RunBeforeCommitAsync(cancellation);
                 await transaction.CommitAsync(cancellation);
                 return;
             }
@@ -81,6 +88,10 @@ public sealed class CommandDispatcher(
             {
                 // Another writer got there first. Start again from fresh state.
                 Interlocked.Increment(ref conflictRetries);
+            }
+            finally
+            {
+                await context.EndAsync();
             }
         }
     }

@@ -16,19 +16,62 @@ public sealed class CommandContext
     readonly WriteQueue writes;
     readonly ReasonCodes reasons;
     readonly Dictionary<Guid, StreamHead> heads = [];
+    readonly IReadOnlyDictionary<Type, object> services;
+    readonly Dictionary<Type, object> scoped = [];
+    readonly List<Func<CancellationToken, Task>> beforeCommit = [];
+    readonly List<Func<ValueTask>> onEnd = [];
 
     internal CommandContext(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         WriteQueue writes,
         Attribution attribution,
-        ReasonCodes reasons)
+        ReasonCodes reasons,
+        IReadOnlyDictionary<Type, object>? services = null)
     {
         Connection = connection;
         Transaction = transaction;
         this.writes = writes;
         Attribution = attribution;
         this.reasons = reasons;
+        this.services = services ?? new Dictionary<Type, object>();
+    }
+
+    /// <summary>A service a module provided to the dispatcher, or null.</summary>
+    public T? Service<T>() where T : class => services.TryGetValue(typeof(T), out var service) ? (T)service : null;
+
+    /// <summary>One instance per command, made on first use.</summary>
+    public T Scoped<T>(Func<T> create) where T : class
+    {
+        if (!scoped.TryGetValue(typeof(T), out var instance))
+        {
+            instance = create();
+            scoped[typeof(T)] = instance;
+        }
+        return (T)instance;
+    }
+
+    /// <summary>Work that must run inside the transaction after the queued writes
+    /// have gone out and before the commit, such as an ORM's save.</summary>
+    public void BeforeCommit(Func<CancellationToken, Task> action) => beforeCommit.Add(action);
+
+    /// <summary>Cleanup when the command ends, committed or not.</summary>
+    public void OnEnd(Func<ValueTask> action) => onEnd.Add(action);
+
+    internal async Task RunBeforeCommitAsync(CancellationToken cancellation)
+    {
+        foreach (var action in beforeCommit)
+        {
+            await action(cancellation);
+        }
+    }
+
+    internal async ValueTask EndAsync()
+    {
+        foreach (var action in onEnd)
+        {
+            await action();
+        }
     }
 
     public NpgsqlConnection Connection { get; }

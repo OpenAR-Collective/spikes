@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using HiveAR.Data;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Wax.Commands;
 using Wax.Hashing;
@@ -32,6 +34,18 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
 
         bool exists;
         var definitions = new Dictionary<string, Guid>();
+        var db = ArData.Ef(context);
+        if (db is not null)
+        {
+            exists = await db.Accounts.AnyAsync(account => account.Pk == command.AccountPk, cancellation);
+            // A List, not an array: C# 14 binds an array's Contains to a span
+            // overload that EF Core 9 cannot translate.
+            var wantedCodes = command.OpeningBalances.Keys.ToList();
+            definitions = await db.BucketDefinitions.Where(definition => wantedCodes.Contains(definition.Code))
+                .ToDictionaryAsync(definition => definition.Code, definition => definition.Pk, cancellation);
+        }
+        else
+        {
         await using (var batch = context.CreateBatch())
         {
             batch.BatchCommands.Add(new NpgsqlBatchCommand("SELECT EXISTS (SELECT 1 FROM ar.account WHERE account_pk = $1)")
@@ -51,6 +65,7 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
             {
                 definitions[reader.GetString(0)] = reader.GetGuid(1);
             }
+        }
         }
 
         if (exists)
@@ -82,6 +97,14 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
         };
         await context.RecordAsync<AccountPlaced>(account, prior: null, @new: placed, reason: "account_placed", cancellation: cancellation);
 
+        if (db is not null)
+        {
+            foreach (var (code, amount) in command.OpeningBalances)
+            {
+                db.Buckets.Add(new BucketRow { Pk = Guid.NewGuid(), Balance = amount, AccountFk = command.AccountPk, DefinitionFk = definitions[code] });
+            }
+            return;
+        }
         var codes = command.OpeningBalances.Keys.ToArray();
         context.QueueSql(
             "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) " +
@@ -280,6 +303,12 @@ public sealed class ReversePaymentHandler : ICommandHandler<ReversePayment>
     public async Task HandleAsync(ReversePayment command, CommandContext context, CancellationToken cancellation)
     {
         PaymentState? payment = null;
+        if (ArData.Ef(context) is { } db)
+        {
+            payment = await EfState.LockPaymentAsync(context, db, command.PaymentPk, cancellation);
+        }
+        else
+        {
         await using (var batch = context.CreateBatch())
         {
             batch.BatchCommands.Add(new NpgsqlBatchCommand(PaymentState.LockSql)
@@ -294,6 +323,7 @@ public sealed class ReversePaymentHandler : ICommandHandler<ReversePayment>
             }
             await reader.NextResultAsync(cancellation);
             await context.ReadStreamHeadsAsync(reader, [command.PaymentPk], cancellation);
+        }
         }
         if (payment is null)
         {
@@ -338,9 +368,12 @@ static class Buckets
         where TEvent : Wax.Events.WaxEvent, new()
     {
         var (prior, @new, metadata, moved) = Move(rows, amounts, sign, payment.Pk, payment.ReceivedAt);
-        foreach (var row in moved)
+        if (ArData.Ef(context) is null)
         {
-            context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", row.Balance, row.Pk);
+            foreach (var row in moved)
+            {
+                context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", row.Balance, row.Pk);
+            }
         }
         await context.RecordAsync<TEvent>(account, prior, @new, reason, metadata, cancellation);
     }
@@ -435,6 +468,13 @@ static class Streams
         CommandContext context, Guid[] accountPks, bool withBuckets, CancellationToken cancellation)
     {
         var wanted = accountPks.Distinct().ToArray();
+        if (ArData.Ef(context) is { } db)
+        {
+            var locked = await EfState.LockAccountsAsync(context, db, wanted, withBuckets, cancellation);
+            return locked.Accounts.Count == wanted.Length
+                ? locked
+                : throw new CommandRejectedException("One or more accounts do not exist", "account_not_found");
+        }
         var accounts = new List<AccountState>();
         Dictionary<Guid, Dictionary<string, BucketRow>> rows = [];
         await using (var batch = context.CreateBatch())
@@ -469,8 +509,14 @@ static class Streams
     /// state as of the lock, then read the account's stream head: one round
     /// trip. Returns the account and the extra query's first row, if any.</summary>
     public static async Task<(AccountState Account, object[]? Row)> LockAccountWithAsync(
-        CommandContext context, Guid accountPk, NpgsqlBatchCommand extra, CancellationToken cancellation)
+        CommandContext context, Guid accountPk, NpgsqlBatchCommand extra,
+        Func<ArDbContext, CancellationToken, Task<object[]?>> efExtra, CancellationToken cancellation)
     {
+        if (ArData.Ef(context) is { } db)
+        {
+            var (accounts, _) = await LockAccountsAsync(context, [accountPk], withBuckets: false, cancellation);
+            return (accounts[0], await efExtra(db, cancellation));
+        }
         AccountState? account = null;
         object[]? row = null;
         await using (var batch = context.CreateBatch())
@@ -502,6 +548,10 @@ static class Streams
     public static async Task<(bool PaymentExists, List<AccountState> Accounts, Dictionary<Guid, Dictionary<string, BucketRow>> Rows)> LockForPaymentAsync(
         CommandContext context, Guid paymentPk, Guid[] accountPks, CancellationToken cancellation)
     {
+        if (ArData.Ef(context) is { } db)
+        {
+            return await EfState.LockForPaymentAsync(context, db, paymentPk, accountPks, cancellation);
+        }
         var accounts = new List<AccountState>();
         bool exists;
         Dictionary<Guid, Dictionary<string, BucketRow>> rows;

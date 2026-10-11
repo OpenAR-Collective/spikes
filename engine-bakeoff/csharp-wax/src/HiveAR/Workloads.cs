@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using HiveAR.Data;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Wax.Commands;
 using Wax.Events;
@@ -100,10 +102,19 @@ public sealed class AccrueInterestHandler : ICommandHandler<AccrueInterest>
         buckets.TryGetValue("interest", out var interestRow);
         var priorInterest = interestRow?.Balance ?? 0;
         var newInterest = priorInterest + amount;
+        var db = ArData.Ef(context);
         if (interestRow is not null && amount != 0)
         {
             interestRow.Balance = newInterest;
-            context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", newInterest, interestRow.Pk);
+            if (db is null)
+            {
+                context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", newInterest, interestRow.Pk);
+            }
+        }
+        else if (interestRow is null && amount != 0 && db is not null)
+        {
+            var interestDefinition = await db.BucketDefinitions.Where(definition => definition.Code == "interest").Select(definition => definition.Pk).SingleAsync(cancellation);
+            db.Buckets.Add(new BucketRow { Pk = Guid.NewGuid(), Balance = newInterest, AccountFk = account.Pk, DefinitionFk = interestDefinition });
         }
         else if (interestRow is null && amount != 0)
         {
@@ -189,6 +200,8 @@ public sealed class CreateTaskHandler : ICommandHandler<CreateTask>
             {
                 Parameters = { new NpgsqlParameter { Value = command.TaskPk } },
             },
+            async (ef, token) => await ef.Tasks.Where(task => task.Pk == command.TaskPk)
+                .Select(task => new object[] { task.AccountFk, task.TaskType }).SingleOrDefaultAsync(token),
             cancellation);
         if (existing is not null)
         {
@@ -198,9 +211,16 @@ public sealed class CreateTaskHandler : ICommandHandler<CreateTask>
             }
             throw new CommandRejectedException("A different task already exists under this key", "key_reused");
         }
-        context.QueueSql(
-            "INSERT INTO ar.task (task_pk, account_fk, task_type, status, created_at) VALUES (?, ?, ?, 'open', ?)",
-            command.TaskPk, command.AccountPk, command.TaskType, context.OccurredAt);
+        if (ArData.Ef(context) is { } db)
+        {
+            db.Tasks.Add(new TaskRow { Pk = command.TaskPk, AccountFk = command.AccountPk, TaskType = command.TaskType, Status = "open", CreatedAt = context.OccurredAt });
+        }
+        else
+        {
+            context.QueueSql(
+                "INSERT INTO ar.task (task_pk, account_fk, task_type, status, created_at) VALUES (?, ?, ?, 'open', ?)",
+                command.TaskPk, command.AccountPk, command.TaskType, context.OccurredAt);
+        }
         await context.RecordAsync<TaskCreated>(
             account,
             prior: null,
@@ -228,6 +248,8 @@ public sealed class ScheduleFutureEventHandler : ICommandHandler<ScheduleFutureE
             {
                 Parameters = { new NpgsqlParameter { Value = command.PendingEventPk } },
             },
+            async (ef, token) => await ef.PendingEvents.Where(entry => entry.Pk == command.PendingEventPk)
+                .Select(entry => new object[] { entry.AggregatePkRef, entry.TargetEventType }).SingleOrDefaultAsync(token),
             cancellation);
         if (existing is not null)
         {
@@ -238,11 +260,27 @@ public sealed class ScheduleFutureEventHandler : ICommandHandler<ScheduleFutureE
             throw new CommandRejectedException("A different scheduled event already exists under this key", "key_reused");
         }
         var dueAt = IsoFormat.TruncateToMicroseconds(command.DueAt);
-        context.QueueSql(
-            "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, due_at, " +
-            "status, scheduled_by_event) VALUES (?, ?, 'account', ?, ?, 'pending', ?::uuid)",
-            command.PendingEventPk, command.AccountPk, command.TargetEventType, dueAt,
-            (object?)command.ScheduledByEvent ?? DBNull.Value);
+        if (ArData.Ef(context) is { } db)
+        {
+            db.PendingEvents.Add(new PendingEventRow
+            {
+                Pk = command.PendingEventPk,
+                AggregatePkRef = command.AccountPk,
+                AggregateType = "account",
+                TargetEventType = command.TargetEventType,
+                DueAt = dueAt,
+                Status = "pending",
+                ScheduledByEvent = command.ScheduledByEvent,
+            });
+        }
+        else
+        {
+            context.QueueSql(
+                "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, due_at, " +
+                "status, scheduled_by_event) VALUES (?, ?, 'account', ?, ?, 'pending', ?::uuid)",
+                command.PendingEventPk, command.AccountPk, command.TargetEventType, dueAt,
+                (object?)command.ScheduledByEvent ?? DBNull.Value);
+        }
         await context.RecordAsync<PendingEventScheduled>(
             account,
             prior: null,
@@ -269,6 +307,16 @@ public sealed class FirePendingEventHandler : ICommandHandler<FirePendingEvent>
         string targetEventType;
         DateTimeOffset dueAt;
         string status;
+        var db = ArData.Ef(context);
+        PendingEventRow? entry = null;
+        if (db is not null)
+        {
+            // Locked by another poller that is firing it, or never scheduled.
+            entry = await EfState.ClaimPendingAsync(db, command.PendingEventPk, cancellation) ?? throw new AlreadyAppliedException();
+            (accountPk, targetEventType, dueAt, status) = (entry.AggregatePkRef, entry.TargetEventType, entry.DueAt, entry.Status);
+        }
+        else
+        {
         await using (var claim = context.CreateCommand(
             "SELECT aggregate_pk_ref, target_event_type, due_at, status FROM core.pending_event " +
             "WHERE pending_event_pk = $1 FOR UPDATE SKIP LOCKED"))
@@ -285,14 +333,24 @@ public sealed class FirePendingEventHandler : ICommandHandler<FirePendingEvent>
             dueAt = reader.GetFieldValue<DateTimeOffset>(2);
             status = reader.GetString(3);
         }
+        }
         if (status != "pending")
         {
             throw new AlreadyAppliedException();
         }
         var account = (await Streams.LockAccountsAsync(context, [accountPk], withBuckets: false, cancellation)).Accounts[0];
-        context.QueueSql(
-            "UPDATE core.pending_event SET status = 'fired', fired_at = clock_timestamp() WHERE pending_event_pk = ?",
-            command.PendingEventPk);
+        if (entry is not null)
+        {
+            // The plain SQL mode stamps fired_at with the server's clock_timestamp().
+            entry.Status = "fired";
+            entry.FiredAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            context.QueueSql(
+                "UPDATE core.pending_event SET status = 'fired', fired_at = clock_timestamp() WHERE pending_event_pk = ?",
+                command.PendingEventPk);
+        }
         await context.RecordAsync(
             WaxEventTypes.TypeOf(targetEventType),
             account,

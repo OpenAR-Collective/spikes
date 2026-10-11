@@ -35,7 +35,8 @@ public sealed class WaxEngine : IAsyncDisposable
         string connectionString,
         IReadOnlyList<IWaxModule> modules,
         bool migrate = false,
-        CancellationToken cancellation = default)
+        CancellationToken cancellation = default,
+        TimeProvider? clock = null)
     {
         var dataSource = NpgsqlDataSource.Create(connectionString);
         WaxEventTypes.Register(modules.Select(module => module.GetType().Assembly).Append(typeof(WaxEvent).Assembly).Distinct());
@@ -44,7 +45,7 @@ public sealed class WaxEngine : IAsyncDisposable
             await WaxMigrator.MigrateAsync(dataSource, modules, cancellation);
         }
         var reasons = await ReasonCodes.LoadAsync(dataSource, cancellation);
-        var commands = new CommandDispatcher(dataSource, reasons);
+        var commands = new CommandDispatcher(dataSource, reasons, clock);
         foreach (var module in modules)
         {
             module.RegisterHandlers(commands);

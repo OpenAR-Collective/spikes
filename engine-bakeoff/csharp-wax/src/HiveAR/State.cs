@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using HiveAR.Data;
 using Npgsql;
 using NpgsqlTypes;
 using Wax.Commands;
@@ -24,6 +25,9 @@ public sealed class AccountState : AggregateRoot
     public required DateOnly InterestAccruedThrough { get; set; }
     public string? QueueCode { get; set; }
 
+    /// <summary>The account's buckets, loaded with the account in EF Core mode.</summary>
+    public List<BucketRow> Buckets { get; set; } = [];
+
     /// <summary>Row-lock account state rows in a fixed order (WAX-0013).</summary>
     public static NpgsqlBatchCommand LockCommand(Guid[] accountPks) => new(LockSql)
     {
@@ -46,14 +50,33 @@ public sealed class AccountState : AggregateRoot
         QueueCode = reader.IsDBNull(11) ? null : reader.GetString(11),
     };
 
-    protected override void QueueInsert(CommandContext context) => context.QueueSql(
+    protected override void QueueInsert(CommandContext context)
+    {
+        if (ArData.Ef(context) is { } db)
+        {
+            db.Accounts.Add(this);
+            return;
+        }
+        QueueInsertSql(context);
+    }
+
+    // In EF Core mode the loaded entity is tracked, and SaveChanges writes what changed.
+    protected override void QueueUpdate(CommandContext context)
+    {
+        if (ArData.Ef(context) is null)
+        {
+            QueueUpdateSql(context);
+        }
+    }
+
+    void QueueInsertSql(CommandContext context) => context.QueueSql(
         "INSERT INTO ar.account (aggregate_sequence_number, account_pk, client_account_number, debt_type, " +
         "contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         AggregateSequenceNumber, Pk, ClientAccountNumber, DebtType, ContractType, CurrencyCode, Status, IsDisputed,
         ListDate, ItemizationDate, InterestAccruedThrough);
 
-    protected override void QueueUpdate(CommandContext context) => context.QueueSql(
+    void QueueUpdateSql(CommandContext context) => context.QueueSql(
         "UPDATE ar.account SET aggregate_sequence_number = ?, status = ?, is_disputed = ?, " +
         "interest_accrued_through = ?, queue_code = ?::text WHERE account_pk = ?",
         AggregateSequenceNumber, Status, IsDisputed, InterestAccruedThrough, (object?)QueueCode ?? DBNull.Value, Pk);
@@ -93,13 +116,31 @@ public sealed class PaymentState : AggregateRoot
         UnappliedMinorUnits = reader.GetInt64(7),
     };
 
-    protected override void QueueInsert(CommandContext context) => context.QueueSql(
+    protected override void QueueInsert(CommandContext context)
+    {
+        if (ArData.Ef(context) is { } db)
+        {
+            db.Payments.Add(this);
+            return;
+        }
+        QueueInsertSql(context);
+    }
+
+    protected override void QueueUpdate(CommandContext context)
+    {
+        if (ArData.Ef(context) is null)
+        {
+            QueueUpdateSql(context);
+        }
+    }
+
+    void QueueInsertSql(CommandContext context) => context.QueueSql(
         "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, status, " +
         "received_at, distribution, unapplied_minor_units) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb, ?)",
         AggregateSequenceNumber, Pk, AmountMinorUnits, CurrencyCode, Status, ReceivedAt,
         Distribution.ToJsonString(), UnappliedMinorUnits);
 
-    protected override void QueueUpdate(CommandContext context) => context.QueueSql(
+    void QueueUpdateSql(CommandContext context) => context.QueueSql(
         "UPDATE ar.payment SET aggregate_sequence_number = ?, status = ? WHERE payment_pk = ?",
         AggregateSequenceNumber, Status, Pk);
 }
@@ -114,9 +155,14 @@ public sealed class BucketRow
         "WHERE b.account_fk = ANY($1)";
 
     public required Guid Pk { get; init; }
-    public required string Code { get; init; }
-    public required int Priority { get; init; }
+    public string Code { get; set; } = "";
+    public int Priority { get; set; }
     public required long Balance { get; set; }
+
+    // Mapped by EF Core; the plain SQL path does not need them.
+    public Guid AccountFk { get; set; }
+    public Guid DefinitionFk { get; set; }
+    public BucketDefinition? Definition { get; set; }
 
     public static NpgsqlBatchCommand ForAccountsCommand(Guid[] accountPks) => new(ForAccountsSql)
     {

@@ -2,7 +2,7 @@
 
 This folder holds a variant of the [engine bake-off](../README.md)'s C# side: the same Wax command path in C# on .NET 10, with Marten removed entirely. Events go into `core.event`, the table [WAX-0001 Enriched Event Sourcing](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0001-enriched-event-sourcing.md) specifies, and a reader ported from Andy Troiano's prototype keeps the read models and runs the rules. The only database library is Npgsql, the same version the Marten side uses.
 
-Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 38 tests pass. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
+Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 39 tests pass in both state modes. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
 
 ## Why this side exists
 
@@ -80,13 +80,42 @@ The new code is about 1,200 lines of C# and a 190-line SQL schema: the reader is
 
 ## Tests
 
-The 38 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
+The 39 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
 
 - **Event store (9):** the champion's seven, plus a test that `TRUNCATE` is refused, and a test that the store assigns `global_sequence_number` and `recorded_at` and ignores any value a caller supplies.
 - **Reader (8):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The eighth is new: two readers sharing a projection apply each event exactly once.
 - **Read models, workloads, seed and batches, rules, and bulk:** the champion's tests, with the projection reader in place of Marten's daemon and two rule runner partitions in place of the subscription.
+- **Twin (1):** the EF Core mode against the plain mode, described below.
 
 The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark waits on the oldest transaction holding a transaction ID anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
+
+## The EF Core mode (harness side csharp-wax-ef)
+
+[WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) routes all non-event data access through EF Core, and no side of round 1 used it. To measure what it costs, this side has a second state mode. With `WAX_STATE=efcore`, the command handlers read and write authoritative state through EF Core instead of plain SQL. That state is `ar.account`, its buckets, payments, tasks, and the Pending Event Register. Everything else is the same code in the same image: the event store, the hash chain, the reader, the rules, the seeder, the bulk writer, and the driver. The harness runs this mode as the side `csharp-wax-ef`, in this side's Compose project and from its seed template. Without the variable, the side runs plain SQL as before. Foundation-written for round 2.
+
+- **Version and transaction.** EF Core 9, with the Npgsql provider 9.0.4 running on the same Npgsql 9.0.4. A DbContext from a pooled factory is attached to the command's own connection (`SetDbConnection`) and enlisted in its transaction (`UseTransaction`).
+- **Atomic writes.** The dispatcher writes the events through the event store, then calls `SaveChanges`, then commits. Events and state therefore commit or roll back together (WAX-0002). A `CommandContext` hook, run just before the commit, makes that possible.
+- **The row lock before deciding.** LINQ has no locking operator, so each lock is an EF query rooted in raw SQL that ends in `FOR UPDATE`, in key order, before any rule runs (WAX-0013). A register entry is claimed with `FOR UPDATE SKIP LOCKED` the same way.
+- **Buckets load in a second query, never through an `Include` on the locking query.** That `Include` is the idiomatic EF way, and it is wrong here, and the concurrency tests caught it losing money. Under READ COMMITTED, a statement that waits for a row lock returns the locked row's latest version. It still reads every joined row from the snapshot it took before the wait, so concurrent payments overwrote each other's bucket balances. A separate statement takes a fresh snapshot after the lock is granted, as the plain mode's separate bucket read does.
+- **The version check.** It is unchanged: against the stream head, which the event store reads. `aggregate_sequence_number` is also mapped as an EF concurrency token.
+- **Writes.** Handlers change tracked entities and add new ones; the domain state classes are the EF entities themselves.
+- **Not EF's schema.** The model maps onto the hand-written tables as they stand, with no EF migrations and no migrations history table, so both modes share one seed.
+- **Round trips.** EF Core neither batches separate queries nor carries the event store's statements in `SaveChanges`. A payment therefore makes about six round trips where the plain mode makes two:
+  1. the existence check;
+  2. the locks;
+  3. the buckets;
+  4. the stream heads;
+  5. the events;
+  6. `SaveChanges`.
+
+  The measurements report this cost.
+- **What it does not cover.** The bulk workloads are excluded on `csharp-wax-ef`, because the bulk writer is set-based SQL with no EF Core equivalent. The projection reader and the rule runner use plain SQL in both modes.
+- **The twin test.** `TwinTests` runs 23 commands through both modes, on two databases copied from one migrated template, each with a clock that steps one millisecond per read. It requires:
+  - the same outcomes;
+  - byte-identical events, hashes and chains included;
+  - identical state.
+
+  The register's `fired_at` is the one exception: the plain mode stamps it with the server's clock and the EF mode with the client's.
 
 ## Running it
 
