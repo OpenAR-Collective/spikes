@@ -4,11 +4,11 @@
 // Modified by The OpenAR Collective contributors.
 // Changes: ported to C# and xunit against the C# port of the reader. A wait
 // that depends on the high-water mark settling retries for a few seconds,
-// because the mark reads the oldest transaction running anywhere on the
-// server and other test classes run at the same time. The test that the
-// reader refuses to run inside another transaction has no counterpart: the
-// C# reader opens its own connections and cannot be handed one. Added: two
-// readers sharing a projection apply each event once.
+// because the mark waits on the oldest transaction holding a transaction ID
+// anywhere on the server and other test classes run at the same time. The
+// test that the reader refuses to run inside another transaction has no
+// counterpart: the C# reader opens its own connections and cannot be handed
+// one. Added: two readers sharing a projection apply each event once.
 
 using System.Text.Json.Nodes;
 using Npgsql;

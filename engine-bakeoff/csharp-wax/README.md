@@ -43,7 +43,7 @@ Three changes from the prototype's reader, all for speed or for C#:
 
 The prototype's release checks and heartbeat for its blue-green drill are left out, because the bake-off does not run the drill.
 
-One property of the prototype's design carries over and is worth knowing: the high-water mark reads the oldest transaction running anywhere on the PostgreSQL server, not only those writing `core.event`. A long transaction in any database on the same server holds every reader back until it ends. The prototype's own Compose file ends a session left idle in a transaction after five minutes for this reason, and so does this one.
+One property of the prototype's design carries over and is worth knowing: the high-water mark waits on the oldest transaction that holds a transaction ID anywhere on the PostgreSQL server, not only those writing `core.event`. A long transaction that has written anything or locked a row, in any database on the same server, holds every reader back until it ends; a read-only transaction does not, whatever its isolation level. The prototype's own Compose file ends a session left idle in a transaction after five minutes for this reason, and so does this one.
 
 ## The rules
 
@@ -86,7 +86,7 @@ The 38 tests run against a real PostgreSQL, each test class in a fresh database.
 - **Reader (8):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The eighth is new: two readers sharing a projection apply each event exactly once.
 - **Read models, workloads, seed and batches, rules, and bulk:** the champion's tests, with the projection reader in place of Marten's daemon and two rule runner partitions in place of the subscription.
 
-The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark reads the oldest transaction anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
+The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark waits on the oldest transaction holding a transaction ID anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
 
 ## Running it
 
