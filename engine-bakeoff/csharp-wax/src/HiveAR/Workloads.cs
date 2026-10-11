@@ -113,7 +113,7 @@ public sealed class AccrueInterestHandler : ICommandHandler<AccrueInterest>
         }
         else if (interestRow is null && amount != 0 && db is not null)
         {
-            var interestDefinition = await db.BucketDefinitions.Where(definition => definition.Code == "interest").Select(definition => definition.Pk).SingleAsync(cancellation);
+            var interestDefinition = await EfState.DefinitionPk(db, "interest");
             db.Buckets.Add(new BucketRow { Pk = Guid.NewGuid(), Balance = newInterest, AccountFk = account.Pk, DefinitionFk = interestDefinition });
         }
         else if (interestRow is null && amount != 0)
@@ -200,8 +200,7 @@ public sealed class CreateTaskHandler : ICommandHandler<CreateTask>
             {
                 Parameters = { new NpgsqlParameter { Value = command.TaskPk } },
             },
-            async (ef, token) => await ef.Tasks.Where(task => task.Pk == command.TaskPk)
-                .Select(task => new object[] { task.AccountFk, task.TaskType }).SingleOrDefaultAsync(token),
+            async (ef, token) => await EfState.TaskByPk(ef, command.TaskPk) is { } found ? [found.Key, found.Text] : null,
             cancellation);
         if (existing is not null)
         {
@@ -248,8 +247,7 @@ public sealed class ScheduleFutureEventHandler : ICommandHandler<ScheduleFutureE
             {
                 Parameters = { new NpgsqlParameter { Value = command.PendingEventPk } },
             },
-            async (ef, token) => await ef.PendingEvents.Where(entry => entry.Pk == command.PendingEventPk)
-                .Select(entry => new object[] { entry.AggregatePkRef, entry.TargetEventType }).SingleOrDefaultAsync(token),
+            async (ef, token) => await EfState.PendingByPk(ef, command.PendingEventPk) is { } found ? [found.Key, found.Text] : null,
             cancellation);
         if (existing is not null)
         {

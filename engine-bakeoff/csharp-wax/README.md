@@ -117,6 +117,18 @@ The prototype's test that the reader refuses to run inside another transaction h
 
   The register's `fired_at` is the one exception: the plain mode stamps it with the server's clock and the EF mode with the client's.
 
+### Tuning
+
+The EF mode is tuned the way a careful EF team would tune it, and only in the ways the test's design allows. It uses no third-party bulk library and no raw-SQL state updates. The overnight development runs used the untuned mode at fa89d03; the recorded mini-pass uses the tuned one. In order:
+
+1. **DbContext pooling** was there from the start. Each command rents a context from a `PooledDbContextFactory` instead of building one.
+2. **Compiled queries.** Every hot-path LINQ query is compiled once per process with `EF.CompileAsyncQuery`, so a command skips EF's per-call translation and cache lookup. These cover the existence checks for accounts, payments, tasks, and register entries; the bucket load; and the bucket-definition lookups.
+   - EF Core cannot compile a query rooted in raw SQL. The three locking queries (accounts, a payment, and a register entry) therefore stay ordinary queries, which EF translates once and keeps in its query cache.
+3. **No tracking for what is never written.** Bucket definitions are reference data, so the bucket load takes their code and priority through a projection in the same query. Only the bucket rows themselves are tracked, and the definitions lookup in PlaceAccount uses `AsNoTracking`. Existence checks project scalar values and track nothing.
+4. **A compiled model.** `Data/CompiledModel` was generated with `dotnet ef dbcontext optimize` (EF Core tools 9.0.1), and the context factory uses it. It mostly saves the one-time cost of building the model at start-up, not per-command work. It must be regenerated whenever the mapping changes, with the design package `Microsoft.EntityFrameworkCore.Design`, which the host project references at build time only. The `jsonb` converter for a payment's distribution is a named class, `JsonObjectConverter`, so that the compiled model can refer to it.
+
+After the tuning, all 39 tests pass in both modes, the twin test included.
+
 ## Running it
 
 The same as the champion, from this folder:

@@ -37,12 +37,14 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
         var db = ArData.Ef(context);
         if (db is not null)
         {
-            exists = await db.Accounts.AnyAsync(account => account.Pk == command.AccountPk, cancellation);
+            exists = await EfState.AccountExists(db, command.AccountPk);
             // A List, not an array: C# 14 binds an array's Contains to a span
             // overload that EF Core 9 cannot translate.
             var wantedCodes = command.OpeningBalances.Keys.ToList();
-            definitions = await db.BucketDefinitions.Where(definition => wantedCodes.Contains(definition.Code))
-                .ToDictionaryAsync(definition => definition.Code, definition => definition.Pk, cancellation);
+            foreach (var definition in await EfState.ListAsync(EfState.DefinitionsByCode(db, wantedCodes), cancellation))
+            {
+                definitions[definition.Code] = definition.Pk;
+            }
         }
         else
         {

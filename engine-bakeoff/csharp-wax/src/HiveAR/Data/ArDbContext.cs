@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Wax.Commands;
@@ -95,7 +96,7 @@ public sealed class ArDbContext(DbContextOptions<ArDbContext> options) : DbConte
             payment.Property(p => p.Status).HasColumnName("status");
             payment.Property(p => p.ReceivedAt).HasColumnName("received_at");
             payment.Property(p => p.Distribution).HasColumnName("distribution").HasColumnType("jsonb")
-                .HasConversion(new ValueConverter<JsonObject, string>(value => value.ToJsonString(null), text => JsonNode.Parse(text, null, default)!.AsObject()));
+                .HasConversion<JsonObjectConverter>();
             payment.Property(p => p.UnappliedMinorUnits).HasColumnName("unapplied_minor_units");
             payment.Ignore(p => p.IsNew);
         });
@@ -125,6 +126,19 @@ public sealed class ArDbContext(DbContextOptions<ArDbContext> options) : DbConte
             entry.Property(e => e.FiredAt).HasColumnName("fired_at");
         });
     }
+}
+
+/// <summary>A jsonb column as a JsonObject. A named class, so that a compiled
+/// model can refer to it.</summary>
+public sealed class JsonObjectConverter() : ValueConverter<JsonObject, string>(
+    value => value.ToJsonString(null),
+    text => JsonNode.Parse(text, null, default)!.AsObject());
+
+/// <summary>Lets the EF Core tools build the model to generate the compiled model.</summary>
+public sealed class ArDbContextDesignFactory : IDesignTimeDbContextFactory<ArDbContext>
+{
+    public ArDbContext CreateDbContext(string[] args) =>
+        new(new DbContextOptionsBuilder<ArDbContext>().UseNpgsql().Options);
 }
 
 /// <summary>A balance bucket's definition: reference data the waterfall reads.</summary>
@@ -173,8 +187,10 @@ public sealed class ArData
         Access = access;
         if (access == StateAccess.EfCore)
         {
+            // The compiled model in Data/CompiledModel, generated with
+            // "dotnet ef dbcontext optimize"; regenerate it whenever the model changes.
             factory = new PooledDbContextFactory<ArDbContext>(
-                new DbContextOptionsBuilder<ArDbContext>().UseNpgsql().Options);
+                new DbContextOptionsBuilder<ArDbContext>().UseModel(CompiledModel.ArDbContextModel.Instance).UseNpgsql().Options);
         }
     }
 
