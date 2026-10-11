@@ -124,7 +124,26 @@ def state(account_pks, payment_pks, names):
         payments.append(None if payment is None else [
             payment.aggregate_sequence_number, payment.amount_minor_units, payment.currency_code, payment.status,
             payment.received_at, payment.distribution, payment.unapplied_minor_units])
-    return rename(json.dumps([accounts, payments], sort_keys=True, default=str), names)
+    return rename(json.dumps([accounts, payments], sort_keys=True, default=str), names) + register_and_tasks(
+        account_pks, names)
+
+
+def register_and_tasks(account_pks, names):
+    """The accounts' register entries and tasks, each row renamed and the rows
+    sorted, so key order does not matter. Due times are left out, because the
+    events carry them; so are the times a row was fired or created."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, status, scheduled_by_event,"
+            " fired_at IS NOT NULL FROM core.pending_event WHERE aggregate_pk_ref = ANY(%s)",
+            [list(account_pks)],
+        )
+        entries = cursor.fetchall()
+        cursor.execute(
+            "SELECT task_pk, account_fk, task_type, status FROM ar.task WHERE account_fk = ANY(%s)", [list(account_pks)]
+        )
+        tasks = cursor.fetchall()
+    return json.dumps([sorted(rename(json.dumps(row, default=str), names) for row in rows) for rows in (entries, tasks)])
 
 
 def assert_twins_match(django_accounts, direct_accounts, django_payments=(), direct_payments=(), other_keys=()):
@@ -314,3 +333,71 @@ def test_with_hashing_off_a_stale_version_is_caught_by_the_unique_constraint(buc
         direct_dispatch(direct_session, payment([r], rp))
     assert not Payment.objects.filter(pk=rp).exists()
     assert store.load_stream(r).count() == 1
+
+
+# The rule actions and the register's fire command.
+
+DUE = datetime(2026, 10, 1, 7, tzinfo=UTC)
+
+
+def both(direct_session, d, r):
+    """Send a command built for each twin through its own path."""
+    def send(build):
+        dispatch(build(d), **WHO)
+        direct_dispatch(direct_session, build(r))
+    return send
+
+
+@pytest.mark.django_db(transaction=True)
+def test_queue_and_status_changes_match_and_a_repeat_records_nothing(buckets, direct_session):
+    (d,), (r,) = twins()
+    send = both(direct_session, d, r)
+    for _ in range(2):
+        send(lambda pk: commands.AssignToQueue(account_pk=pk, queue_code="dispute_review"))
+        send(lambda pk: commands.ChangeAccountStatus(account_pk=pk, status="paid_in_full", reason_code="paid_in_full"))
+    assert_twins_match([d], [r])
+    with pytest.raises(CommandRejected) as django_refusal:
+        dispatch(commands.ChangeAccountStatus(account_pk=d, status="closed", reason_code="no_such_reason"), **WHO)
+    with pytest.raises(direct_rejected()) as direct_refusal:
+        direct_dispatch(direct_session, commands.ChangeAccountStatus(account_pk=r, status="closed", reason_code="no_such_reason"))
+    assert direct_refusal.value.code == django_refusal.value.code == "unknown_reason_code"
+    assert_twins_match([d], [r])
+
+
+@pytest.mark.django_db(transaction=True)
+def test_scheduling_and_firing_match_and_repeats_are_answered_once(buckets, direct_session):
+    (d,), (r,) = twins()
+    pending = {d: uuid.uuid4(), r: uuid.uuid4()}
+    cause = {d: uuid.uuid4(), r: uuid.uuid4()}
+    send = both(direct_session, d, r)
+
+    def schedule(pk, target="account.first_contact_due"):
+        return commands.ScheduleFutureEvent(pending_event_pk=pending[pk], account_pk=pk, target_event_type=target,
+                                            due_at=DUE, scheduled_by_event=cause[pk])
+
+    for _ in range(2):
+        send(schedule)
+    assert_twins_match([d], [r], other_keys=[(pending[d], pending[r]), (cause[d], cause[r])])
+    for _ in range(2):
+        send(lambda pk: commands.FirePendingEvent(pending_event_pk=pending[pk]))
+    assert_twins_match([d], [r], other_keys=[(pending[d], pending[r]), (cause[d], cause[r])])
+    for build, code in ((lambda pk: schedule(pk, "account.dispute_review_due"), "key_reused"),
+                        (lambda pk: commands.FirePendingEvent(pending_event_pk=uuid.uuid4()), "pending_event_not_found")):
+        with pytest.raises(CommandRejected) as django_refusal:
+            dispatch(build(d), **WHO)
+        with pytest.raises(direct_rejected()) as direct_refusal:
+            direct_dispatch(direct_session, build(r))
+        assert direct_refusal.value.code == django_refusal.value.code == code
+
+
+@pytest.mark.django_db(transaction=True)
+def test_a_task_matches_and_a_repeat_is_answered_once(buckets, direct_session):
+    (d,), (r,) = twins()
+    task = {d: uuid.uuid4(), r: uuid.uuid4()}
+    send = both(direct_session, d, r)
+    for _ in range(2):
+        send(lambda pk: commands.CreateTask(task_pk=task[pk], account_pk=pk, task_type="first_contact"))
+    assert_twins_match([d], [r], other_keys=[(task[d], task[r])])
+    with pytest.raises(direct_rejected()) as refused:
+        direct_dispatch(direct_session, commands.CreateTask(task_pk=task[r], account_pk=r, task_type="other"))
+    assert refused.value.code == "key_reused"

@@ -12,6 +12,7 @@ match the Django handler's.
 import os
 import uuid
 from dataclasses import dataclass
+from datetime import UTC
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -392,3 +393,138 @@ def accrue_interest(command, context):
         "UPDATE ar.account SET aggregate_sequence_number = %s, interest_accrued_through = %s WHERE account_pk = %s",
         [version, command.accrual_date, account.pk],
     )
+
+
+# The rule actions and the register's fire command (WORKLOADS.md, "New
+# commands"), as hivear/handlers.py's Foundation-written handlers decide them.
+
+def _instant(value):
+    return value.astimezone(UTC).isoformat(timespec="microseconds")
+
+
+def _set_version(cur, account_pk, version):
+    cur.execute("UPDATE ar.account SET aggregate_sequence_number = %s WHERE account_pk = %s", [version, account_pk])
+
+
+@handles(commands.ChangeAccountStatus)
+def change_account_status(command, context):
+    cur = context.cur
+    (account,) = lock_accounts(cur, [command.account_pk])
+    if account.status == command.status:
+        return
+    events = context.read_heads([account.pk])
+    version = events.record(
+        "account", account.pk, account.version, "account.status_changed", {"status": account.status},
+        {"status": command.status}, context.reason(command.reason_code),
+    )
+    cur.execute(
+        "UPDATE ar.account SET aggregate_sequence_number = %s, status = %s WHERE account_pk = %s",
+        [version, command.status, account.pk],
+    )
+
+
+@handles(commands.AssignToQueue)
+def assign_to_queue(command, context):
+    cur = context.cur
+    (account,) = lock_accounts(cur, [command.account_pk])
+    if account.queue_code == command.queue_code:
+        return
+    events = context.read_heads([account.pk])
+    version = events.record(
+        "account", account.pk, account.version, "account.queue_assigned", {"queue_code": account.queue_code},
+        {"queue_code": command.queue_code}, context.reason("queue_assigned"),
+    )
+    cur.execute(
+        "UPDATE ar.account SET aggregate_sequence_number = %s, queue_code = %s WHERE account_pk = %s",
+        [version, command.queue_code, account.pk],
+    )
+
+
+@handles(commands.ScheduleFutureEvent)
+def schedule_future_event(command, context):
+    """WAX-0027: write the scheduling event and the register row together."""
+    cur = context.cur
+    (account,) = lock_accounts(cur, [command.account_pk])
+    cur.execute(
+        "SELECT aggregate_pk_ref, target_event_type, scheduled_by_event, due_at FROM core.pending_event"
+        " WHERE pending_event_pk = %s",
+        [command.pending_event_pk],
+    )
+    existing = cur.fetchone()
+    if existing is not None:
+        if existing == (account.pk, command.target_event_type, command.scheduled_by_event, command.due_at):
+            raise AlreadyApplied()
+        raise CommandRejected("A different pending event already exists under this key", "key_reused")
+    events = context.read_heads([account.pk])
+    version = events.record(
+        "account", account.pk, account.version, "pending_event.scheduled", None,
+        {
+            "pending_event_pk": str(command.pending_event_pk),
+            "target_event_type": command.target_event_type,
+            "due_at": _instant(command.due_at),
+            "scheduled_by_event": str(command.scheduled_by_event),
+        },
+        context.reason("pending_event_scheduled"),
+    )
+    cur.execute(
+        "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, due_at,"
+        " status, scheduled_by_event) VALUES (%s, %s, 'account', %s, %s, 'pending', %s)",
+        [command.pending_event_pk, account.pk, command.target_event_type, command.due_at, command.scheduled_by_event],
+    )
+    _set_version(cur, account.pk, version)
+
+
+@handles(commands.FirePendingEvent)
+def fire_pending_event(command, context):
+    """WAX-0027: claim the register row, write its target event on the account,
+    and mark the row fired, all in one transaction. A row another poller is
+    firing is locked and passed over; a row already fired is left alone."""
+    cur = context.cur
+    cur.execute(
+        "SELECT aggregate_pk_ref, target_event_type, due_at, status FROM core.pending_event"
+        " WHERE pending_event_pk = %s FOR UPDATE SKIP LOCKED",
+        [command.pending_event_pk],
+    )
+    row = cur.fetchone()
+    if row is None:
+        cur.execute("SELECT 1 FROM core.pending_event WHERE pending_event_pk = %s", [command.pending_event_pk])
+        if cur.fetchone() is None:
+            raise CommandRejected("Pending event does not exist", "pending_event_not_found")
+        return
+    aggregate_pk, target_event_type, due_at, status = row
+    if status != "pending":
+        return
+    (account,) = lock_accounts(cur, [aggregate_pk])
+    events = context.read_heads([account.pk])
+    version = events.record(
+        "account", account.pk, account.version, target_event_type, None, {"due_at": _instant(due_at)},
+        context.reason("pending_event_fired"), metadata={"pending_event_pk": str(command.pending_event_pk)},
+    )
+    cur.execute(
+        "UPDATE core.pending_event SET status = 'fired', fired_at = clock_timestamp() WHERE pending_event_pk = %s",
+        [command.pending_event_pk],
+    )
+    _set_version(cur, account.pk, version)
+
+
+@handles(commands.CreateTask)
+def create_task(command, context):
+    cur = context.cur
+    (account,) = lock_accounts(cur, [command.account_pk])
+    cur.execute("SELECT account_fk, task_type FROM ar.task WHERE task_pk = %s", [command.task_pk])
+    existing = cur.fetchone()
+    if existing is not None:
+        if existing == (account.pk, command.task_type):
+            raise AlreadyApplied()
+        raise CommandRejected("A different task already exists under this key", "key_reused")
+    cur.execute(
+        "INSERT INTO ar.task (task_pk, account_fk, task_type, status, created_at) VALUES (%s, %s, %s, 'open', %s)",
+        [command.task_pk, account.pk, command.task_type, context.occurred_at],
+    )
+    events = context.read_heads([account.pk])
+    version = events.record(
+        "account", account.pk, account.version, "task.created", None,
+        {"task_pk": str(command.task_pk), "task_type": command.task_type, "status": "open"},
+        context.reason("task_created"),
+    )
+    _set_version(cur, account.pk, version)
