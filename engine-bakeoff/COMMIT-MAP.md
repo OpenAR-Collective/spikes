@@ -1,6 +1,6 @@
 # Commit map
 
-Before publication the Foundation rewrote this repository's history once. The rewrite removed the names of unrelated software from the first pass's host records and from two commit messages, removed local file paths from the pass logs, and dropped the internal runbooks for two benchmark machines, a PC and the AWS host. Dropping the second left one commit empty, so the rewrite left that commit out, and the table below has no row for it. The rewrite also reworded one code comment that named the AWS host's runbook. Apart from those changes it changed no result, code, or method text, and it changed no author, date, or commit subject.
+Before round 1 was published, the Foundation rewrote this repository's history once. The rewrite removed the names of unrelated software from the first pass's host records and from two commit messages, removed local file paths from the pass logs, and dropped the internal runbooks for two benchmark machines, a PC and the AWS host. Dropping the second left one commit empty, so the rewrite left that commit out, and the table below has no row for it. The rewrite also reworded one code comment that named the AWS host's runbook. Apart from those changes it changed no result, code, or method text, and it changed no author, date, or commit subject.
 
 Every commit ID changed, so the IDs that this repository cites in its own text no longer match its history. A result's `repository_commit` in `environment.json`, the commit lines in the pass logs, and a few commit messages and READMEs cite the original IDs. This table maps each original commit to its published counterpart, oldest first. A `repository_commit` is the 40-character form of an ID, and it begins with the 12 characters in the first column. The commits after the last row of this table are new in the published repository.
 
@@ -64,3 +64,26 @@ Every commit ID changed, so the IDs that this repository cites in its own text n
 | `74512b509942` | [`745854f73250`](https://github.com/OpenAR-Collective/spikes/commit/745854f73250432bd166c3627bcbd86d6853069a) | 2026-10-10 | Add a caps flag that selects the standard or scaled profile |
 | `c095b406f426` | [`1d0bcf560111`](https://github.com/OpenAR-Collective/spikes/commit/1d0bcf560111494a51e474541ada89adfae71053) | 2026-10-10 | Add a pgBouncer pool size flag and account for pgBouncer's CPU |
 | `0c9146e7af2a` | [`10757ff1f59e`](https://github.com/OpenAR-Collective/spikes/commit/10757ff1f59e0d624f3c91be4d977dcd14a0a3c3) | 2026-10-10 | Check the host and clean up before each pass |
+
+## The second rewrite
+
+The commits of the EF Core mini-pass and of round 2's laptop pass were rewritten once more before they were published. As in the first rewrite, the names of unrelated software in the host records became `unrelated-container`, and local file paths left the pass logs. Personal references became neutral wording in the two plans, the script that writes plans, the script that judges the EF Core mini-pass, this folder's README, and four commit messages. Two commit messages also stated more than the recorded results support, and they were corrected to what the results show: the placement pair and the noise floor of the EF Core mini-pass, and, for round 2, its background, the shape of the two sides' writes, and the payment file's rules. Apart from those changes the rewrite changed no result, code, or method text, and it changed no author, date, or commit subject.
+
+The two commits that needed no change and the two python-direct commits, which were already public on the branch `round2/python-direct`, kept their IDs. The EF Core mini-pass's results cite the original ID of its plan commit, and round 2's cite the original ID of theirs. This table maps each original commit to its published counterpart, oldest first.
+
+*Each row maps one original commit of the second rewrite to its published counterpart, with its date and subject.*
+
+| Original | Published | Date | Subject |
+| --- | --- | --- | --- |
+| `41c97ae60240` | [`41c97ae60240`](https://github.com/OpenAR-Collective/spikes/commit/41c97ae60240860d23f2efee0e73b00086147f9f) | 2026-10-11 | Add an EF Core state mode to csharp-wax, run as csharp-wax-ef |
+| `054af7d677de` | [`054af7d677de`](https://github.com/OpenAR-Collective/spikes/commit/054af7d677debe8038a54cc0f0354f2121737795) | 2026-10-11 | Tune the EF Core mode before the recorded mini-pass |
+| `fb62dd045ba4` | [`9451307b2338`](https://github.com/OpenAR-Collective/spikes/commit/9451307b233877f6779dc999ca77bb6b63c6bb61) | 2026-10-11 | Plan the EF Core mini-pass |
+| `753e9f3e4e26` | [`98596ab63d52`](https://github.com/OpenAR-Collective/spikes/commit/98596ab63d52d6b18d063362da74731af2941efe) | 2026-10-11 | Record the EF Core mini-pass |
+| `e4dc5033bb58` | [`1f5310b2a34f`](https://github.com/OpenAR-Collective/spikes/commit/1f5310b2a34fdb79b9692998c128ab7e2287fc14) | 2026-10-11 | Add the script that judges the EF Core mini-pass |
+| `d7956dbff61e` | [`ad5d13d7eea1`](https://github.com/OpenAR-Collective/spikes/commit/ad5d13d7eea1fc52b9a6882dfa214856e5644bca) | 2026-10-11 | Mend the make_plan docstring after the efcore example |
+| `8bc5639c2be0` | [`8bc5639c2be0`](https://github.com/OpenAR-Collective/spikes/commit/8bc5639c2be06a253f9933cb855b10f42d279e66) | 2026-10-11 | Add the python-direct side: the Python command path in plain SQL |
+| `08dd8c5dadb9` | [`08dd8c5dadb9`](https://github.com/OpenAR-Collective/spikes/commit/08dd8c5dadb9708e419080d631d57a100b54d0ac) | 2026-10-11 | Move python-direct's rule runners and register pollers off Django |
+| `d31d7f1b1c07` | [`2cbf3858b01e`](https://github.com/OpenAR-Collective/spikes/commit/2cbf3858b01e1bae4fbb55125660fd90bd2a00cb) | 2026-11-12 | Merge round2/python-direct into round2/laptop-pass for round 2's laptop pass |
+| `e192ec74f7e0` | [`bda684b8e45f`](https://github.com/OpenAR-Collective/spikes/commit/bda684b8e45f19ea70dfe951d74feb0d3b7180bd) | 2026-11-12 | Plan round 2's pass on the laptop |
+| `ecdae8a65f32` | [`f0aecd8ea4d0`](https://github.com/OpenAR-Collective/spikes/commit/f0aecd8ea4d0e4dd54e83771af8d8c63f9efc8fe) | 2026-11-13 | Record round 2's pass on the laptop |
+| `4c8e5ea363bb` | [`80fc1937a181`](https://github.com/OpenAR-Collective/spikes/commit/80fc1937a18113ea4650bd0edf3478e51ca78ca8) | 2026-11-13 | Add the script that tabulates round 2's laptop pass |
