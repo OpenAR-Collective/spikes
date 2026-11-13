@@ -8,7 +8,8 @@ using Wax.Store;
 namespace HiveAR;
 
 /// <summary>HiveAR as a Wax module. The handlers reach state through plain
-/// SQL unless WAX_STATE=efcore, or the mode given, selects EF Core.</summary>
+/// SQL unless WAX_STATE, or the mode given, selects EF Core or the batched
+/// statement shapes.</summary>
 public sealed class HiveArModule(StateAccess? access = null) : IWaxModule
 {
     public StateAccess Access { get; } = access ?? ArData.FromEnvironment();
@@ -23,6 +24,7 @@ public sealed class HiveArModule(StateAccess? access = null) : IWaxModule
     public void RegisterHandlers(CommandDispatcher dispatcher)
     {
         dispatcher.Provide(new ArData(Access));
+        dispatcher.MultiRowEvents = Access == StateAccess.Batched;
         dispatcher.Register(new PlaceAccountHandler());
         dispatcher.Register(new OpenDisputeHandler());
         dispatcher.Register(new PostPaymentHandler());

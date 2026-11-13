@@ -108,6 +108,15 @@ public sealed class PlaceAccountHandler : ICommandHandler<PlaceAccount>
             return;
         }
         var codes = command.OpeningBalances.Keys.ToArray();
+        if (BatchedWrites.For(context) is not null)
+        {
+            // One multi-row VALUES list in place of unnest, in the same order.
+            context.QueueSql(
+                "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) VALUES " +
+                string.Join(", ", codes.Select(_ => "(?, ?, ?, ?)")),
+                codes.SelectMany(code => new object[] { Guid.NewGuid(), command.OpeningBalances[code], command.AccountPk, definitions[code] }).ToArray());
+            return;
+        }
         context.QueueSql(
             "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) " +
             "SELECT * FROM unnest(?::uuid[], ?::bigint[], ?::uuid[], ?::uuid[])",
@@ -370,7 +379,14 @@ static class Buckets
         where TEvent : Wax.Events.WaxEvent, new()
     {
         var (prior, @new, metadata, moved) = Move(rows, amounts, sign, payment.Pk, payment.ReceivedAt);
-        if (ArData.Ef(context) is null)
+        if (BatchedWrites.For(context) is { } batched)
+        {
+            foreach (var row in moved)
+            {
+                batched.Bucket(row.Pk, row.Balance);
+            }
+        }
+        else if (ArData.Ef(context) is null)
         {
             foreach (var row in moved)
             {

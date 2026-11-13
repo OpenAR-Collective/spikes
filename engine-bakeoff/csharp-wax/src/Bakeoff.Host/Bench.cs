@@ -169,7 +169,12 @@ static class Bench
             // No Marten: commands append to core.event with plain SQL.
             append = "wax",
             hashing = EventHashing.Enabled ? "on" : "off",
-            state = HiveAR.Data.ArData.FromEnvironment() == HiveAR.Data.StateAccess.EfCore ? "efcore" : "sql",
+            state = HiveAR.Data.ArData.FromEnvironment() switch
+            {
+                HiveAR.Data.StateAccess.EfCore => "efcore",
+                HiveAR.Data.StateAccess.Batched => "batched",
+                _ => "sql",
+            },
         });
         return tally.Failed == 0 ? 0 : 1;
     }

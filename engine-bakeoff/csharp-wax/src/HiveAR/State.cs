@@ -61,9 +61,14 @@ public sealed class AccountState : AggregateRoot
     }
 
     // In EF Core mode the loaded entity is tracked, and SaveChanges writes what changed.
+    // In batched mode every account the command changed goes out in one UPDATE.
     protected override void QueueUpdate(CommandContext context)
     {
-        if (ArData.Ef(context) is null)
+        if (BatchedWrites.For(context) is { } batched)
+        {
+            batched.Account(this);
+        }
+        else if (ArData.Ef(context) is null)
         {
             QueueUpdateSql(context);
         }

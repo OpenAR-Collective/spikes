@@ -15,6 +15,11 @@ public enum StateAccess
 
     /// <summary>EF Core, inside the command's connection and transaction.</summary>
     EfCore,
+
+    /// <summary>Plain SQL in the statement shapes the Python direct side uses: a
+    /// command's events in one multi-row INSERT, its account and bucket rows in
+    /// one set-based UPDATE each, and placement's buckets in one VALUES list.</summary>
+    Batched,
 }
 
 /// <summary>
@@ -196,12 +201,16 @@ public sealed class ArData
 
     public StateAccess Access { get; }
 
-    /// <summary>WAX_STATE=efcore selects EF Core (the harness side csharp-wax-ef);
+    /// <summary>WAX_STATE=efcore selects EF Core (the harness side csharp-wax-ef),
+    /// WAX_STATE=batched the batched statement shapes (csharp-wax-batched);
     /// anything else, plain SQL, csharp-wax's own path.</summary>
     public static StateAccess FromEnvironment() =>
-        string.Equals(Environment.GetEnvironmentVariable("WAX_STATE"), "efcore", StringComparison.OrdinalIgnoreCase)
-            ? StateAccess.EfCore
-            : StateAccess.Sql;
+        Environment.GetEnvironmentVariable("WAX_STATE")?.ToLowerInvariant() switch
+        {
+            "efcore" => StateAccess.EfCore,
+            "batched" => StateAccess.Batched,
+            _ => StateAccess.Sql,
+        };
 
     /// <summary>The command's DbContext in EF Core mode, or null in plain SQL mode.</summary>
     public static ArDbContext? Ef(CommandContext context)

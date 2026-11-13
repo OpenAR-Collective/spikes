@@ -20,19 +20,21 @@ sealed class SteppingClock : TimeProvider
 }
 
 /// <summary>
-/// The same commands through plain SQL and through EF Core must store the same
-/// events and the same state. Both databases are copies of one migrated
-/// template, so reference keys match, and each engine has its own stepping
-/// clock, so the events match byte for byte: hashes and chains included.
-/// Foundation-written.
+/// The same commands through plain SQL, through EF Core, and through the
+/// batched statement shapes must store the same events and the same state.
+/// Every database is a copy of one migrated template, so reference keys match,
+/// and each engine has its own stepping clock, so the events match byte for
+/// byte: hashes, chains, and global order included. Foundation-written.
 /// </summary>
 public sealed class TwinTests : IAsyncLifetime
 {
     readonly string template = $"hivear_twin_t_{Guid.NewGuid():N}"[..28];
     readonly string sqlName = $"hivear_twin_s_{Guid.NewGuid():N}"[..28];
     readonly string efName = $"hivear_twin_e_{Guid.NewGuid():N}"[..28];
+    readonly string batchedName = $"hivear_twin_b_{Guid.NewGuid():N}"[..28];
     WaxEngine sql = null!;
     WaxEngine ef = null!;
+    WaxEngine batched = null!;
 
     public async Task InitializeAsync()
     {
@@ -45,17 +47,21 @@ public sealed class TwinTests : IAsyncLifetime
         NpgsqlConnection.ClearAllPools();
         await Admin($"CREATE DATABASE {sqlName} TEMPLATE {template}");
         await Admin($"CREATE DATABASE {efName} TEMPLATE {template}");
+        await Admin($"CREATE DATABASE {batchedName} TEMPLATE {template}");
         sql = await WaxEngine.CreateAsync(
             WaxSettings.ConnectionStringFromEnvironment(sqlName), [new HiveArModule(StateAccess.Sql)], clock: new SteppingClock());
         ef = await WaxEngine.CreateAsync(
             WaxSettings.ConnectionStringFromEnvironment(efName), [new HiveArModule(StateAccess.EfCore)], clock: new SteppingClock());
+        batched = await WaxEngine.CreateAsync(
+            WaxSettings.ConnectionStringFromEnvironment(batchedName), [new HiveArModule(StateAccess.Batched)], clock: new SteppingClock());
     }
 
     public async Task DisposeAsync()
     {
         await sql.DisposeAsync();
         await ef.DisposeAsync();
-        foreach (var name in new[] { sqlName, efName, template })
+        await batched.DisposeAsync();
+        foreach (var name in new[] { sqlName, efName, batchedName, template })
         {
             await Admin($"DROP DATABASE IF EXISTS {name} WITH (FORCE)");
         }
@@ -68,9 +74,17 @@ public sealed class TwinTests : IAsyncLifetime
         await command.ExecuteNonQueryAsync();
     }
 
+    static Guid Key(string name) => DerivedUuid.From("twin:" + name);
+
+    /// <summary>A command that the rule runner would dispatch, with the rule
+    /// runner's attribution and a fixed trigger key, so both twins match.</summary>
+    sealed record ByRule(ICommand Inner) : ICommand
+    {
+        public void Validate() => Inner.Validate();
+    }
+
     static IEnumerable<ICommand> Commands()
     {
-        Guid Key(string name) => DerivedUuid.From("twin:" + name);
         PlaceAccount Place(string name, Dictionary<string, long> balances) => new()
         {
             AccountPk = Key(name),
@@ -119,7 +133,7 @@ public sealed class TwinTests : IAsyncLifetime
         yield return new FirePendingEvent { PendingEventPk = Key("e1") };
         yield return new FirePendingEvent { PendingEventPk = Key("e1") };   // already fired
         yield return new PostPayment { PaymentPk = Key("p4"), AccountPks = [Key("a3")], AmountMinorUnits = 2_000_000, CurrencyCode = "USD" };
-        yield return new ChangeAccountStatus { AccountPk = Key("a3"), Status = "paid_in_full", ReasonCode = "paid_in_full" };
+        yield return new ByRule(new ChangeAccountStatus { AccountPk = Key("a3"), Status = "paid_in_full", ReasonCode = "paid_in_full" });
     }
 
     static async Task<List<string>> Run(WaxEngine engine)
@@ -127,14 +141,23 @@ public sealed class TwinTests : IAsyncLifetime
         var outcomes = new List<string>();
         foreach (var command in Commands())
         {
+            var name = (command is ByRule rule ? rule.Inner : command).GetType().Name;
             try
             {
-                await engine.Commands.DispatchAsync(command, Scenario.Actor, "user", "test");
-                outcomes.Add(command.GetType().Name + ": done");
+                if (command is ByRule byRule)
+                {
+                    // As HiveArRules dispatches its actions, through the same dispatcher.
+                    await engine.Commands.DispatchAsync(byRule.Inner, HiveArRules.RuleRunnerActor, "system", "rule", Key("rule-trigger"), "rule");
+                }
+                else
+                {
+                    await engine.Commands.DispatchAsync(command, Scenario.Actor, "user", "test");
+                }
+                outcomes.Add(name + ": done");
             }
             catch (CommandRejectedException refused)
             {
-                outcomes.Add(command.GetType().Name + ": " + refused.Code);
+                outcomes.Add(name + ": " + refused.Code);
             }
         }
         return outcomes;
@@ -153,9 +176,14 @@ public sealed class TwinTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Ef_core_and_plain_sql_store_identical_events_and_state()
+    public Task Ef_core_and_plain_sql_store_identical_events_and_state() => Compare(ef);
+
+    [Fact]
+    public Task Batched_and_plain_sql_store_identical_events_and_state() => Compare(batched);
+
+    async Task Compare(WaxEngine other)
     {
-        Assert.Equal(await Run(sql), await Run(ef));
+        Assert.Equal(await Run(sql), await Run(other));
 
         string[] queries =
         [
@@ -175,10 +203,11 @@ public sealed class TwinTests : IAsyncLifetime
         {
             var expected = await Rows(sql, query);
             Assert.NotEmpty(expected);
-            Assert.Equal(expected, await Rows(ef, query));
+            Assert.Equal(expected, await Rows(other, query));
         }
         Assert.True((await Rows(sql, "SELECT 1 FROM core.event")).Count >= 15);
+        Assert.NotEmpty(await Rows(sql, "SELECT 1 FROM core.event WHERE source = 'rule'"));
         Assert.Empty((await ChainVerifier.VerifyAllAsync(sql.DataSource)).Problems);
-        Assert.Empty((await ChainVerifier.VerifyAllAsync(ef.DataSource)).Problems);
+        Assert.Empty((await ChainVerifier.VerifyAllAsync(other.DataSource)).Problems);
     }
 }
