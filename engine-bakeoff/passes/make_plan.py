@@ -16,6 +16,9 @@ whose fourth argument is the commit it measures:
 
     py -3 make_plan.py efcore-pass 20261011 efcore <commit>
 
+or "round2-laptop", round 2's pass on the laptop, which also takes the
+commit it measures as its fourth argument.
+
 Runs that share a block stay together, back to back: the blocks are shuffled
 within their group, and the runs within each block.
 """
@@ -201,6 +204,32 @@ def efcore_runs():
     return planned
 
 
+# Round 2's pass on the laptop: python-direct, the Python command path in
+# plain SQL, against csharp-wax, the C# side without Marten, with the two run
+# back to back for each workload and worker count; then Django's Python as a
+# same-night anchor at 8 workers; then a second block of each 8-worker pair;
+# then both at 32 workers if time allows.
+ROUND2_PAIR = ("python-direct", "csharp-wax")
+ROUND2_WORKLOADS = ("batch-payments", "batch-accrual", "realtime")
+
+
+def round2_laptop_runs():
+    planned = []
+    for workload in ROUND2_WORKLOADS:
+        for workers in (4, 8, 16):
+            for side in ROUND2_PAIR:
+                planned.append(run(1, side, workload, workers, block=f"{workload}-w{workers}-r1", suffix="r1"))
+    for workload in ROUND2_WORKLOADS:
+        planned.append(run(2, "python", workload, 8, suffix="r1"))
+    for workload in ROUND2_WORKLOADS:
+        for side in ROUND2_PAIR:
+            planned.append(run(3, side, workload, 8, block=f"{workload}-w8-r2", suffix="r2"))
+    for workload in ("batch-payments", "realtime"):
+        for side in ROUND2_PAIR:
+            planned.append(run(4, side, workload, 32, block=f"{workload}-w32-r1", suffix="r1"))
+    return planned
+
+
 # Lines a layout adds to its plan's Markdown, under the generation line.
 NOTES = {
     "efcore": [
@@ -218,6 +247,15 @@ NOTES = {
         "",
         "Thirteen containers and development services unrelated to the bake-off stay up through the pass; every run records them, and the pass's figures compare only with each other.",
     ],
+    "round2-laptop": [
+        "Round 2's pass on the laptop, approved on 2026-11-12, in the window from 22:00 that night to 07:00 on 2026-11-13. The measured tree is `{measured_commit}`: the EF Core mini-pass's branch (`d7956db`, whose plain csharp-wax is the code that pass measured in plain mode, with EF Core's packages in the image but not used) with `round2/python-direct` (`08dd8c5`) merged in. The plan commit adds only the plan files and the generator's layout, and no code changes after it.",
+        "",
+        "The sides are python-direct, the Python command path in plain SQL with its rule runners and register pollers off Django, and csharp-wax, the C# side without Marten. Each workload and worker count is a block of the two run back to back, in an order drawn from the seed. Django's Python runs once per workload at 8 workers as a same-night anchor. Group 3 repeats every 8-worker block, and group 4 runs both sides at 32 workers if time allows. The Marten sides and the EF Core mode are not in this pass. The bulk workloads and placement are left out because python-direct does not implement them.",
+        "",
+        "The tree's Python code is `08dd8c5`'s, whose 97 tests pass, and its C# code is `d7956db`'s, whose 39 tests pass in both state modes (see efcore-pass.tests.txt). The harness differs from `08dd8c5`'s only by the EF Core mode's entry in sides.json.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps. python-direct uses Python's engine settings. Every gate must pass in every run. Thirteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the EF Core mini-pass; every run records them, and the pass's figures compare only with each other.",
+    ],
 }
 
 
@@ -231,6 +269,7 @@ LAYOUTS = {
     "aws-pgbouncer": (aws_pgbouncer_runs, {"caps": "scaled", "pool_size": 32}),
     "aws-5m": (aws_5m_runs, {"caps": "scaled", "accounts": 5_000_000}),
     "efcore": (efcore_runs, {}),
+    "round2-laptop": (round2_laptop_runs, {}),
 }
 
 
@@ -269,7 +308,7 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
-    if layout == "efcore":
+    if layout in ("efcore", "round2-laptop"):
         settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
