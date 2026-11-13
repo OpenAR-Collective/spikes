@@ -11,6 +11,8 @@
 # bench stays up so the harness can run seed, bench, and verify-chain in it.
 # CPU and memory limits and the database's settings come from the harness's
 # override, never from this file. No ports are published to the host.
+# WAX_PATH comes from BAKEOFF_PATH: django for the python side, and direct for
+# the python-direct side, which shares this project (harness/sides.json).
 name: hivear-bakeoff-python
 
 x-engine: &engine
@@ -20,6 +22,7 @@ x-engine: &engine
 # The schema owner, used for migrations, tests, and verify_chain.
 x-owner-env: &owner-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
+  WAX_PATH: ${BAKEOFF_PATH:-django}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear
   DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-local-evaluation-only}
@@ -30,6 +33,7 @@ x-owner-env: &owner-env
 # schema or change history.
 x-runtime-env: &runtime-env
   DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-evaluation-only}
+  WAX_PATH: ${BAKEOFF_PATH:-django}
   DATABASE_NAME: ${BAKEOFF_DATABASE:-hivear}
   DATABASE_USER: hivear_app
   DATABASE_PASSWORD: ${HIVEAR_APP_PASSWORD:-local-evaluation-only-app}

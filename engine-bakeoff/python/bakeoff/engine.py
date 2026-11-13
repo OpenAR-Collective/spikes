@@ -9,6 +9,7 @@ side. Idle readers and pollers sleep the poll interval.
 
 import logging
 import multiprocessing as mp
+import os
 import signal
 import sys
 import time
@@ -19,7 +20,18 @@ from bakeoff.keys import REGISTER, RULE_RUNNER
 logger = logging.getLogger("bakeoff.engine")
 
 
+def _direct():
+    # On the python-direct side every engine process runs the direct/ package,
+    # which imports no Django: the reader, the rule runners, and the pollers.
+    return os.environ.get("WAX_PATH") == "direct"
+
+
 def _projection_worker(poll_seconds):
+    if _direct():
+        from direct.reader import run_forever
+
+        run_forever(poll_seconds)
+        return
     setup(count_retries=False)
     from django.core.management import call_command
 
@@ -27,6 +39,12 @@ def _projection_worker(poll_seconds):
 
 
 def _rule_runner(partition, partitions, idle_seconds, seconds_per_day):
+    if _direct():
+        from direct import rules
+
+        rules.SETTINGS["seconds_per_day"] = seconds_per_day
+        rules.run_forever(RULE_RUNNER, partition, partitions, idle_seconds)
+        return
     setup(count_retries=False)
     from bakeoff import rules
     from wax.rules import RuleRunner
@@ -36,6 +54,11 @@ def _rule_runner(partition, partitions, idle_seconds, seconds_per_day):
 
 
 def _register_poller(partition, partitions, poll_seconds):
+    if _direct():
+        from direct import register
+
+        register.run_forever(REGISTER, partition, partitions, poll_seconds)
+        return
     setup(count_retries=False)
     from hivear.commands import FirePendingEvent
     from wax import register
