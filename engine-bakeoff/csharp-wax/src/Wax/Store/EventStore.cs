@@ -139,6 +139,55 @@ public static class EventStore
         },
     };
 
+    static readonly ConcurrentDictionary<int, string> InsertValuesSql = new();
+
+    /// <summary>
+    /// A command's events in one multi-row INSERT ... VALUES, for the batched
+    /// state mode. PostgreSQL inserts the rows in the order they are listed, so
+    /// the trigger numbers them in the order they were recorded, as one
+    /// statement per event would. The text is cached by row count.
+    /// </summary>
+    public static NpgsqlBatchCommand InsertValuesCommand(IReadOnlyList<NewEvent> events)
+    {
+        var sql = InsertValuesSql.GetOrAdd(events.Count, static count =>
+        {
+            var builder = new StringBuilder($"INSERT INTO core.event ({Columns}) VALUES ");
+            for (var row = 0; row < count; row++)
+            {
+                builder.Append(row == 0 ? "(" : ", (");
+                for (var column = 1; column <= 18; column++)
+                {
+                    builder.Append(column == 1 ? "$" : ", $").Append(row * 18 + column);
+                }
+                builder.Append(')');
+            }
+            return builder.ToString();
+        });
+        var command = new NpgsqlBatchCommand(sql);
+        foreach (var e in events)
+        {
+            command.Parameters.Add(new NpgsqlParameter { Value = e.EventPk, NpgsqlDbType = NpgsqlDbType.Uuid });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.AggregateSequenceNumber, NpgsqlDbType = NpgsqlDbType.Integer });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.EventType, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.SchemaVersion, NpgsqlDbType = NpgsqlDbType.Smallint });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.AggregatePkRef, NpgsqlDbType = NpgsqlDbType.Uuid });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.AggregateType, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.OccurredAt, NpgsqlDbType = NpgsqlDbType.TimestampTz });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.ActorPkRef, NpgsqlDbType = NpgsqlDbType.Uuid });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.ActorType, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(Json(e.PriorValue));
+            command.Parameters.Add(Json(e.NewValue));
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)e.ReasonCodeFk ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Uuid });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)e.Source ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)e.CorrelationPkRef ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Uuid });
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)e.CorrelationType ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(Json(e.Metadata));
+            command.Parameters.Add(new NpgsqlParameter { Value = (object?)e.PriorEventHash ?? DBNull.Value, NpgsqlDbType = NpgsqlDbType.Text });
+            command.Parameters.Add(new NpgsqlParameter { Value = e.EventHash, NpgsqlDbType = NpgsqlDbType.Text });
+        }
+        return command;
+    }
+
     /// <summary>Many events in one set-based statement, for the bulk workloads.</summary>
     public static NpgsqlBatchCommand InsertManyCommand(IReadOnlyList<NewEvent> events) => new(InsertManySql)
     {

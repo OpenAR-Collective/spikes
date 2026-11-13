@@ -106,7 +106,11 @@ public sealed class AccrueInterestHandler : ICommandHandler<AccrueInterest>
         if (interestRow is not null && amount != 0)
         {
             interestRow.Balance = newInterest;
-            if (db is null)
+            if (BatchedWrites.For(context) is { } batched)
+            {
+                batched.Bucket(interestRow.Pk, newInterest);
+            }
+            else if (db is null)
             {
                 context.QueueSql("UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?", newInterest, interestRow.Pk);
             }

@@ -19,6 +19,7 @@ public sealed class CommandContext
     readonly IReadOnlyDictionary<Type, object> services;
     readonly Dictionary<Type, object> scoped = [];
     readonly List<Func<CancellationToken, Task>> beforeCommit = [];
+    List<Action>? beforeFlush;
     readonly List<Func<ValueTask>> onEnd = [];
 
     internal CommandContext(
@@ -55,6 +56,22 @@ public sealed class CommandContext
     /// have gone out and before the commit, such as an ORM's save.</summary>
     public void BeforeCommit(Func<CancellationToken, Task> action) => beforeCommit.Add(action);
 
+    /// <summary>Work that queues its writes last, just before the queued writes
+    /// go out, such as one set-based statement for every row a command changed.</summary>
+    public void BeforeFlush(Action action) => (beforeFlush ??= []).Add(action);
+
+    internal void RunBeforeFlush()
+    {
+        if (beforeFlush is null)
+        {
+            return;
+        }
+        foreach (var action in beforeFlush)
+        {
+            action();
+        }
+    }
+
     /// <summary>Cleanup when the command ends, committed or not.</summary>
     public void OnEnd(Func<ValueTask> action) => onEnd.Add(action);
 
@@ -88,6 +105,9 @@ public sealed class CommandContext
 
     /// <summary>Queue a state write. It runs in the save batch, inside this transaction.</summary>
     public void QueueSql(string sql, params object[] values) => writes.Sql(sql, values);
+
+    /// <summary>Queue a state write already shaped as a batch command, such as one with array parameters.</summary>
+    public void QueueCommand(NpgsqlBatchCommand command) => writes.Command(command);
 
     /// <summary>A batch command that reads the head of each named stream, so a
     /// handler can fetch heads in the same round trip as its row locks.</summary>

@@ -24,6 +24,10 @@ public sealed class CommandDispatcher(
     readonly TimeProvider clock = clock ?? TimeProvider.System;
     long conflictRetries;
 
+    /// <summary>Whether a command's events go out as one multi-row INSERT
+    /// rather than one statement each. Off unless a module turns it on.</summary>
+    public bool MultiRowEvents { get; set; }
+
     /// <summary>A service every command's context can reach, such as a module's data access.</summary>
     public void Provide<T>(T service) where T : class => services[typeof(T)] = service;
 
@@ -67,11 +71,12 @@ public sealed class CommandDispatcher(
                 actorPk, actorType, IsoFormat.UtcNowMicroseconds(clock), source, correlationPk, correlationType);
             await using var connection = await dataSource.OpenConnectionAsync(cancellation);
             await using var transaction = await connection.BeginTransactionAsync(cancellation);
-            await using var writes = new WriteQueue(connection, transaction);
+            await using var writes = new WriteQueue(connection, transaction, MultiRowEvents);
             var context = new CommandContext(connection, transaction, writes, attribution, reasons, services);
             try
             {
                 await handler(command, context, cancellation);
+                context.RunBeforeFlush();
                 // The events and queued writes go out first, then any participant's
                 // own save, all in this one transaction.
                 await writes.FlushAsync(cancellation);

@@ -2,7 +2,7 @@
 
 This folder holds a variant of the [engine bake-off](../README.md)'s C# side: the same Wax command path in C# on .NET 10, with Marten removed entirely. Events go into `core.event`, the table [WAX-0001 Enriched Event Sourcing](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0001-enriched-event-sourcing.md) specifies, and a reader ported from Andy Troiano's prototype keeps the read models and runs the rules. The only database library is Npgsql, the same version the Marten side uses.
 
-Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 39 tests pass in both state modes. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
+Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 40 tests pass in all three state modes. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
 
 ## Why this side exists
 
@@ -80,12 +80,12 @@ The new code is about 1,200 lines of C# and a 190-line SQL schema: the reader is
 
 ## Tests
 
-The 39 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
+The 40 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
 
 - **Event store (9):** the champion's seven, plus a test that `TRUNCATE` is refused, and a test that the store assigns `global_sequence_number` and `recorded_at` and ignores any value a caller supplies.
 - **Reader (8):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The eighth is new: two readers sharing a projection apply each event exactly once.
 - **Read models, workloads, seed and batches, rules, and bulk:** the champion's tests, with the projection reader in place of Marten's daemon and two rule runner partitions in place of the subscription.
-- **Twin (1):** the EF Core mode against the plain mode, described below.
+- **Twin (2):** the EF Core mode and the batched mode, each against the plain mode, described below.
 
 The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark waits on the oldest transaction holding a transaction ID anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
 
@@ -128,6 +128,18 @@ The EF mode is tuned the way a careful EF team would tune it, and only in the wa
 4. **A compiled model.** `Data/CompiledModel` was generated with `dotnet ef dbcontext optimize` (EF Core tools 9.0.1), and the context factory uses it. It mostly saves the one-time cost of building the model at start-up, not per-command work. It must be regenerated whenever the mapping changes, with the design package `Microsoft.EntityFrameworkCore.Design`, which the host project references at build time only. The `jsonb` converter for a payment's distribution is a named class, `JsonObjectConverter`, so that the compiled model can refer to it.
 
 After the tuning, all 39 tests pass in both modes, the twin test included.
+
+## The batched mode (harness side csharp-wax-batched)
+
+`WAX_STATE=batched` runs the same handlers with the statement shapes the python-direct side uses, so that the two languages can be compared on the same SQL. When `WAX_STATE` is unset, plain mode sends exactly the statements it always has.
+
+- **Events.** A command's events go out as one multi-row `INSERT INTO core.event ... VALUES`, in the order they were recorded, at the place in the batch where the first of them was queued. PostgreSQL inserts the rows in the order they are listed, so the trigger numbers them as plain mode's one statement per event does.
+- **State.** Every account row a command changes goes out in one `UPDATE ar.account ... FROM unnest(...)`, and every bucket row in one `UPDATE ar.account_balance_bucket ... FROM unnest(...)`, after the command's other writes and in the same batch. The last value of each row wins, which is the value that plain mode's last statement for that row writes.
+- **Placement.** An account's opening buckets go in as one multi-row `VALUES` list instead of plain mode's `unnest`, which cost more database time per placement in the EF Core pass.
+- **Unchanged.** The reads and row locks, the round trips (one batch of reads and one batch of writes), the single-row inserts such as a payment, a task, or a register entry, the read models and the projection reader, and the bulk writer, which is set-based in every mode. The mode is process-wide, so the commands that the engine's rules dispatch take it too.
+- **The twin test.** `TwinTests` runs the same 23 commands through plain and batched modes and requires identical events, every column but the random event key and the store's `recorded_at`, hashes and global order included, and identical state. Its last command is dispatched with the rule runner's attribution, as a rule would dispatch it.
+
+All 40 tests pass in each of the three modes.
 
 ## Running it
 
