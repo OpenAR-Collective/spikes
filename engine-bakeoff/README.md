@@ -1,8 +1,8 @@
 # Engine bake-off
 
-This experiment runs the same Wax workloads in four builds, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. The champion is C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). Two C# variants separate the library from the language, and the challenger is Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design.
+This experiment runs the same Wax workloads in several builds, on the same machine and the same PostgreSQL configuration, and compares how fast each can push work through the Wax write path while keeping Wax's invariants. In round 1 the champion was C# on .NET with Marten as the event store, the stack adopted in [WAX-0025 Primary Programming Language](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0025-primary-programming-language.md). Two C# variants separated the library from the language, and the challenger was Python, the stack proposed in Andy Troiano's pull request on his fork of platform-design. Two later variants each test one library: python-direct runs the Python side without Django's object layer, and the EF Core mode of the C# side without Marten routes its authoritative state through EF Core.
 
-Status: round 1 is complete. It made 100 measured runs on one laptop from 2026-10-08 to 2026-10-10, and every run passed every correctness gate that applied to it. The findings, their limits, and the Foundation's direction are in [REPORT-ROUND-1.md](REPORT-ROUND-1.md). Round 2, on cloud hardware, is planned, and its run lists are the `aws-*` plans in [passes](passes/).
+Status: round 1 is complete. It made 100 measured runs on one laptop from 2026-10-08 to 2026-10-10, and every run passed every correctness gate that applied to it. The findings, their limits, and the Foundation's direction are in [REPORT-ROUND-1.md](REPORT-ROUND-1.md). On the same laptop, the EF Core mini-pass made 34 recorded runs on 2026-10-11, and round 2's laptop pass made 31 on the night of 2026-11-12, and every run of both passed every gate. Their results are below, in [The EF Core mini-pass](#the-ef-core-mini-pass) and [Round 2's laptop pass](#round-2s-laptop-pass). Passes on cloud hardware are planned, and their run lists are the `aws-*` plans in [passes](passes/).
 
 ## What is here
 
@@ -16,7 +16,7 @@ Status: round 1 is complete. It made 100 measured runs on one laptop from 2026-1
 | [csharp-marten](csharp-marten/README.md) | The C# side, appending through Marten or with plain SQL |
 | [csharp-wax](csharp-wax/README.md) | The C# side without Marten |
 | [python](python/README.md) | The Python side, adapted from Andy Troiano's prototype |
-| [passes](passes/) | Each measured pass's plan, log, and status, and the script that writes plans |
+| [passes](passes/) | Each measured pass's plan, log, and status, the script that writes plans, and the scripts that tabulate the later passes |
 | [results](results/README.md) | Every recorded run, with its raw output unedited |
 | [shared](shared/) | The hash vectors every side must reproduce |
 | [COMMIT-MAP.md](COMMIT-MAP.md) | Maps the commit IDs that result records cite to this repository's published history |
@@ -45,16 +45,20 @@ Wax v1 defers hash computation, multi-instance batch work, and the Pending Event
 | C# with direct append | [csharp-marten](csharp-marten/README.md), with `WAX_APPEND=direct` | Variant | C# on .NET 10 | Marten's tables, appended with plain SQL; Marten's daemon for read models and rules |
 | C# without Marten | [csharp-wax](csharp-wax/README.md) | Variant | C# on .NET 10 | No Marten: WAX-0001's `core.event`, with a reader ported from Andy Troiano's prototype for read models and rules |
 | Python | [python](python/README.md) | Challenger | Python 3.13 | Andy Troiano's own event store, written directly against PostgreSQL |
+| Python without Django's object layer | [python](python/README.md), as the harness side `python-direct` (`WAX_PATH=direct`) | Variant | Python 3.13 | Andy Troiano's event store and reader logic, in plain SQL through psycopg |
+| C# without Marten, with state through EF Core | [csharp-wax](csharp-wax/README.md), as the harness side `csharp-wax-ef` (`WAX_STATE=efcore`) | Variant | C# on .NET 10 | WAX-0001's `core.event`, as on the side without Marten, with authoritative state read and written through EF Core |
 
-The two variants separate the cost of the language from the cost of the library. The direct-append variant runs the champion's code with one change: it appends events with plain SQL instead of through Marten, as the Python side's own event store does, while Marten's daemon still runs the read models and rules. The variant without Marten drops it altogether: events go to WAX-0001's `core.event`, and a reader ported from Andy Troiano's prototype runs the read models and rules. Together they bear on whether Wax should use Marten for its event store at all.
+The first two variants separate the cost of the language from the cost of the library. The direct-append variant runs the champion's code with one change: it appends events with plain SQL instead of through Marten, as the Python side's own event store does, while Marten's daemon still runs the read models and rules. The variant without Marten drops it altogether: events go to WAX-0001's `core.event`, and a reader ported from Andy Troiano's prototype runs the read models and rules. Together they bear on whether Wax should use Marten for its event store at all.
+
+The two later variants each change one library and keep everything else. python-direct keeps Andy Troiano's event store and reader logic and replaces Django's object layer with plain SQL through psycopg, in the bench and in every engine process; Django still runs the migrations, the seed loader, and `verify-chain`. The EF Core mode runs the side without Marten with its authoritative state read and written through EF Core, as [WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) would have it, while its event store, reader, and rules stay in plain SQL. The [python README](python/README.md) and the [csharp-wax README](csharp-wax/README.md) describe them.
 
 The Foundation builds and tunes every side to the best of its ability. Now that the results are published, Andy Troiano and anyone else is invited to review any side and submit improvements. An accepted improvement means the affected runs are repeated and the results updated.
 
 ## Where Django fits
 
-Andy's proposal is Python on Django, but Django is not the event store. His prototype writes events with its own SQL, and Django supplies the database connection, transactions, migrations, and the HTTP API. The bake-off drives the command handlers directly rather than over HTTP, so the web layer is outside the measured path on every side. The Python side starts from Andy's code as written, with Django's database layer in the path, because that is what his proposal would ship. Replacing that layer with plain psycopg is allowed as tuning, and each result records which variant ran.
+Andy's proposal is Python on Django, but Django is not the event store. His prototype writes events with its own SQL, and Django supplies the database connection, transactions, migrations, and the HTTP API. The bake-off drives the command handlers directly rather than over HTTP, so the web layer is outside the measured path on every side. The Python side starts from Andy's code as written, with Django's database layer in the path, because that is what his proposal would ship. Replacing that layer with plain psycopg is allowed as tuning, and each result records which variant ran. The `python-direct` side is that replacement, built by the Foundation for round 2 and measured in [Round 2's laptop pass](#round-2s-laptop-pass).
 
-The sides are not symmetrical, and the test does not pretend otherwise. On the Marten sides the event store is a library the Foundation would adopt; on the other two it is code the Foundation would own.
+The sides are not symmetrical, and the test does not pretend otherwise. On the Marten sides the event store is a library the Foundation would adopt; on the others it is code the Foundation would own.
 
 ## Invariants every side keeps
 
@@ -96,6 +100,8 @@ After every run, the correctness gates in WORKLOADS.md are checked. In short: ev
 
 The benchmark machine for round 1 is a laptop: an Intel Core i7-13620H with 10 cores and 16 threads, 64 GB of memory, and Windows 11 with Docker Desktop. Each result's `environment.json` records the rest, including the disks and the power plan. Runs happen only when the laptop is otherwise idle, one side at a time and never in parallel, against the same PostgreSQL container with the same configuration. The containers' CPU limits, 6 for the database, 4 for the bench driver, and 2 for the engine, add up to 12 of the laptop's 16 logical processors, leaving 4 for Windows, the Docker VM, and the harness. A limit caps CPU time; it does not reserve cores. The laptop's 16 logical processors come from 6 performance cores with two threads each and 4 efficiency cores, so when every container is busy at once, a logical processor does less than a performance core's full work. Connection pooling is available to every side: each side may use its driver's own pool, and any may put pgBouncer in front of PostgreSQL, as tuning that the result records.
 
+The EF Core mini-pass and round 2's laptop pass ran on the same laptop in the same way, with two differences that their records show. Containers and development services unrelated to the bake-off stayed up through both, 13 containers in the mini-pass and 14 in round 2, and each run's `environment.json` counts them. Docker Desktop was also updated between them: the mini-pass ran on Docker Engine 29.7.2 and round 2 on 29.9.2. Each of those passes therefore compares its sides only with each other.
+
 ## Passes
 
 A pass is one session of recorded runs. From the second pass on, each pass has a plan that is committed before it starts: it lists every run, its priority group, and its place in an order shuffled from a recorded seed, and a run that would not finish before the pass's deadline is skipped, so the lowest group drops first. The plans come from `make_plan.py`, the runner is `run_pass.py`, and the runner records each pass in a log and a status file.
@@ -103,14 +109,86 @@ A pass is one session of recorded runs. From the second pass on, each pass has a
 - **First pass,** 2026-10-08 and 2026-10-09: 18 runs. Its scope was fixed in this README before the pass began, in original commit 66e919b (see [COMMIT-MAP.md](COMMIT-MAP.md)), and it has no plan file or runner log.
 - **Second pass,** 2026-10-09 and 2026-10-10: 61 of 82 planned runs. See the [plan](passes/second-pass.plan.md) and the [log](passes/second-pass.log).
 - **Third pass,** 2026-10-10, group 1 only: 21 runs. See the [plan](passes/third-pass.plan.md) and the [log](passes/third-pass.log).
-- **EF Core mini-pass,** 2026-10-11: the side without Marten against the same side with its state reads and writes through EF Core (`csharp-wax-ef`, a mode of csharp-wax), to test whether EF Core earns its keep on the command path, as [WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) would have it. It runs 32 runs at 8 workers in back-to-back pairs, with a plain-against-plain pair per configuration that measures the noise, and judges the result against criteria the Foundation approved before any run. The [plan](passes/efcore-pass.plan.md) lists the runs, the criteria, and the commit measured, and [judge_efcore.py](passes/judge_efcore.py) applies the criteria to the recorded results.
-- **Round 2's laptop pass,** 2026-11-12 to 2026-11-13: python-direct, the Python command path in plain SQL, against csharp-wax, the C# side without Marten, run back to back for each workload and worker count, with Django's Python at 8 workers as a same-night anchor. It plans 31 runs in four groups at 500,000 accounts and the standard caps. The [plan](passes/round2-laptop.plan.md) lists the runs and the tree measured, and [summarize_round2.py](passes/summarize_round2.py) builds the tables from the recorded results.
+- **EF Core mini-pass,** 2026-10-11: all 34 planned runs. The side without Marten against the same side with its state reads and writes through EF Core (`csharp-wax-ef`, a mode of csharp-wax), to test whether EF Core earns its keep on the command path, as [WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) would have it: 32 runs at 8 workers in back-to-back pairs, with a plain-against-plain pair per configuration that measures the noise, and one placement pair. The result is judged against criteria the Foundation approved before any run. See the [plan](passes/efcore-pass.plan.md), which lists the runs, the criteria, and the commit measured, and the [log](passes/efcore-pass.log). [judge_efcore.py](passes/judge_efcore.py) applies the criteria to the recorded results.
+- **Round 2's laptop pass,** 2026-11-12 to 2026-11-13: all 31 planned runs. python-direct, the Python command path in plain SQL, against csharp-wax, the C# side without Marten, run back to back for each workload and worker count, with Django's Python at 8 workers as a same-night anchor, at 500,000 accounts and the standard caps. See the [plan](passes/round2-laptop.plan.md), which lists the runs and the tree measured, and the [log](passes/round2-laptop.log). [summarize_round2.py](passes/summarize_round2.py) builds the tables from the recorded results.
 
-[Appendix B of the report](REPORT-ROUND-1.md#appendix-b-notes-on-each-pass) says what each pass ran and what is particular to it.
+[Appendix B of the report](REPORT-ROUND-1.md#appendix-b-notes-on-each-pass) says what each round 1 pass ran and what is particular to it. The two sections below do the same for the later passes.
 
-## Round 2
+## The EF Core mini-pass
 
-Round 2 runs on cloud hardware in the Foundation's own account, so that the results are not tied to a laptop. It has four plans, each with the engine settings it uses: [aws-anchor](passes/aws-anchor.plan.md), 36 runs at the standard limits; [aws-scaled](passes/aws-scaled.plan.md), 44 runs at larger limits, with a 16-CPU database; [aws-pgbouncer](passes/aws-pgbouncer.plan.md), 16 runs through pgBouncer at the larger limits; and [aws-5m](passes/aws-5m.plan.md), 10 runs on the C# sides at 5,000,000 accounts. The plans may change as the first checks on the cloud host show what needs adjusting.
+[WAX-0003 Database Platform](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0003-database-platform.md) routes all non-event data access through EF Core, and no side of round 1 used it. The mini-pass asks whether EF Core earns its keep on the command path. It ran the side without Marten in back-to-back pairs: in its plain mode, where every statement is written by hand, and in its EF Core mode (`csharp-wax-ef`), where the command handlers read and write the authoritative state through EF Core 9 and everything else stays the same. The EF Core mode was tuned as far as the test's design allows, with DbContext pooling, compiled queries, a compiled model, and no-tracking reads, and without a third-party bulk library or raw-SQL state updates. The [csharp-wax README](csharp-wax/README.md#the-ef-core-mode-harness-side-csharp-wax-ef) describes the mode and its tuning.
+
+The pass measured commit 054af7d at 8 workers and 500,000 accounts, with `--projection-workers 3 --rule-workers 16` in both modes, on 2026-10-11 from 11:27 to 17:17. Four configurations each ran three plain-and-EF blocks and one plain-against-plain block that measures the noise: the payment file, real time, the interest accrual, and the payment file with the engine paused. One placement pair ran as well, and all 34 runs passed every gate. Before any run, the Foundation approved the criteria EF Core had to meet in every configuration, each judged on the median of three blocks and only beyond the noise: database CPU per command within +10 percent of plain, application CPU per command within +50 percent or +1.0 ms, commands per second within -10 percent, and command latency at the 99th percentile within +25 percent.
+
+*Each row is one configuration at 8 workers and 500,000 accounts. Each cell is the median of the configuration's three EF-against-plain differences, as a percentage of plain; the last row gives the criteria.*
+
+| Configuration | Database CPU per command | Application CPU per command | Commands per second | p99 latency | Statements per command | Criteria missed |
+| --- | --- | --- | --- | --- | --- | --- |
+| Payment file | +27.2% | +108.1% | -22.9% | +25.4% | +19.8% | 4 of 4 |
+| Real time | +20.4% | +99.5% | -21.5% | +10.4% | +18.3% | 3 of 4 |
+| Interest accrual | +19.4% | +96.6% | -17.5% | +25.6% | +21.0% | 4 of 4 |
+| Payment file, engine paused | +17.0% | +127.7% | -18.7% | +12.2% | +16.4% | 3 of 4 |
+| Criterion | +10% | +50% or +1.0 ms | -10% | +25% | Reported only | |
+
+EF Core missed 14 of the 16 checks, each by more than the noise its configuration measured. In every configuration it used about twice the application CPU per command, 1.5 to 2.0 ms more, 17 to 27 percent more database CPU per command, and 16 to 21 percent more statements, and it ran 17 to 23 percent fewer commands per second. It met the p99 criterion on real time and with the engine paused, and missed it narrowly on the payment file and the accrual. The plain-against-plain noise was 2 percent or less on every measure for the payment file, with the engine running or paused. The accrual's was 6.6 percent on p99 and under 1 percent otherwise, and real time's was up to 6.0 percent on throughput and 13.8 percent on p99. `judge_efcore.py` prints the full tables, with each mode's median run and each configuration's noise floor.
+
+The placement pair has no noise pair, so it has no verdict, and it is not a like-for-like comparison. The EF Core run placed 439 accounts per second against plain's 336, with 25 percent less database CPU per command. Its engine, whose rule actions are commands and so also ran through EF Core, hit its CPU limit in 90 percent of its scheduler periods, against 0.4 percent for plain, and fell behind. When the bench finished, the EF Core run's event stream was 85,669 events shorter than the plain run's, about a fifth of the 400,000 events each run wrote, and its engine took 84 seconds to catch up, against 2.9 seconds for plain. The work done in that time fell outside the measured window, so the placement pair does not show that EF Core is faster at placement.
+
+Thirteen containers and development services unrelated to the bake-off ran through the pass, so its figures compare only with each other. The result covers one laptop, one worker count, and data that fits in memory.
+
+## Round 2's laptop pass
+
+Round 2 compares the two sides that remain once each language's library is out of the command path: python-direct, the Python side in plain SQL with no Django in the bench or in any engine process, and csharp-wax, the C# side without Marten. Django's Python ran once per workload at 8 workers as a same-night anchor. The Marten sides and the EF Core mode were not in the pass, and the bulk workloads and placement were left out because python-direct does not implement them.
+
+The pass ran from 22:05 on 2026-11-12 to 04:17 on 2026-11-13, at 500,000 accounts and the standard caps. It measured the tree of original commit d31d7f1 (see [COMMIT-MAP.md](COMMIT-MAP.md)), whose Python code is 08dd8c5's and whose C# code is the EF Core mini-pass's, run in plain mode with EF Core's packages present but unused. python-direct used the Python side's engine settings, `--projection-workers 3 --rule-workers 8`, and csharp-wax its own, `--projection-workers 3 --rule-workers 16`. Each workload and worker count ran as a block of the two sides back to back, at 4, 8, and 16 workers; every 8-worker block ran twice, and the payment file and real time also ran at 32 workers. All 31 runs passed every gate.
+
+*Commands per second for every run of the pass, at 500,000 accounts. Where a configuration ran twice, both samples are shown in the order they ran.*
+
+| Workload | Workers | python-direct | csharp-wax | Django's Python |
+| --- | --- | --- | --- | --- |
+| Payment file | 4 | 458 | 438 | |
+| Payment file | 8 | 951, 961 | 895, 931 | 441 |
+| Payment file | 16 | 1,583 | 910 | |
+| Payment file | 32 | 1,397 | 759 | |
+| Interest accrual | 4 | 412 | 446 | |
+| Interest accrual | 8 | 853, 833 | 921, 901 | 592 |
+| Interest accrual | 16 | 1,652 | 1,736 | |
+| Real time | 4 | 477 | 440 | |
+| Real time | 8 | 841, 840 | 933, 936 | 427 |
+| Real time | 16 | 1,397 | 656 | |
+| Real time | 32 | 1,413 | 597 | |
+
+*python-direct against csharp-wax within each back-to-back block, as a percentage of csharp-wax; a positive figure means python-direct was higher.*
+
+| Workload | Workers | Sample | Commands per second | Application CPU per command | Database CPU per command | Statements per command |
+| --- | --- | --- | --- | --- | --- | --- |
+| Payment file | 4 | 1 | +5% | +39% | -27% | -18% |
+| Payment file | 8 | 1 | +6% | +104% | -20% | -15% |
+| Payment file | 8 | 2 | +3% | +109% | -18% | -15% |
+| Payment file | 16 | 1 | +74% | +106% | -46% | -17% |
+| Payment file | 32 | 1 | +84% | +153% | -50% | -12% |
+| Interest accrual | 4 | 1 | -7% | +17% | -25% | -17% |
+| Interest accrual | 8 | 1 | -7% | +76% | -20% | -16% |
+| Interest accrual | 8 | 2 | -8% | +79% | -20% | -16% |
+| Interest accrual | 16 | 1 | -5% | +178% | -17% | -15% |
+| Real time | 4 | 1 | +8% | +37% | -24% | -16% |
+| Real time | 8 | 1 | -10% | +123% | -5% | -19% |
+| Real time | 8 | 2 | -10% | +123% | -5% | -20% |
+| Real time | 16 | 1 | +113% | +70% | -52% | -29% |
+| Real time | 32 | 1 | +137% | +90% | -57% | -24% |
+
+What the pass shows:
+
+- At 4 and 8 workers the two sides were within about 10 percent of each other on throughput in every workload. python-direct led the payment file by 3 to 6 percent and real time at 4 workers by 8; csharp-wax led the accrual by 7 to 8 percent and real time at 8 workers by 10. The two samples of each 8-worker configuration agreed within 4 percent.
+- In every block, python-direct used 5 to 57 percent less database CPU per command and 12 to 29 percent fewer statements, and 1.2 to 2.8 times the application CPU. The two sides shape their writes differently: python-direct inserts a command's events in one multi-row statement, where csharp-wax sends one insert statement per event in its batch. The pass does not isolate how much of the difference in database CPU that accounts for, so the difference describes the two sides as written, not the two languages.
+- At 16 and 32 workers the two sides reached different limits. csharp-wax's database reached its 6-CPU cap on the payment file and real time, in 94 to 99 percent of its scheduler periods, and its database CPU per command rose with concurrency: on the payment file from about 4.4 ms at 8 workers to 6.5 ms at 16 and 7.9 ms at 32, and on real time from 5.0 ms to 8.2 ms and 9.7 ms. python-direct reached the caps of its bench driver and its engine. On the payment file, where no rule actions fire, it ran 1,583 and 1,397 commands per second against csharp-wax's 910 and 759. On real time its rules fell more than a minute behind at p99, and its readers took about two and a half minutes to catch up, so its real-time rates at 16 and 32 workers overstate what it sustained.
+- Django's Python, the same-night anchor, ran the payment file at 441 commands per second at 8 workers, against python-direct's 951 and 961, with about 3.7 times the application CPU per command and twice the database CPU, and its readers took 932 seconds to catch up after the bench finished, against 3.5 seconds for python-direct. python-direct differs from it both in its database layer and in its statement shapes, so the gap measures the two together.
+
+Fourteen containers and development services unrelated to the bake-off ran through the pass, so its figures compare only with each other. The result covers one laptop, data that fits in memory, and one sample of each configuration except the 8-worker blocks. `summarize_round2.py` prints the full tables, with latency, CPU by container, catch-up, rule delay, throttling, and the host probe for every run.
+
+## Cloud passes
+
+Passes on cloud hardware will run in the Foundation's own account, so that the results are not tied to a laptop. None has run yet. There are four plans, each with the engine settings it uses: [aws-anchor](passes/aws-anchor.plan.md), 36 runs at the standard limits; [aws-scaled](passes/aws-scaled.plan.md), 44 runs at larger limits, with a 16-CPU database; [aws-pgbouncer](passes/aws-pgbouncer.plan.md), 16 runs through pgBouncer at the larger limits; and [aws-5m](passes/aws-5m.plan.md), 10 runs on the C# sides at 5,000,000 accounts. The plans may change as the first checks on the cloud host show what needs adjusting.
 
 ## Rules
 

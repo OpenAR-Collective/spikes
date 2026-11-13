@@ -119,7 +119,7 @@ The prototype's test that the reader refuses to run inside another transaction h
 
 ### Tuning
 
-The EF mode is tuned the way a careful EF team would tune it, and only in the ways the test's design allows. It uses no third-party bulk library and no raw-SQL state updates. The overnight development runs used the untuned mode at fa89d03; the recorded mini-pass uses the tuned one. In order:
+The EF mode is tuned the way a careful EF team would tune it, and only in the ways the test's design allows. It uses no third-party bulk library and no raw-SQL state updates. Development runs before the recorded mini-pass used the untuned mode; the recorded mini-pass uses the tuned one. In order:
 
 1. **DbContext pooling** was there from the start. Each command rents a context from a `PooledDbContextFactory` instead of building one.
 2. **Compiled queries.** Every hot-path LINQ query is compiled once per process with `EF.CompileAsyncQuery`, so a command skips EF's per-call translation and cache lookup. These cover the existence checks for accounts, payments, tasks, and register entries; the bucket load; and the bucket-definition lookups.
