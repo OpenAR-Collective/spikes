@@ -17,7 +17,8 @@ whose fourth argument is the commit it measures:
     py -3 make_plan.py efcore-pass 20261011 efcore <commit>
 
 or "round2-laptop", round 2's pass on the laptop, which also takes the
-commit it measures as its fourth argument.
+commit it measures as its fourth argument; or "round2-shape", round 2's
+code-shape pass, which does too.
 
 Runs that share a block stay together, back to back: the blocks are shuffled
 within their group, and the runs within each block.
@@ -177,7 +178,7 @@ def aws_5m_runs():
 
 
 # A mode side runs with the engine settings of the side it is a mode of.
-MODE_BASE = {"csharp-wax-ef": "csharp-wax", "python-direct": "python"}
+MODE_BASE = {"csharp-wax-ef": "csharp-wax", "csharp-wax-batched": "csharp-wax", "python-direct": "python"}
 
 # The EF Core mini-pass's configurations, all at 8 workers: the payment
 # file, real time, the accrual, and the payment file with the engine paused,
@@ -230,6 +231,32 @@ def round2_laptop_runs():
     return planned
 
 
+# Round 2's code-shape pass: csharp-wax with python-direct's statement shapes
+# (csharp-wax-batched) against plain csharp-wax and python-direct, the three
+# run back to back for each workload and worker count; then a second block of
+# each 8-worker trio; then placement, plain against batched, normally and with
+# the engine paused, with a plain-against-plain pair for the noise.
+SHAPE_TRIO = ("python-direct", "csharp-wax", "csharp-wax-batched")
+
+
+def round2_shape_runs():
+    planned = []
+    for workload in ROUND2_WORKLOADS:
+        for workers in (8, 16):
+            for side in SHAPE_TRIO:
+                planned.append(run(1, side, workload, workers, block=f"{workload}-w{workers}-r1", suffix="r1"))
+    for workload in ROUND2_WORKLOADS:
+        for side in SHAPE_TRIO:
+            planned.append(run(2, side, workload, 8, block=f"{workload}-w8-r2", suffix="r2"))
+    for diagnostic in (None, "no-engine"):
+        for n in (1, 2, 3):
+            for side in ("csharp-wax", "csharp-wax-batched"):
+                planned.append(run(3, side, "placement", 8, diagnostic, block=f"placement-{diagnostic or 'normal'}-r{n}", suffix=f"r{n}"))
+    for n in (1, 2):
+        planned.append(run(3, "csharp-wax", "placement", 8, block="placement-normal-noise", suffix=f"noise{n}"))
+    return planned
+
+
 # Lines a layout adds to its plan's Markdown, under the generation line.
 NOTES = {
     "efcore": [
@@ -255,6 +282,12 @@ NOTES = {
         "The tree's Python code is `08dd8c5`'s, whose 97 tests pass, and its C# code is `d7956db`'s, whose 39 tests pass in both state modes (see efcore-pass.tests.txt). The harness differs from `08dd8c5`'s only by the EF Core mode's entry in sides.json.",
         "",
         "Every run uses 500,000 accounts and the standard caps. python-direct uses Python's engine settings. Every gate must pass in every run. Thirteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the EF Core mini-pass; every run records them, and the pass's figures compare only with each other.",
+    ],    "round2-shape": [
+        "Round 2's code-shape pass on the laptop, approved on 2026-11-13, in the window from 18:00 that day to 07:00 on 2026-11-14. It asks how much of the difference between python-direct and csharp-wax in the laptop pass comes from how each writes its SQL rather than from the language. The measured tree is `{measured_commit}`: the laptop pass's branch (`4c8e5ea`) with `round2/csharp-batched` merged in, which adds csharp-wax-batched, a mode of csharp-wax (`WAX_STATE=batched`) that writes a command's events in one multi-row insert and its account and bucket changes in set-based statements, as python-direct does. Plain csharp-wax and python-direct are unchanged from the laptop pass. The plan commit adds only the plan files and the generator's layout, and no code changes after it.",
+        "",
+        "Group 1 runs python-direct, csharp-wax, and csharp-wax-batched back to back for the payment file, the accrual, and real time at 8 and 16 workers, in an order drawn from the seed. Group 2 repeats every 8-worker trio. Group 3 runs placement at 8 workers for plain and batched csharp-wax, three blocks normally and three with the engine paused, which isolates the command path, and a plain-against-plain pair that measures the noise. python-direct does not implement placement. The bulk workloads, the Marten sides, and the EF Core mode are not in this pass.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps, and both C# modes use csharp-wax's engine settings. Every gate must pass in every run. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the laptop pass; every run records them, and the pass's figures compare only with each other and with that pass.",
     ],
 }
 
@@ -270,6 +303,7 @@ LAYOUTS = {
     "aws-5m": (aws_5m_runs, {"caps": "scaled", "accounts": 5_000_000}),
     "efcore": (efcore_runs, {}),
     "round2-laptop": (round2_laptop_runs, {}),
+    "round2-shape": (round2_shape_runs, {}),
 }
 
 
@@ -308,7 +342,7 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
-    if layout in ("efcore", "round2-laptop"):
+    if layout in ("efcore", "round2-laptop", "round2-shape"):
         settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
