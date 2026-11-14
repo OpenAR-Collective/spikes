@@ -10,7 +10,7 @@ Nothing in this repository is the Wax framework or the HiveAR platform, and none
 
 | Folder | Question | Decision it informs | Status |
 | --- | --- | --- | --- |
-| [engine-bakeoff](engine-bakeoff/README.md) | Can the Wax command path keep up with a large agency's nightly batch, and in which language and with which event store? | WAX-0025 Primary Programming Language, the decisions that name Marten or EF Core for data access, the batch path in WAX-0024, and the proposal to replace C# with Python | Round 1 complete, with [a report](engine-bakeoff/REPORT-ROUND-1.md); [the EF Core mini-pass](engine-bakeoff/README.md#the-ef-core-mini-pass) and [round 2's laptop pass](engine-bakeoff/README.md#round-2s-laptop-pass) complete; cloud passes planned |
+| [engine-bakeoff](engine-bakeoff/README.md) | Can the Wax command path keep up with a large agency's nightly batch, and in which language and with which event store? | WAX-0025 Primary Programming Language, the decisions that name Marten or EF Core for data access, the batch path in WAX-0024, and the proposal to replace C# with Python | Round 1 complete, with [a report](engine-bakeoff/REPORT-ROUND-1.md); [the EF Core mini-pass](engine-bakeoff/README.md#the-ef-core-mini-pass), [round 2's laptop pass](engine-bakeoff/README.md#round-2s-laptop-pass), and [round 2's code-shape pass](engine-bakeoff/README.md#round-2s-code-shape-pass) complete; cloud passes planned |
 
 ## How an experiment works
 
