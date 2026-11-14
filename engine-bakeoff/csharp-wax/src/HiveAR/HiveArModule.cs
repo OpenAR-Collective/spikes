@@ -24,7 +24,7 @@ public sealed class HiveArModule(StateAccess? access = null) : IWaxModule
     public void RegisterHandlers(CommandDispatcher dispatcher)
     {
         dispatcher.Provide(new ArData(Access));
-        dispatcher.MultiRowEvents = Access == StateAccess.Batched;
+        dispatcher.MultiRowEvents = Access is StateAccess.Batched or StateAccess.FairBatched;
         dispatcher.Register(new PlaceAccountHandler());
         dispatcher.Register(new OpenDisputeHandler());
         dispatcher.Register(new PostPaymentHandler());

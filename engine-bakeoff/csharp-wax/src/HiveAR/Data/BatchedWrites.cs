@@ -10,9 +10,14 @@ namespace HiveAR.Data;
 /// winning, and go out as one set-based UPDATE per table, after the command's
 /// other writes and in the same batch. The values written are the values
 /// plain SQL mode writes one row per statement, so the stored state is the
-/// same. Foundation-written.
+/// same. In the fair batched mode the updates are sized to what changed, as
+/// the Python direct side sizes them: an account whose only change is its
+/// version gets the version-only update, one row as a single-row statement and
+/// several as one two-array UPDATE; an account with any other change gets plain
+/// SQL mode's single-row statement; and a single bucket row gets a single-row
+/// statement. Foundation-written.
 /// </summary>
-sealed class BatchedWrites
+sealed class BatchedWrites(bool fair)
 {
     const string AccountsSql =
         "UPDATE ar.account a SET aggregate_sequence_number = v.version, status = v.status, is_disputed = v.disputed, " +
@@ -24,19 +29,26 @@ sealed class BatchedWrites
         "UPDATE ar.account_balance_bucket b SET balance_minor_units = v.balance " +
         "FROM unnest($1::uuid[], $2::bigint[]) AS v(pk, balance) WHERE b.account_balance_bucket_pk = v.pk";
 
+    const string VersionsSql =
+        "UPDATE ar.account a SET aggregate_sequence_number = v.version " +
+        "FROM unnest($1::uuid[], $2::integer[]) AS v(pk, version) WHERE a.account_pk = v.pk";
+
+    const string BucketSql = "UPDATE ar.account_balance_bucket SET balance_minor_units = ? WHERE account_balance_bucket_pk = ?";
+
     readonly Dictionary<Guid, AccountState> accounts = [];
     readonly Dictionary<Guid, long> buckets = [];
 
-    /// <summary>The command's collector in batched mode, or null in any other mode.</summary>
+    /// <summary>The command's collector in either batched mode, or null in any other mode.</summary>
     public static BatchedWrites? For(CommandContext context)
     {
-        if (context.Service<ArData>()?.Access != StateAccess.Batched)
+        var access = context.Service<ArData>()?.Access;
+        if (access is not (StateAccess.Batched or StateAccess.FairBatched))
         {
             return null;
         }
         return context.Scoped(() =>
         {
-            var writes = new BatchedWrites();
+            var writes = new BatchedWrites(access == StateAccess.FairBatched);
             context.BeforeFlush(() => writes.Queue(context));
             return writes;
         });
@@ -48,6 +60,11 @@ sealed class BatchedWrites
 
     void Queue(CommandContext context)
     {
+        if (fair)
+        {
+            QueueFair(context);
+            return;
+        }
         if (accounts.Count > 0)
         {
             var rows = accounts.Values.ToArray();
@@ -65,6 +82,53 @@ sealed class BatchedWrites
             });
         }
         if (buckets.Count > 0)
+        {
+            context.QueueCommand(new NpgsqlBatchCommand(BucketsSql)
+            {
+                Parameters =
+                {
+                    Array(buckets.Keys.ToArray(), NpgsqlDbType.Uuid),
+                    Array(buckets.Values.ToArray(), NpgsqlDbType.Bigint),
+                },
+            });
+        }
+    }
+
+    void QueueFair(CommandContext context)
+    {
+        List<AccountState>? versionOnly = null;
+        foreach (var account in accounts.Values)
+        {
+            if (account.OnlyVersionChanged)
+            {
+                (versionOnly ??= []).Add(account);
+            }
+            else
+            {
+                account.QueueUpdateSql(context);
+            }
+        }
+        if (versionOnly is [var single])
+        {
+            single.QueueVersionUpdateSql(context);
+        }
+        else if (versionOnly is { Count: > 1 })
+        {
+            context.QueueCommand(new NpgsqlBatchCommand(VersionsSql)
+            {
+                Parameters =
+                {
+                    Array(versionOnly.Select(a => a.Pk).ToArray(), NpgsqlDbType.Uuid),
+                    Array(versionOnly.Select(a => a.AggregateSequenceNumber).ToArray(), NpgsqlDbType.Integer),
+                },
+            });
+        }
+        if (buckets.Count == 1)
+        {
+            var (pk, balance) = buckets.First();
+            context.QueueSql(BucketSql, balance, pk);
+        }
+        else if (buckets.Count > 1)
         {
             context.QueueCommand(new NpgsqlBatchCommand(BucketsSql)
             {

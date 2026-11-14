@@ -34,8 +34,20 @@ public sealed class AccountState : AggregateRoot
         Parameters = { UuidArray(accountPks) },
     };
 
-    public static AccountState Read(NpgsqlDataReader reader) => new()
+    /// <summary>The values read with the row lock, so the fair batched mode can
+    /// tell whether a command changed anything but the version.</summary>
+    (string Status, bool IsDisputed, DateOnly InterestAccruedThrough, string? QueueCode)? loaded;
+
+    /// <summary>True when the account was read with its row lock and only its
+    /// version has changed since.</summary>
+    internal bool OnlyVersionChanged =>
+        loaded is { } at && at.Status == Status && at.IsDisputed == IsDisputed &&
+        at.InterestAccruedThrough == InterestAccruedThrough && at.QueueCode == QueueCode;
+
+    public static AccountState Read(NpgsqlDataReader reader)
     {
+        var account = new AccountState
+        {
         Pk = reader.GetGuid(0),
         AggregateSequenceNumber = reader.GetInt32(1),
         ClientAccountNumber = reader.GetString(2),
@@ -48,7 +60,10 @@ public sealed class AccountState : AggregateRoot
         ItemizationDate = reader.GetFieldValue<DateOnly>(9),
         InterestAccruedThrough = reader.GetFieldValue<DateOnly>(10),
         QueueCode = reader.IsDBNull(11) ? null : reader.GetString(11),
-    };
+        };
+        account.loaded = (account.Status, account.IsDisputed, account.InterestAccruedThrough, account.QueueCode);
+        return account;
+    }
 
     protected override void QueueInsert(CommandContext context)
     {
@@ -81,10 +96,14 @@ public sealed class AccountState : AggregateRoot
         AggregateSequenceNumber, Pk, ClientAccountNumber, DebtType, ContractType, CurrencyCode, Status, IsDisputed,
         ListDate, ItemizationDate, InterestAccruedThrough);
 
-    void QueueUpdateSql(CommandContext context) => context.QueueSql(
+    internal void QueueUpdateSql(CommandContext context) => context.QueueSql(
         "UPDATE ar.account SET aggregate_sequence_number = ?, status = ?, is_disputed = ?, " +
         "interest_accrued_through = ?, queue_code = ?::text WHERE account_pk = ?",
         AggregateSequenceNumber, Status, IsDisputed, InterestAccruedThrough, (object?)QueueCode ?? DBNull.Value, Pk);
+
+    /// <summary>The Python direct side's single-row update when only the version changed.</summary>
+    internal void QueueVersionUpdateSql(CommandContext context) => context.QueueSql(
+        "UPDATE ar.account SET aggregate_sequence_number = ? WHERE account_pk = ?", AggregateSequenceNumber, Pk);
 
     public static NpgsqlParameter UuidArray(Guid[] values) =>
         new() { Value = values, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Uuid };

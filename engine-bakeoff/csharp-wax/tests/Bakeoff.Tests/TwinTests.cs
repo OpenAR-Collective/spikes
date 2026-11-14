@@ -21,7 +21,7 @@ sealed class SteppingClock : TimeProvider
 
 /// <summary>
 /// The same commands through plain SQL, through EF Core, and through the
-/// batched statement shapes must store the same events and the same state.
+/// batched statement shapes, plain and fair, must store the same events and the same state.
 /// Every database is a copy of one migrated template, so reference keys match,
 /// and each engine has its own stepping clock, so the events match byte for
 /// byte: hashes, chains, and global order included. Foundation-written.
@@ -32,9 +32,11 @@ public sealed class TwinTests : IAsyncLifetime
     readonly string sqlName = $"hivear_twin_s_{Guid.NewGuid():N}"[..28];
     readonly string efName = $"hivear_twin_e_{Guid.NewGuid():N}"[..28];
     readonly string batchedName = $"hivear_twin_b_{Guid.NewGuid():N}"[..28];
+    readonly string fairName = $"hivear_twin_f_{Guid.NewGuid():N}"[..28];
     WaxEngine sql = null!;
     WaxEngine ef = null!;
     WaxEngine batched = null!;
+    WaxEngine fair = null!;
 
     public async Task InitializeAsync()
     {
@@ -48,12 +50,15 @@ public sealed class TwinTests : IAsyncLifetime
         await Admin($"CREATE DATABASE {sqlName} TEMPLATE {template}");
         await Admin($"CREATE DATABASE {efName} TEMPLATE {template}");
         await Admin($"CREATE DATABASE {batchedName} TEMPLATE {template}");
+        await Admin($"CREATE DATABASE {fairName} TEMPLATE {template}");
         sql = await WaxEngine.CreateAsync(
             WaxSettings.ConnectionStringFromEnvironment(sqlName), [new HiveArModule(StateAccess.Sql)], clock: new SteppingClock());
         ef = await WaxEngine.CreateAsync(
             WaxSettings.ConnectionStringFromEnvironment(efName), [new HiveArModule(StateAccess.EfCore)], clock: new SteppingClock());
         batched = await WaxEngine.CreateAsync(
             WaxSettings.ConnectionStringFromEnvironment(batchedName), [new HiveArModule(StateAccess.Batched)], clock: new SteppingClock());
+        fair = await WaxEngine.CreateAsync(
+            WaxSettings.ConnectionStringFromEnvironment(fairName), [new HiveArModule(StateAccess.FairBatched)], clock: new SteppingClock());
     }
 
     public async Task DisposeAsync()
@@ -61,7 +66,8 @@ public sealed class TwinTests : IAsyncLifetime
         await sql.DisposeAsync();
         await ef.DisposeAsync();
         await batched.DisposeAsync();
-        foreach (var name in new[] { sqlName, efName, batchedName, template })
+        await fair.DisposeAsync();
+        foreach (var name in new[] { sqlName, efName, batchedName, fairName, template })
         {
             await Admin($"DROP DATABASE IF EXISTS {name} WITH (FORCE)");
         }
@@ -119,6 +125,7 @@ public sealed class TwinTests : IAsyncLifetime
         yield return new AccrueInterest { AccountPk = Key("a1"), AccrualDate = new DateOnly(2026, 10, 1), AnnualRateBasisPoints = 1_800 };
         yield return new AccrueInterest { AccountPk = Key("a2"), AccrualDate = new DateOnly(2026, 10, 1), AnnualRateBasisPoints = 1_800 };   // adds an interest bucket
         yield return new AccrueInterest { AccountPk = Key("a1"), AccrualDate = new DateOnly(2026, 10, 1), AnnualRateBasisPoints = 1_800 };   // already applied
+        yield return new PostPayment { PaymentPk = Key("p5"), AccountPks = [Key("a1"), Key("a2")], AmountMinorUnits = 3_000, CurrencyCode = "USD", AllocationMethod = "even_split" };   // two accounts whose only change is their version
         yield return new AssignToQueue { AccountPk = Key("a2"), QueueCode = "dispute_review" };
         yield return new CreateTask { TaskPk = Key("t1"), AccountPk = Key("a1"), TaskType = "first_contact" };
         yield return new CreateTask { TaskPk = Key("t1"), AccountPk = Key("a1"), TaskType = "first_contact" };   // already applied
@@ -180,6 +187,9 @@ public sealed class TwinTests : IAsyncLifetime
 
     [Fact]
     public Task Batched_and_plain_sql_store_identical_events_and_state() => Compare(batched);
+
+    [Fact]
+    public Task Fair_batched_and_plain_sql_store_identical_events_and_state() => Compare(fair);
 
     async Task Compare(WaxEngine other)
     {

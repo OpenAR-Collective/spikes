@@ -2,7 +2,7 @@
 
 This folder holds a variant of the [engine bake-off](../README.md)'s C# side: the same Wax command path in C# on .NET 10, with Marten removed entirely. Events go into `core.event`, the table [WAX-0001 Enriched Event Sourcing](https://github.com/OpenAR-Collective/platform-design/blob/main/decisions/wax/WAX-0001-enriched-event-sourcing.md) specifies, and a reader ported from Andy Troiano's prototype keeps the read models and runs the rules. The only database library is Npgsql, the same version the Marten side uses.
 
-Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 40 tests pass in all three state modes. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
+Status: built, tested, and measured. It runs every workload in [WORKLOADS.md](../WORKLOADS.md), the bulk ones included, and its 41 tests pass in all four state modes. It ran in the second and third passes of round 1, tuned with `--projection-workers 3 --rule-workers 16` except for two untuned real-time runs, and all 22 of its runs passed every gate that applied to them. The results are in the [round 1 report](../REPORT-ROUND-1.md).
 
 ## Why this side exists
 
@@ -85,7 +85,7 @@ The 40 tests run against a real PostgreSQL, each test class in a fresh database.
 - **Event store (9):** the champion's seven, plus a test that `TRUNCATE` is refused, and a test that the store assigns `global_sequence_number` and `recorded_at` and ignores any value a caller supplies.
 - **Reader (8):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The eighth is new: two readers sharing a projection apply each event exactly once.
 - **Read models, workloads, seed and batches, rules, and bulk:** the champion's tests, with the projection reader in place of Marten's daemon and two rule runner partitions in place of the subscription.
-- **Twin (2):** the EF Core mode and the batched mode, each against the plain mode, described below.
+- **Twin (3):** the EF Core mode, the batched mode, and the fair batched mode, each against the plain mode, described below.
 
 The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark waits on the oldest transaction holding a transaction ID anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
 
@@ -137,9 +137,20 @@ After the tuning, all 39 tests pass in both modes, the twin test included.
 - **State.** Every account row a command changes goes out in one `UPDATE ar.account ... FROM unnest(...)`, and every bucket row in one `UPDATE ar.account_balance_bucket ... FROM unnest(...)`, after the command's other writes and in the same batch. The last value of each row wins, which is the value that plain mode's last statement for that row writes.
 - **Placement.** An account's opening buckets go in as one multi-row `VALUES` list instead of plain mode's `unnest`, which cost more database time per placement in the EF Core pass.
 - **Unchanged.** The reads and row locks, the round trips (one batch of reads and one batch of writes), the single-row inserts such as a payment, a task, or a register entry, the read models and the projection reader, and the bulk writer, which is set-based in every mode. The mode is process-wide, so the commands that the engine's rules dispatch take it too.
-- **The twin test.** `TwinTests` runs the same 23 commands through plain and batched modes and requires identical events, every column but the random event key and the store's `recorded_at`, hashes and global order included, and identical state. Its last command is dispatched with the rule runner's attribution, as a rule would dispatch it.
+- **The twin test.** `TwinTests` runs the same 24 commands through plain and batched modes and requires identical events, every column but the random event key and the store's `recorded_at`, hashes and global order included, and identical state. Its last command is dispatched with the rule runner's attribution, as a rule would dispatch it.
 
 All 40 tests pass in each of the three modes.
+
+## The fair batched mode (harness side csharp-wax-fair-batched)
+
+The code-shape pass found the batched mode slower than plain mode on the payment file, partly because its account update wrote six columns from six arrays even when a payment changed only one account's version. `WAX_STATE=fair-batched` keeps the batched mode's multi-row event insert and placement `VALUES` list, and sizes the state updates to what changed, as the python-direct side does:
+
+- **Accounts.** An account whose only change is its version gets the version-only update: one such account is a single-row `UPDATE ar.account SET aggregate_sequence_number = ...`, and several are one `UPDATE ... FROM unnest(...)` of two arrays. An account with any other change, such as its status, dispute flag, accrual date, or queue, gets plain mode's single-row statement. The account remembers the values it was read with under its row lock, which is how the mode tells the two apart; an account it cannot compare gets plain mode's statement.
+- **Buckets.** One changed bucket row is plain mode's single-row statement, and several are one set-based `UPDATE`.
+- **The batched mode is unchanged**, so the code-shape pass stays reproducible from this tree.
+- **The twin test** runs the same 24 commands through plain and fair batched modes, with the same requirements as for the batched mode.
+
+All 41 tests pass in each of the four modes.
 
 ## Running it
 

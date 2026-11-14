@@ -20,6 +20,14 @@ public enum StateAccess
     /// command's events in one multi-row INSERT, its account and bucket rows in
     /// one set-based UPDATE each, and placement's buckets in one VALUES list.</summary>
     Batched,
+
+    /// <summary>The batched mode with its row updates sized to what changed: an
+    /// account whose only change is its version gets the version-only update
+    /// the Python direct side sends, one row as a single-row statement and
+    /// several as one two-array UPDATE; an account with any other change gets
+    /// plain SQL mode's single-row statement; and one bucket row is a single-row
+    /// statement, several one set-based UPDATE.</summary>
+    FairBatched,
 }
 
 /// <summary>
@@ -202,13 +210,16 @@ public sealed class ArData
     public StateAccess Access { get; }
 
     /// <summary>WAX_STATE=efcore selects EF Core (the harness side csharp-wax-ef),
-    /// WAX_STATE=batched the batched statement shapes (csharp-wax-batched);
+    /// WAX_STATE=batched the batched statement shapes (csharp-wax-batched),
+    /// WAX_STATE=fair-batched those shapes sized to what changed
+    /// (csharp-wax-fair-batched);
     /// anything else, plain SQL, csharp-wax's own path.</summary>
     public static StateAccess FromEnvironment() =>
         Environment.GetEnvironmentVariable("WAX_STATE")?.ToLowerInvariant() switch
         {
             "efcore" => StateAccess.EfCore,
             "batched" => StateAccess.Batched,
+            "fair-batched" => StateAccess.FairBatched,
             _ => StateAccess.Sql,
         };
 

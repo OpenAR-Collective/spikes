@@ -173,6 +173,7 @@ static class Bench
             {
                 HiveAR.Data.StateAccess.EfCore => "efcore",
                 HiveAR.Data.StateAccess.Batched => "batched",
+                HiveAR.Data.StateAccess.FairBatched => "fair-batched",
                 _ => "sql",
             },
         });
