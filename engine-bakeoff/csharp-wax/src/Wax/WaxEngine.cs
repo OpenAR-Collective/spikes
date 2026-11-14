@@ -73,6 +73,36 @@ public static class WaxSettings
         {
             builder.MaxPoolSize = poolSize;
         }
+        // Two driver settings for the round 2 diagnostic pass, each applied
+        // only when its variable is set, so the default connection string is
+        // unchanged. No Reset On Close stops Npgsql sending DISCARD ALL when a
+        // pooled connection is returned; Max Auto Prepare lets it prepare the
+        // statements it sees most often on the server, as psycopg does. A
+        // value that is set but not understood stops the process, so a typo
+        // cannot run the default under another name.
+        var noReset = Setting("DATABASE_NO_RESET_ON_CLOSE");
+        if (noReset is not null)
+        {
+            builder.NoResetOnClose = noReset.ToLowerInvariant() switch
+            {
+                "1" or "true" or "yes" or "on" => true,
+                "0" or "false" or "no" or "off" => false,
+                _ => throw new InvalidOperationException($"DATABASE_NO_RESET_ON_CLOSE must be true or false, not '{noReset}'."),
+            };
+        }
+        var maxAutoPrepare = Setting("DATABASE_MAX_AUTO_PREPARE");
+        if (maxAutoPrepare is not null)
+        {
+            builder.MaxAutoPrepare = int.TryParse(maxAutoPrepare, System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var count)
+                ? count
+                : throw new InvalidOperationException($"DATABASE_MAX_AUTO_PREPARE must be a whole number, not '{maxAutoPrepare}'.");
+        }
         return builder.ConnectionString;
     }
+
+    /// <summary>The variable's trimmed value, or null when it is unset or empty,
+    /// as build.sh passes an unset variable.</summary>
+    static string? Setting(string name) =>
+        Environment.GetEnvironmentVariable(name)?.Trim() is { Length: > 0 } value ? value : null;
 }
