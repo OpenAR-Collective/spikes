@@ -18,7 +18,8 @@ whose fourth argument is the commit it measures:
 
 or "round2-laptop", round 2's pass on the laptop, which also takes the
 commit it measures as its fourth argument; or "round2-shape", round 2's
-code-shape pass, which does too.
+code-shape pass, which does too; or "round2-diag", round 2's diagnostic pass,
+which does too.
 
 Runs that share a block stay together, back to back: the blocks are shuffled
 within their group, and the runs within each block.
@@ -60,6 +61,9 @@ TUNED = {
     "csharp-direct": "--rule-workers 16",
     "csharp-wax": "--projection-workers 3 --rule-workers 16",
     "python": "--projection-workers 3 --rule-workers 8",
+    # Round 2's diagnostic pass: csharp-wax with Python's 8 rule workers, to
+    # test whether its 16 add contention in the database.
+    "csharp-wax-rw8": "--projection-workers 3 --rule-workers 8",
 }
 # The first pass ran every side with these, untuned.
 UNTUNED = "--rule-workers 4"
@@ -178,7 +182,9 @@ def aws_5m_runs():
 
 
 # A mode side runs with the engine settings of the side it is a mode of.
-MODE_BASE = {"csharp-wax-ef": "csharp-wax", "csharp-wax-batched": "csharp-wax", "python-direct": "python"}
+MODE_BASE = {"csharp-wax-ef": "csharp-wax", "csharp-wax-batched": "csharp-wax", "python-direct": "python",
+             "csharp-wax-noreset": "csharp-wax", "csharp-wax-prepared": "csharp-wax",
+             "csharp-wax-fair-batched": "csharp-wax", "csharp-wax-fair-prepared": "csharp-wax"}
 
 # The EF Core mini-pass's configurations, all at 8 workers: the payment
 # file, real time, the accrual, and the payment file with the engine paused,
@@ -257,6 +263,48 @@ def round2_shape_runs():
     return planned
 
 
+# Round 2's diagnostic pass: why csharp-wax's event insert costs about twice
+# python-direct's per row. The core block runs the payment file at 8 workers
+# five ways: csharp-wax unchanged; without the pool's connection reset;
+# without it and with statement preparation; with 8 rule workers instead of
+# 16; and python-direct. Group 2 runs the same five in the reverse order of
+# group 1. The later groups are the extras, in the order they are worth
+# running, so that the runner drops the least useful when time runs short.
+DIAG_CORE = ("csharp-wax", "csharp-wax-noreset", "csharp-wax-prepared", "csharp-wax-rw8", "python-direct")
+DIAG_TRIO = ("csharp-wax", "csharp-wax-prepared", "python-direct")
+DIAG_FAIR = ("csharp-wax-fair-prepared", "csharp-wax-prepared")
+
+
+def round2_diag_runs():
+    planned = [run(1, side, "batch-payments", 8, block="core-r1", suffix="r1") for side in DIAG_CORE]
+    planned += [dict(run(2, side, "batch-payments", 8, block="core-r2", suffix="r2"), mirror="core-r1")
+                for side in DIAG_CORE]
+    # 3. The fair batched mode against the same settings without it, on the
+    # payment file and on placement with the engine paused.
+    for n in (1, 2):
+        planned += [run(3, side, "batch-payments", 8, block=f"fair-payments-f{n}", suffix=f"f{n}") for side in DIAG_FAIR]
+        planned += [run(3, side, "placement", 8, "no-engine", block=f"fair-placement-f{n}", suffix=f"f{n}")
+                    for side in DIAG_FAIR]
+    # 4. Higher concurrency, where round 2 found the largest gaps.
+    for workload in ("batch-payments", "realtime"):
+        for workers in (16, 32):
+            planned += [run(4, side, workload, workers, block=f"{workload}-w{workers}-r1", suffix="r1") for side in DIAG_TRIO]
+    # 5. The other two workloads at 8 workers.
+    for workload in ("batch-accrual", "realtime"):
+        planned += [run(5, side, workload, 8, block=f"{workload}-w8-r1", suffix="r1") for side in DIAG_TRIO]
+    # 6. A third core block, in its own order.
+    planned += [run(6, side, "batch-payments", 8, block="core-r3", suffix="r3") for side in DIAG_CORE]
+    # 7. A second sample of each higher-concurrency block.
+    for workload in ("batch-payments", "realtime"):
+        for workers in (16, 32):
+            planned += [run(7, side, workload, workers, block=f"{workload}-w{workers}-r2", suffix="r2") for side in DIAG_TRIO]
+    # 8. One worker with the engine paused, the least contended command path,
+    # last because each run takes about an hour.
+    planned += [run(8, side, "batch-payments", 1, "no-engine", block="single-r1", suffix="r1")
+                for side in ("csharp-wax-prepared", "python-direct")]
+    return planned
+
+
 # Lines a layout adds to its plan's Markdown, under the generation line.
 NOTES = {
     "efcore": [
@@ -290,6 +338,17 @@ NOTES = {
         "",
         "Every run uses 500,000 accounts and the standard caps, and both C# modes use csharp-wax's engine settings. Every gate must pass in every run. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the laptop pass; every run records them, and the pass's figures compare only with each other and with that pass.",
     ],
+    "round2-diag": [
+        "Round 2's diagnostic pass on the laptop, approved on 2026-11-14, in the window from 17:30 that day to 08:00 on 2026-11-15. The code-shape pass found that csharp-wax's event insert costs about twice python-direct's per row, with the same columns, table, trigger, and WAL per command. This pass tests the suspects that remain. Npgsql returns each pooled connection with DISCARD ALL, which also discards the session's cached plans, including those of the event trigger and the foreign-key check, so they are planned again inside the next insert. Npgsql also prepares no statement by default, where psycopg prepares one after five uses. csharp-wax runs 16 rule workers to Python's 8. The measured tree is `{measured_commit}`: the published code-shape pass (`47d3b79`) with two driver settings csharp-wax reads from the environment, the MultiXact caches of pg_stat_slru added to every run's database activity, and a fair batched mode of csharp-wax (`WAX_STATE=fair-batched`) that uses a single-row statement for a single row and writes only the account columns a command changed. The plan commit adds only the plan files, the test record, and the generator's layout, and no code changes after it.",
+        "",
+        "The sides are modes of csharp-wax in its Compose project: csharp-wax-noreset sets No Reset On Close; csharp-wax-prepared also sets Max Auto Prepare to 20; csharp-wax-rw8 runs 8 rule workers; and csharp-wax-fair-prepared is the fair batched mode with both settings. python-direct is unchanged and runs as the anchor in the core blocks and in every block of three; the fair batched blocks compare two C# modes only.",
+        "",
+        "Before group 1, [reset_check.py](reset_check.py) times one event insert in csharp-wax's database straight after DISCARD ALL and with the session's plans warm, in a rolled-back transaction on a throwaway copy of the template, and its output is kept with the pass as `round2-diag.reset-check.txt`.",
+        "",
+        "Group 1 runs the payment file at 8 workers five ways in an order drawn from the seed: csharp-wax unchanged, csharp-wax-noreset, csharp-wax-prepared, csharp-wax-rw8, and python-direct. Group 2 runs the same five in exactly the reverse order. Groups 3 to 8 are extras in the order they are worth running: the fair batched mode against csharp-wax-prepared on the payment file and on placement with the engine paused; csharp-wax, csharp-wax-prepared, and python-direct at 16 and 32 workers on the payment file and real time; the same three on the accrual and real time at 8 workers; a third core block; a second sample of each 16- and 32-worker block; and csharp-wax-prepared against python-direct at 1 worker with the engine paused. The runner drops what would not finish before its deadline, from the end.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the earlier round 2 passes; every run records them. The laptop ran at different speeds on different evenings, so only comparisons within a back-to-back block are sound, and the pass's absolute figures do not compare with earlier passes.",
+    ],
 }
 
 
@@ -305,6 +364,7 @@ LAYOUTS = {
     "efcore": (efcore_runs, {}),
     "round2-laptop": (round2_laptop_runs, {}),
     "round2-shape": (round2_shape_runs, {}),
+    "round2-diag": (round2_diag_runs, {}),
 }
 
 
@@ -343,7 +403,7 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
-    if layout in ("efcore", "round2-laptop", "round2-shape"):
+    if layout in ("efcore", "round2-laptop", "round2-shape", "round2-diag"):
         settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
@@ -360,7 +420,14 @@ def main():
         blocks = list(blocks.values())
         rng.shuffle(blocks)
         for block in blocks:
-            rng.shuffle(block)
+            # A block that mirrors an earlier one runs its sides in that
+            # block's order reversed, instead of in an order of its own.
+            mirror = block[0].get("mirror")
+            if mirror:
+                earlier = [entry["side"] for entry in ordered if entry.get("block") == mirror]
+                block.sort(key=lambda entry: earlier[::-1].index(entry["side"]))
+            else:
+                rng.shuffle(block)
             ordered.extend(block)
     for index, entry in enumerate(ordered, start=1):
         entry["order"] = index
