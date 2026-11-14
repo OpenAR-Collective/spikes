@@ -418,7 +418,10 @@ def db_activity(side, database):
     """The database's write-side counters: pg_stat_wal and pg_stat_checkpointer
     are cluster-wide, which is the run's database alone while a run is going;
     pg_stat_bgwriter likewise; pg_stat_user_tables is this database's. Each
-    view is read on its own, so one a PostgreSQL version lacks is just null."""
+    view is read on its own, so one a PostgreSQL version lacks is just null.
+    The MultiXact caches in pg_stat_slru are cluster-wide too: they show how
+    often several open transactions shared a row lock, such as the one a
+    foreign-key check takes on the row it references."""
     def one(view):
         rows = _json_rows(side, database, f"SELECT * FROM {view}")
         return rows[0] if rows else None
@@ -426,8 +429,11 @@ def db_activity(side, database):
     tables = _json_rows(side, database, "SELECT schemaname || '.' || relname AS name, n_tup_ins, n_tup_upd,"
                         " n_tup_hot_upd, n_tup_del, n_dead_tup, autovacuum_count, autoanalyze_count"
                         " FROM pg_stat_user_tables")
+    slru = _json_rows(side, database, "SELECT name, blks_zeroed, blks_hit, blks_read, blks_written, blks_exists,"
+                      " flushes, truncates FROM pg_stat_slru WHERE name IN ('multixact_offset', 'multixact_member')")
     return {"wal": one("pg_stat_wal"), "checkpointer": one("pg_stat_checkpointer"), "bgwriter": one("pg_stat_bgwriter"),
-            "tables": {row.pop("name"): row for row in tables or []}}
+            "tables": {row.pop("name"): row for row in tables or []},
+            "slru": {row.pop("name"): row for row in slru or []}}
 
 
 def _numeric_delta(start, end):
@@ -450,7 +456,9 @@ def activity_delta(before, after):
     return {"wal": _numeric_delta(a.get("wal"), b.get("wal")),
             "checkpointer": _numeric_delta(a.get("checkpointer"), b.get("checkpointer")),
             "bgwriter": _numeric_delta(a.get("bgwriter"), b.get("bgwriter")),
-            "tables": dict(sorted(tables.items(), key=lambda item: -item[1].get("n_tup_upd", 0)))}
+            "tables": dict(sorted(tables.items(), key=lambda item: -item[1].get("n_tup_upd", 0))),
+            "slru": {name: _numeric_delta((a.get("slru") or {}).get(name), end)
+                     for name, end in (b.get("slru") or {}).items()}}
 
 
 def counters(side, database, containers):

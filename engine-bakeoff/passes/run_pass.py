@@ -51,7 +51,10 @@ def estimate_s(plan, entry):
         return plan["warmup_s"] + plan["duration_s"] + OVERHEAD_S + (400 if fam == "python" else 120)
     if workload in ("batch-payments", "batch-accrual"):
         rates = RATE[(fam, workload)]
-        window = plan["accounts"] / rates[max(w for w in rates if w <= workers)]
+        known = [w for w in rates if w <= workers]
+        # Below the fewest workers measured, assume the rate falls in proportion.
+        rate = rates[max(known)] if known else rates[min(rates)] * workers / min(rates)
+        window = plan["accounts"] / rate
         if entry["diagnostic"] == "no-engine":
             catchup = 0
         elif fam == "python":
