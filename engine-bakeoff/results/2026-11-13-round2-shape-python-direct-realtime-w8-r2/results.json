@@ -1,0 +1,1221 @@
+{
+ "meta": {
+  "label": "round2-shape-python-direct-realtime-w8-r2",
+  "side": "python-direct",
+  "side_env": {
+   "BAKEOFF_PATH": "direct",
+   "WAX_PATH": "direct"
+  },
+  "workload": "realtime",
+  "accounts": 500000,
+  "placements": null,
+  "engine_args": "--projection-workers 3 --rule-workers 8",
+  "engine_paused": false,
+  "hashing": "on",
+  "caps": "standard",
+  "caps_sha256": "5577265b0edaceba6cf8e429cb3ee36f91778c91f3cf36099ba80a86cfe2abab",
+  "pgbouncer": false,
+  "pool_size": null,
+  "repeat": 1,
+  "warmup_runs": 0,
+  "record": true,
+  "started": "2026-11-13T21:01:28",
+  "finished": "2026-11-13T21:08:10"
+ },
+ "summary": [
+  {
+   "workers": 8,
+   "runs": 1,
+   "succeeded_per_s": 693.852,
+   "p50_ms": 10.41,
+   "p99_ms": 20.21,
+   "bench_cpu_ms": 2.456,
+   "engine_cpu_ms": 2.377,
+   "db_cpu_ms": 4.965,
+   "throttled": {
+    "db": 0.0,
+    "engine": 13.6,
+    "bench": 1.4,
+    "pgbouncer": null
+   },
+   "pgbouncer_cpu_ms": null,
+   "host_probe_ms": 739.4,
+   "steal_pct": 0.0,
+   "wal_kb": 4.41,
+   "fpi": 0.0,
+   "engine_ready_s": 22.4,
+   "statements": 18.7,
+   "commits": 3.35,
+   "transactions": 124910,
+   "fallback_chunks": 0,
+   "max_lag": 1193,
+   "catchup_s": 3.4,
+   "rule_p50": 256.2,
+   "rule_p99": 531.1,
+   "late_p50": 171.9,
+   "late_p99": 326.5,
+   "gates": true
+  }
+ ],
+ "runs": [
+  {
+   "index": 1,
+   "side": "python-direct",
+   "workload": "realtime",
+   "workers": 8,
+   "accounts": 500000,
+   "placements": null,
+   "engine_args": "--projection-workers 3 --rule-workers 8",
+   "engine_paused": false,
+   "hashing": "on",
+   "caps": "standard",
+   "pgbouncer": false,
+   "pool_size": null,
+   "bench": {
+    "workload": "realtime",
+    "workers": 8,
+    "run_pk": "5c3c7d62-d753-4003-a286-c471747d00b9",
+    "sent": 125771,
+    "succeeded": 124910,
+    "rejected": 861,
+    "failed": 0,
+    "retried": 0,
+    "transactions": 124910,
+    "fallback_chunks": 0,
+    "sent_total": 164439,
+    "elapsed_s": 180.024,
+    "latency_ms": {
+     "p50": 10.41,
+     "p95": 16.58,
+     "p99": 20.21,
+     "max": 48.61
+    },
+    "warmup_s": 60.0,
+    "duration_s": 180.0,
+    "random_seed": "1",
+    "seed_accounts": 500000,
+    "started_at": "2026-11-14T03:02:13.412682+00:00",
+    "path": "direct"
+   },
+   "bench_exit_code": 0,
+   "window_s": 251.154,
+   "sent_total": 164439,
+   "cpu_s": {
+    "db": 816.371,
+    "bench": 403.822,
+    "engine": 390.79
+   },
+   "cpu_throttling": {
+    "db": {
+     "nr_periods": 2506,
+     "nr_throttled": 0,
+     "throttled_s": 0.0,
+     "throttled_pct": 0.0
+    },
+    "bench": {
+     "nr_periods": 2449,
+     "nr_throttled": 35,
+     "throttled_s": 14.057,
+     "throttled_pct": 1.4
+    },
+    "engine": {
+     "nr_periods": 2506,
+     "nr_throttled": 340,
+     "throttled_s": 14.801,
+     "throttled_pct": 13.6
+    }
+   },
+   "host_cpu": {
+    "steal_pct": 0.0,
+    "busy_pct": 41.5
+   },
+   "host_probe_ms": 739.4,
+   "engine_ready_s": 22.4,
+   "engine_idle_cores": 0.08,
+   "db_activity": {
+    "wal": {
+     "wal_records": 5981083,
+     "wal_fpi": 5,
+     "wal_bytes": 742244780,
+     "wal_buffers_full": 0,
+     "wal_write": 46802,
+     "wal_sync": 46801,
+     "wal_write_time": 0,
+     "wal_sync_time": 0
+    },
+    "checkpointer": {
+     "num_timed": 0,
+     "num_requested": 0,
+     "restartpoints_timed": 0,
+     "restartpoints_req": 0,
+     "restartpoints_done": 0,
+     "write_time": 0,
+     "sync_time": 0,
+     "buffers_written": 0
+    },
+    "bgwriter": {
+     "buffers_clean": 0,
+     "maxwritten_clean": 0,
+     "buffers_alloc": 119790
+    },
+    "tables": {
+     "ar.account": {
+      "n_tup_ins": 8207,
+      "n_tup_upd": 222970,
+      "n_tup_hot_upd": 212822,
+      "n_tup_del": 0,
+      "n_dead_tup": 13151,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 3
+     },
+     "ar.account_balance_bucket": {
+      "n_tup_ins": 24621,
+      "n_tup_upd": 173715,
+      "n_tup_hot_upd": 128763,
+      "n_tup_del": 0,
+      "n_dead_tup": 44938,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 1
+     },
+     "ar.account_summary_read_model": {
+      "n_tup_ins": 8207,
+      "n_tup_upd": 157807,
+      "n_tup_hot_upd": 142373,
+      "n_tup_del": 0,
+      "n_dead_tup": 29906,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 2
+     },
+     "core.projection_checkpoint": {
+      "n_tup_ins": 0,
+      "n_tup_upd": 26680,
+      "n_tup_hot_upd": 26647,
+      "n_tup_del": 0,
+      "n_dead_tup": 74,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 4
+     },
+     "core.pending_event": {
+      "n_tup_ins": 24433,
+      "n_tup_upd": 20445,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 3909,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 4
+     },
+     "ar.account_payment_read_model_v2": {
+      "n_tup_ins": 139080,
+      "n_tup_upd": 152,
+      "n_tup_hot_upd": 66,
+      "n_tup_del": 0,
+      "n_dead_tup": 92,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 4
+     },
+     "ar.payment_read_model": {
+      "n_tup_ins": 139080,
+      "n_tup_upd": 25,
+      "n_tup_hot_upd": 23,
+      "n_tup_del": 0,
+      "n_dead_tup": 2,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 4
+     },
+     "ar.task": {
+      "n_tup_ins": 8195,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 2,
+      "autoanalyze_count": 4
+     },
+     "core.event": {
+      "n_tup_ins": 370257,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 2,
+      "autoanalyze_count": 3
+     },
+     "ar.payment": {
+      "n_tup_ins": 139080,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 4
+     }
+    }
+   },
+   "host_probe_samples_ms": [
+    705.2,
+    705.7,
+    857.8,
+    774.5,
+    739.4
+   ],
+   "cpu_ms_per_command": {
+    "db": 4.965,
+    "bench": 2.456,
+    "engine": 2.377
+   },
+   "engine_catchup_cpu_s": 4.694,
+   "statements": 3074837,
+   "statements_per_command": 18.7,
+   "top_statements": [
+    {
+     "calls": 136848,
+     "total_ms": 46213.2,
+     "mean_ms": 0.3377,
+     "rows": 273696,
+     "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+    },
+    {
+     "calls": 97547,
+     "total_ms": 21082.5,
+     "mean_ms": 0.2161,
+     "rows": 97547,
+     "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+    },
+    {
+     "calls": 235056,
+     "total_ms": 14717.1,
+     "mean_ms": 0.0626,
+     "rows": 226849,
+     "query": "SELECT DISTINCT ON (aggregate_pk_ref) aggregate_pk_ref, aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = ANY($1) ORDER BY aggregate_pk_ref, aggregate_sequence_number DESC"
+    },
+    {
+     "calls": 136848,
+     "total_ms": 14670.0,
+     "mean_ms": 0.1072,
+     "rows": 136848,
+     "query": "SELECT a.status, coalesce(sum(b.balance_minor_units), $2) FROM ar.account a LEFT JOIN ar.account_balance_bucket b ON b.account_fk = a.account_pk WHERE a.account_pk = $1 GROUP BY a.status"
+    },
+    {
+     "calls": 227114,
+     "total_ms": 13414.9,
+     "mean_ms": 0.0591,
+     "rows": 227114,
+     "query": "SELECT account_pk, aggregate_sequence_number, status, currency_code, is_disputed, list_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+    },
+    {
+     "calls": 134561,
+     "total_ms": 12355.2,
+     "mean_ms": 0.0918,
+     "rows": 134561,
+     "query": "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, currency_code, received_at, status, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, "
+    },
+    {
+     "calls": 7262,
+     "total_ms": 11449.6,
+     "mean_ms": 1.5766,
+     "rows": 20936,
+     "query": "SELECT pending_event_pk FROM core.pending_event WHERE status = 'pending' AND due_at <= clock_timestamp() AND (hashtext(pending_event_pk::text) & 2147483647) % $1 = $2 ORDER BY due_at LIMIT $3"
+    },
+    {
+     "calls": 132365,
+     "total_ms": 11032.8,
+     "mean_ms": 0.0834,
+     "rows": 132365,
+     "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT sum(value::bigint) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_payment_at = $3, last_payment_minor_units = $4, last_global_sequence_number = $5 WHERE account_summary_r"
+    },
+    {
+     "calls": 125539,
+     "total_ms": 10568.8,
+     "mean_ms": 0.0842,
+     "rows": 143213,
+     "query": "UPDATE ar.account_balance_bucket b SET balance_minor_units = v.balance FROM unnest($1::uuid[], $2::bigint[]) AS v(pk, balance) WHERE b.account_balance_bucket_pk = v.pk"
+    },
+    {
+     "calls": 134434,
+     "total_ms": 10031.4,
+     "mean_ms": 0.0746,
+     "rows": 134434,
+     "query": "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (payment_read_model_pk) DO UPDATE SET amount_minor_units = EXCLUDED."
+    },
+    {
+     "calls": 136848,
+     "total_ms": 8557.1,
+     "mean_ms": 0.0625,
+     "rows": 136848,
+     "query": "UPDATE ar.account a SET aggregate_sequence_number = v.version FROM unnest($1::uuid[], $2::integer[]) AS v(pk, version) WHERE a.account_pk = v.pk"
+    },
+    {
+     "calls": 139741,
+     "total_ms": 7429.3,
+     "mean_ms": 0.0532,
+     "rows": 419223,
+     "query": "SELECT b.account_fk, d.code, b.account_balance_bucket_pk, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+    },
+    {
+     "calls": 139741,
+     "total_ms": 5960.8,
+     "mean_ms": 0.0427,
+     "rows": 0,
+     "query": "SELECT $2 FROM ar.payment WHERE payment_pk = $1"
+    },
+    {
+     "calls": 15620,
+     "total_ms": 4652.2,
+     "mean_ms": 0.2978,
+     "rows": 182203,
+     "query": "SELECT event_pk, global_sequence_number, event_type, aggregate_pk_ref, aggregate_type, occurred_at, new_value, metadata FROM core.event WHERE global_sequence_number > $1 AND global_sequence_number <= $2 AND event_type = ANY($3) AND (hashtext(aggregate_pk_ref::text) & $7) % $4 = $5 ORDER BY global_se"
+    },
+    {
+     "calls": 11715,
+     "total_ms": 4215.6,
+     "mean_ms": 0.3598,
+     "rows": 510726,
+     "query": "SELECT global_sequence_number, event_type, aggregate_pk_ref, aggregate_type, new_value, metadata FROM core.event WHERE global_sequence_number > $1 AND global_sequence_number <= $2 AND aggregate_type = ANY($3) ORDER BY global_sequence_number LIMIT $4"
+    },
+    {
+     "calls": 134411,
+     "total_ms": 4183.6,
+     "mean_ms": 0.0311,
+     "rows": 134411,
+     "query": "INSERT INTO ar.payment (payment_pk, aggregate_sequence_number, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units) VALUES ($1, $7, $2, $3, $8, $4, $5, $6)"
+    },
+    {
+     "calls": 53576,
+     "total_ms": 3818.9,
+     "mean_ms": 0.0713,
+     "rows": 53576,
+     "query": "UPDATE ar.account SET aggregate_sequence_number = $1 WHERE account_pk = $2"
+    },
+    {
+     "calls": 20936,
+     "total_ms": 2249.8,
+     "mean_ms": 0.1075,
+     "rows": 20936,
+     "query": "UPDATE core.pending_event SET status = $2, fired_at = clock_timestamp() WHERE pending_event_pk = $1"
+    },
+    {
+     "calls": 24433,
+     "total_ms": 1643.4,
+     "mean_ms": 0.0673,
+     "rows": 24433,
+     "query": "INSERT INTO core.pending_event (pending_event_pk, aggregate_pk_ref, aggregate_type, target_event_type, due_at, status, scheduled_by_event) VALUES ($1, $2, $6, $3, $4, $7, $5)"
+    },
+    {
+     "calls": 11309,
+     "total_ms": 1636.6,
+     "mean_ms": 0.1447,
+     "rows": 30502,
+     "query": "UPDATE ar.account_balance_bucket b SET balance_minor_units = v.balance FROM unnest($1::uuid[], $2::bigint[]) AS v(pk, balance) WHERE b.account_balance_bucket_pk = v.pk"
+    },
+    {
+     "calls": 27335,
+     "total_ms": 1590.2,
+     "mean_ms": 0.0582,
+     "rows": 27335,
+     "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $1, updated_at = now() WHERE projection_name = $2"
+    },
+    {
+     "calls": 8207,
+     "total_ms": 1464.4,
+     "mean_ms": 0.1784,
+     "rows": 24621,
+     "query": "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, account_fk, balance_bucket_definition_fk, balance_minor_units) SELECT * FROM unnest($1::uuid[], $2::uuid[], $3::uuid[], $4::bigint[])"
+    },
+    {
+     "calls": 20936,
+     "total_ms": 1342.7,
+     "mean_ms": 0.0641,
+     "rows": 20936,
+     "query": "SELECT aggregate_pk_ref, target_event_type, due_at, status FROM core.pending_event WHERE pending_event_pk = $1 FOR UPDATE SKIP LOCKED"
+    },
+    {
+     "calls": 54960,
+     "total_ms": 1108.2,
+     "mean_ms": 0.0202,
+     "rows": 54960,
+     "query": "SELECT CASE WHEN is_called THEN last_value ELSE 0 END, pg_postmaster_start_time()::text || '/' || current_database() FROM core.seq_event_global_sequence"
+    },
+    {
+     "calls": 16226,
+     "total_ms": 1102.2,
+     "mean_ms": 0.0679,
+     "rows": 16226,
+     "query": "UPDATE ar.account SET aggregate_sequence_number = $1, is_disputed = $3 WHERE account_pk = $2"
+    }
+   ],
+   "commits_per_command": 3.35,
+   "rollbacks": 926,
+   "lag_samples": [
+    [
+     0.8,
+     0
+    ],
+    [
+     2.6,
+     0
+    ],
+    [
+     4.4,
+     0
+    ],
+    [
+     6.2,
+     781
+    ],
+    [
+     8.0,
+     680
+    ],
+    [
+     9.8,
+     769
+    ],
+    [
+     11.6,
+     725
+    ],
+    [
+     13.4,
+     844
+    ],
+    [
+     15.2,
+     523
+    ],
+    [
+     17.1,
+     644
+    ],
+    [
+     18.8,
+     927
+    ],
+    [
+     20.6,
+     657
+    ],
+    [
+     22.4,
+     562
+    ],
+    [
+     24.2,
+     723
+    ],
+    [
+     26.0,
+     442
+    ],
+    [
+     27.8,
+     459
+    ],
+    [
+     29.6,
+     360
+    ],
+    [
+     31.4,
+     585
+    ],
+    [
+     33.3,
+     491
+    ],
+    [
+     35.0,
+     524
+    ],
+    [
+     36.9,
+     569
+    ],
+    [
+     38.7,
+     382
+    ],
+    [
+     40.5,
+     547
+    ],
+    [
+     42.3,
+     541
+    ],
+    [
+     44.1,
+     738
+    ],
+    [
+     45.9,
+     892
+    ],
+    [
+     47.8,
+     819
+    ],
+    [
+     49.5,
+     703
+    ],
+    [
+     51.4,
+     696
+    ],
+    [
+     53.1,
+     695
+    ],
+    [
+     54.9,
+     652
+    ],
+    [
+     56.7,
+     522
+    ],
+    [
+     58.5,
+     912
+    ],
+    [
+     60.3,
+     914
+    ],
+    [
+     62.1,
+     864
+    ],
+    [
+     63.8,
+     744
+    ],
+    [
+     65.7,
+     570
+    ],
+    [
+     67.4,
+     717
+    ],
+    [
+     69.3,
+     730
+    ],
+    [
+     71.1,
+     748
+    ],
+    [
+     72.9,
+     885
+    ],
+    [
+     74.8,
+     595
+    ],
+    [
+     76.5,
+     704
+    ],
+    [
+     78.4,
+     633
+    ],
+    [
+     80.2,
+     665
+    ],
+    [
+     82.0,
+     1034
+    ],
+    [
+     83.8,
+     730
+    ],
+    [
+     85.6,
+     722
+    ],
+    [
+     87.4,
+     922
+    ],
+    [
+     89.2,
+     728
+    ],
+    [
+     91.0,
+     1130
+    ],
+    [
+     92.7,
+     680
+    ],
+    [
+     94.6,
+     711
+    ],
+    [
+     96.4,
+     728
+    ],
+    [
+     98.1,
+     723
+    ],
+    [
+     100.0,
+     749
+    ],
+    [
+     101.7,
+     805
+    ],
+    [
+     103.6,
+     663
+    ],
+    [
+     105.3,
+     917
+    ],
+    [
+     107.1,
+     660
+    ],
+    [
+     109.0,
+     637
+    ],
+    [
+     110.8,
+     661
+    ],
+    [
+     112.7,
+     843
+    ],
+    [
+     114.5,
+     934
+    ],
+    [
+     116.3,
+     974
+    ],
+    [
+     118.1,
+     988
+    ],
+    [
+     119.9,
+     663
+    ],
+    [
+     121.7,
+     860
+    ],
+    [
+     123.5,
+     766
+    ],
+    [
+     125.3,
+     999
+    ],
+    [
+     127.1,
+     1193
+    ],
+    [
+     128.9,
+     929
+    ],
+    [
+     130.8,
+     737
+    ],
+    [
+     132.6,
+     690
+    ],
+    [
+     134.4,
+     740
+    ],
+    [
+     136.2,
+     695
+    ],
+    [
+     138.1,
+     866
+    ],
+    [
+     139.9,
+     710
+    ],
+    [
+     141.7,
+     935
+    ],
+    [
+     143.5,
+     1018
+    ],
+    [
+     145.3,
+     840
+    ],
+    [
+     147.0,
+     880
+    ],
+    [
+     148.8,
+     844
+    ],
+    [
+     150.6,
+     736
+    ],
+    [
+     152.3,
+     887
+    ],
+    [
+     154.3,
+     698
+    ],
+    [
+     156.1,
+     541
+    ],
+    [
+     157.9,
+     1147
+    ],
+    [
+     159.7,
+     906
+    ],
+    [
+     161.4,
+     897
+    ],
+    [
+     163.2,
+     928
+    ],
+    [
+     165.0,
+     766
+    ],
+    [
+     166.8,
+     723
+    ],
+    [
+     168.5,
+     633
+    ],
+    [
+     170.3,
+     815
+    ],
+    [
+     172.1,
+     709
+    ],
+    [
+     173.9,
+     1040
+    ],
+    [
+     175.7,
+     653
+    ],
+    [
+     177.5,
+     754
+    ],
+    [
+     179.3,
+     932
+    ],
+    [
+     181.1,
+     1043
+    ],
+    [
+     182.9,
+     848
+    ],
+    [
+     184.7,
+     657
+    ],
+    [
+     186.5,
+     656
+    ],
+    [
+     188.4,
+     753
+    ],
+    [
+     190.1,
+     612
+    ],
+    [
+     191.9,
+     583
+    ],
+    [
+     193.7,
+     691
+    ],
+    [
+     195.6,
+     610
+    ],
+    [
+     197.3,
+     620
+    ],
+    [
+     199.1,
+     628
+    ],
+    [
+     200.9,
+     1003
+    ],
+    [
+     202.6,
+     748
+    ],
+    [
+     204.4,
+     771
+    ],
+    [
+     206.2,
+     1003
+    ],
+    [
+     208.0,
+     1124
+    ],
+    [
+     209.8,
+     699
+    ],
+    [
+     211.6,
+     1051
+    ],
+    [
+     213.3,
+     691
+    ],
+    [
+     215.1,
+     903
+    ],
+    [
+     216.9,
+     874
+    ],
+    [
+     218.7,
+     1080
+    ],
+    [
+     220.4,
+     753
+    ],
+    [
+     222.2,
+     926
+    ],
+    [
+     224.0,
+     947
+    ],
+    [
+     225.8,
+     561
+    ],
+    [
+     227.7,
+     807
+    ],
+    [
+     229.7,
+     762
+    ],
+    [
+     231.7,
+     908
+    ],
+    [
+     233.6,
+     598
+    ],
+    [
+     235.4,
+     862
+    ],
+    [
+     237.2,
+     791
+    ],
+    [
+     239.0,
+     744
+    ],
+    [
+     240.8,
+     782
+    ],
+    [
+     242.6,
+     694
+    ],
+    [
+     244.3,
+     1040
+    ],
+    [
+     246.2,
+     75
+    ],
+    [
+     248.1,
+     56
+    ],
+    [
+     250.2,
+     38
+    ],
+    [
+     252.1,
+     75
+    ],
+    [
+     253.9,
+     44
+    ],
+    [
+     255.7,
+     51
+    ],
+    [
+     257.4,
+     49
+    ],
+    [
+     259.3,
+     49
+    ],
+    [
+     261.3,
+     62
+    ],
+    [
+     263.1,
+     67
+    ],
+    [
+     264.9,
+     64
+    ],
+    [
+     266.8,
+     76
+    ],
+    [
+     268.5,
+     35
+    ],
+    [
+     270.3,
+     74
+    ],
+    [
+     272.1,
+     57
+    ],
+    [
+     274.1,
+     70
+    ],
+    [
+     276.0,
+     72
+    ],
+    [
+     277.8,
+     70
+    ],
+    [
+     279.6,
+     56
+    ],
+    [
+     281.4,
+     82
+    ],
+    [
+     283.3,
+     56
+    ],
+    [
+     285.2,
+     89
+    ],
+    [
+     287.1,
+     66
+    ],
+    [
+     288.9,
+     57
+    ],
+    [
+     290.7,
+     69
+    ],
+    [
+     292.7,
+     89
+    ],
+    [
+     294.6,
+     68
+    ],
+    [
+     296.3,
+     65
+    ],
+    [
+     298.1,
+     51
+    ],
+    [
+     299.9,
+     41
+    ],
+    [
+     301.7,
+     58
+    ],
+    [
+     303.5,
+     59
+    ],
+    [
+     305.3,
+     0
+    ]
+   ],
+   "max_lag_events": 1193,
+   "end_head": 871001,
+   "catchup_s": 3.4,
+   "settle_s": 55.0,
+   "verify": {
+    "workload": "verify-chain",
+    "aggregates": 647287,
+    "events": 878251,
+    "problems": 0,
+    "ok": true,
+    "first_problems": [],
+    "elapsed_s": 30.174
+   },
+   "gates": {
+    "every account's opening minus current balance equals what payments applied": true,
+    "every register entry due 5 s before the end has fired": true,
+    "every first_contact_due event has exactly one task": true,
+    "every hash chain verifies": true,
+    "every account summary matches the account and its buckets": true,
+    "every payment read model row matches its payment": true,
+    "every payment line's applied amount matches the payment's distribution": true
+   },
+   "gates_skipped": [],
+   "gates_pass": true,
+   "rule_latency_ms": {
+    "account.queue_assigned": {
+     "count": 16226,
+     "p50": 256.7,
+     "p95": 483.5,
+     "p99": 528.6,
+     "max": 630.2
+    },
+    "account.status_changed": {
+     "count": 4591,
+     "p50": 255.2,
+     "p95": 476.1,
+     "p99": 532.4,
+     "max": 593.9
+    },
+    "pending_event.scheduled": {
+     "count": 24433,
+     "p50": 255.8,
+     "p95": 480.9,
+     "p99": 531.3,
+     "max": 633.7
+    },
+    "task.created": {
+     "count": 8207,
+     "p50": 257.3,
+     "p95": 484.9,
+     "p99": 532.4,
+     "max": 623.1
+    },
+    "all": {
+     "count": 53457,
+     "p50": 256.2,
+     "p95": 482.2,
+     "p99": 531.1,
+     "max": 633.7
+    }
+   },
+   "register_lateness_ms": {
+    "count": 24433,
+    "p50": 171.9,
+    "p95": 291.5,
+    "p99": 326.5,
+    "max": 404.3
+   },
+   "events_written": 378251,
+   "images": {
+    "db": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+    "bench": "sha256:2c57342804f0fb331511b363a3304bda5f163ec9d74a313a3219d706f950e5c7",
+    "engine": "sha256:2c57342804f0fb331511b363a3304bda5f163ec9d74a313a3219d706f950e5c7"
+   },
+   "limits": {
+    "db": {
+     "cpus": 6.0,
+     "mem_bytes": 12884901888
+    },
+    "bench": {
+     "cpus": 4.0,
+     "mem_bytes": 4294967296
+    },
+    "engine": {
+     "cpus": 2.0,
+     "mem_bytes": 2147483648
+    }
+   },
+   "clock": {
+    "start": "2026-11-14 03:02:12.434102+00",
+    "end": "2026-11-14 03:06:23.586723+00"
+   },
+   "warmup": false
+  }
+ ]
+}
