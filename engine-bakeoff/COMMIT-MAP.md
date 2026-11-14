@@ -87,3 +87,19 @@ The two commits that needed no change and the two python-direct commits, which w
 | `e192ec74f7e0` | [`bda684b8e45f`](https://github.com/OpenAR-Collective/spikes/commit/bda684b8e45f19ea70dfe951d74feb0d3b7180bd) | 2026-11-12 | Plan round 2's pass on the laptop |
 | `ecdae8a65f32` | [`f0aecd8ea4d0`](https://github.com/OpenAR-Collective/spikes/commit/f0aecd8ea4d0e4dd54e83771af8d8c63f9efc8fe) | 2026-11-13 | Record round 2's pass on the laptop |
 | `4c8e5ea363bb` | [`80fc1937a181`](https://github.com/OpenAR-Collective/spikes/commit/80fc1937a18113ea4650bd0edf3478e51ca78ca8) | 2026-11-13 | Add the script that tabulates round 2's laptop pass |
+
+## The third rewrite
+
+The commits of round 2's code-shape pass were made on top of the laptop pass's original history, from before the second rewrite, so they were replayed onto the published history before they were published. The commit that adds the batched mode was replayed onto the published `main` with its content unchanged, and the merge that brings it in was made again with the same two-parent shape and the same message. The merge's tree is therefore the measured tree with the second rewrite's changes and the write-ups published with it applied, and its code is the measured code. As in the earlier rewrites, the names of unrelated software in the host records became `unrelated-container`, and local file paths left the pass log. A personal reference became neutral wording in the plan, the script that writes plans, and the plan's commit message. The results commit's message stated two figures more strongly than the recorded results support, and they were corrected to what the results show: how closely the noise pair agreed, and the placement rate with the engine paused. Where the replay met a conflict in the bake-off README, it kept the published text and added the pass's entry. Apart from those changes the replay changed no result, code, or method text. It kept every author, author date, and commit subject, and the commit dates are those of the replay.
+
+The pass's results cite the original ID of its plan commit, and its plan and test record cite the original ID of the merge, which they call the measured tree. This table maps each original commit to its published counterpart, oldest first.
+
+*Each row maps one original commit of the third rewrite to its published counterpart, with its author date and subject.*
+
+| Original | Published | Date | Subject |
+| --- | --- | --- | --- |
+| `a9bd48e8c6d4` | [`042b6a993b75`](https://github.com/OpenAR-Collective/spikes/commit/042b6a993b7564f9ddd95b1d2c228dfa3245efc9) | 2026-11-13 | Add a batched state mode to csharp-wax, run as csharp-wax-batched |
+| `c8fa969195d4` | [`6c1bc6442c81`](https://github.com/OpenAR-Collective/spikes/commit/6c1bc6442c81f0546c68dec256d17e164381b1b7) | 2026-11-13 | Merge round2/csharp-batched into round2/shape-pass for the code-shape pass |
+| `4a318a737eb3` | [`7a1a2ae73f9f`](https://github.com/OpenAR-Collective/spikes/commit/7a1a2ae73f9fbc0616c486f45f647e06ecbae4d9) | 2026-11-13 | Plan round 2's code-shape pass |
+| `2f0820732b32` | [`7b9474dc92dd`](https://github.com/OpenAR-Collective/spikes/commit/7b9474dc92ddc2b7073fabcad2ab45b474884b19) | 2026-11-13 | Record round 2's code-shape pass |
+| `a8f0bba2a23c` | [`2cc0d239e9f7`](https://github.com/OpenAR-Collective/spikes/commit/2cc0d239e9f754ddaa569a7e2f489d40cc82e64f) | 2026-11-14 | Add the script that tabulates round 2's code-shape pass |
