@@ -95,6 +95,7 @@ switch (args.FirstOrDefault() ?? "run-projections")
         // What a result records about this side: runtime, library versions, and settings.
         Console.WriteLine($".NET {Environment.Version}, {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
         Console.WriteLine($"Npgsql {typeof(NpgsqlConnection).Assembly.GetName().Version}; no Marten: events append to core.event with plain SQL; hashing: {(EventHashing.Enabled ? "on" : "off")}; state through: {HiveAR.Data.ArData.FromEnvironment()}");
+        Console.WriteLine(WaxSettings.DriverSettings(connectionString));
         Console.WriteLine($"EF Core {typeof(Microsoft.EntityFrameworkCore.DbContext).Assembly.GetName().Version}");
         Console.WriteLine($"server GC: {System.Runtime.GCSettings.IsServerGC}, processors: {Environment.ProcessorCount}");
         return 0;
@@ -108,6 +109,12 @@ switch (args.FirstOrDefault() ?? "run-projections")
         var pollInterval = TimeSpan.FromMilliseconds(options.Int("poll-interval-ms", 250));
         var ruleWorkers = options.Int("rule-workers", 1);
         var projectionWorkers = options.Int("projection-workers", 1);
+        // Off by default: a reader pass that applies fewer events than this
+        // sleeps the given time before the next, and the engine prints the
+        // readers' passes and events every so many seconds.
+        var smallPassEvents = options.Int("small-pass-events", 0);
+        var smallPassSleep = TimeSpan.FromMilliseconds(options.Int("small-pass-sleep-ms", 0));
+        var passReportSeconds = options.Int("pass-report-seconds", 0);
         var engine = await WaxEngine.CreateAsync(connectionString, modules);
         var registerActor = DerivedUuid.From("bakeoff:register");
         var builder = Host.CreateApplicationBuilder();
@@ -116,8 +123,12 @@ switch (args.FirstOrDefault() ?? "run-projections")
             builder.Services.AddSingleton<IHostedService>(services =>
             {
                 var reader = engine.CreateReader(services.GetRequiredService<ILogger<ProjectionReader>>());
-                return new Loop(token => reader.RunAsync(pollInterval, token));
+                return new Loop(token => reader.RunAsync(pollInterval, token, smallPassEvents, smallPassSleep));
             });
+        }
+        if (passReportSeconds > 0)
+        {
+            builder.Services.AddSingleton<IHostedService>(_ => new Loop(token => PassReport.RunAsync(TimeSpan.FromSeconds(passReportSeconds), token)));
         }
         var rules = HiveArRules.All(engine.DataSource, secondsPerDay);
         for (var k = 0; k < ruleWorkers; k++)
@@ -137,7 +148,7 @@ switch (args.FirstOrDefault() ?? "run-projections")
             parallelism: ruleWorkers,
             pollInterval: pollInterval,
             logger: services.GetRequiredService<ILogger<PendingEventPoller>>()));
-        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}, projection-workers {projectionWorkers}, hashing {(EventHashing.Enabled ? "on" : "off")}, state {HiveAR.Data.ArData.FromEnvironment()}");
+        Console.WriteLine($"run-engine: seconds-per-day {secondsPerDay}, poll-interval-ms {pollInterval.TotalMilliseconds}, rule-workers {ruleWorkers}, projection-workers {projectionWorkers}, small-pass-events {smallPassEvents}, small-pass-sleep-ms {smallPassSleep.TotalMilliseconds}, pass-report-seconds {passReportSeconds}, hashing {(EventHashing.Enabled ? "on" : "off")}, state {HiveAR.Data.ArData.FromEnvironment()}, {WaxSettings.DriverSettings(connectionString)}");
         await builder.Build().RunAsync();
         await engine.DisposeAsync();
         return 0;
@@ -169,5 +180,32 @@ namespace Bakeoff.Host
     sealed class Loop(Func<CancellationToken, Task> run) : BackgroundService
     {
         protected override Task ExecuteAsync(CancellationToken stoppingToken) => run(stoppingToken);
+    }
+
+    /// <summary>Prints the projection readers' passes and applied events for each
+    /// interval, so a run's pass rate can be followed over time in its engine log.</summary>
+    static class PassReport
+    {
+        public static async Task RunAsync(TimeSpan interval, CancellationToken stoppingToken)
+        {
+            var (passes, events) = ProjectionReader.Totals;
+            var started = DateTime.UtcNow;
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(interval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                var (nowPasses, nowEvents) = ProjectionReader.Totals;
+                var now = DateTime.UtcNow;
+                Console.WriteLine(FormattableString.Invariant(
+                    $"passes {now:O} seconds {(now - started).TotalSeconds:F3} passes {nowPasses - passes} events {nowEvents - events}"));
+                (passes, events, started) = (nowPasses, nowEvents, now);
+            }
+        }
     }
 }

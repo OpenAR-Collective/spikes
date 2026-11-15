@@ -37,12 +37,19 @@
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"]
   },
+  "csharp-wax-npgsql-defaults": {
+    "compose": "../csharp-wax/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp-wax",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"}
+  },
   "csharp-wax-ef": {
     "compose": "../csharp-wax/docker-compose.yml",
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
-    "container_env": {"WAX_STATE": "efcore"},
+    "container_env": {"WAX_STATE": "efcore", "DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   },
   "csharp-wax-batched": {
@@ -50,7 +57,7 @@
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
-    "container_env": {"WAX_STATE": "batched"},
+    "container_env": {"WAX_STATE": "batched", "DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   },
   "csharp-wax-fair-batched": {
@@ -58,7 +65,7 @@
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
-    "container_env": {"WAX_STATE": "fair-batched"},
+    "container_env": {"WAX_STATE": "fair-batched", "DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   },
   "csharp-wax-noreset": {
@@ -66,7 +73,15 @@
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
-    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "true"},
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "true", "DATABASE_MAX_AUTO_PREPARE": "0"},
+    "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
+  },
+  "csharp-wax-autoprepare": {
+    "compose": "../csharp-wax/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp-wax",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "20"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   },
   "csharp-wax-prepared": {
@@ -75,6 +90,14 @@
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
     "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "true", "DATABASE_MAX_AUTO_PREPARE": "20"},
+    "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
+  },
+  "csharp-wax-custom-plans": {
+    "compose": "../csharp-wax/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp-wax",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "true", "DATABASE_MAX_AUTO_PREPARE": "20", "DATABASE_PLAN_CACHE_MODE": "force_custom_plan"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   },
   "csharp-wax-fair-prepared": {
@@ -90,6 +113,7 @@
     "project": "hivear-bakeoff-csharp-wax",
     "profile": "bench",
     "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
   }
 }

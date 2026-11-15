@@ -73,13 +73,24 @@ public static class WaxSettings
         {
             builder.MaxPoolSize = poolSize;
         }
-        // Two driver settings for the round 2 diagnostic pass, each applied
-        // only when its variable is set, so the default connection string is
-        // unchanged. No Reset On Close stops Npgsql sending DISCARD ALL when a
-        // pooled connection is returned; Max Auto Prepare lets it prepare the
-        // statements it sees most often on the server, as psycopg does. A
+        // Two driver settings that are csharp-wax's own, after round 2's
+        // diagnostic pass found that Npgsql's defaults, not C#, made its
+        // database cost per command higher than the Python side's. No Reset On
+        // Close stops Npgsql sending DISCARD ALL when a pooled connection is
+        // returned, so a session keeps its cached plans, the insert trigger's
+        // and the foreign-key checks' among them. Max Auto Prepare 20 lets it
+        // prepare on the server the statements it sees most often, as psycopg
+        // does after five uses. Every connection this process opens carries
+        // only settings it chose, so nothing needs a reset between uses.
+        //
+        // Each variable overrides its setting; DATABASE_NO_RESET_ON_CLOSE=false
+        // with DATABASE_MAX_AUTO_PREPARE=0 runs Npgsql's defaults, as every
+        // csharp-wax run before this change did. DATABASE_PLAN_CACHE_MODE sets
+        // PostgreSQL's plan_cache_mode for the session, for a diagnostic. A
         // value that is set but not understood stops the process, so a typo
         // cannot run the default under another name.
+        builder.NoResetOnClose = true;
+        builder.MaxAutoPrepare = 20;
         var noReset = Setting("DATABASE_NO_RESET_ON_CLOSE");
         if (noReset is not null)
         {
@@ -98,7 +109,26 @@ public static class WaxSettings
                 ? count
                 : throw new InvalidOperationException($"DATABASE_MAX_AUTO_PREPARE must be a whole number, not '{maxAutoPrepare}'.");
         }
+        var planCacheMode = Setting("DATABASE_PLAN_CACHE_MODE");
+        if (planCacheMode is not null)
+        {
+            builder.Options = planCacheMode switch
+            {
+                "auto" or "force_custom_plan" or "force_generic_plan" => $"-c plan_cache_mode={planCacheMode}",
+                _ => throw new InvalidOperationException(
+                    $"DATABASE_PLAN_CACHE_MODE must be auto, force_custom_plan, or force_generic_plan, not '{planCacheMode}'."),
+            };
+        }
         return builder.ConnectionString;
+    }
+
+    /// <summary>The driver settings a connection string carries, in the words a
+    /// result records.</summary>
+    public static string DriverSettings(string connectionString)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        return $"Npgsql No Reset On Close {builder.NoResetOnClose}, Max Auto Prepare {builder.MaxAutoPrepare}, " +
+            $"options '{builder.Options ?? ""}'";
     }
 
     /// <summary>The variable's trimmed value, or null when it is unset or empty,

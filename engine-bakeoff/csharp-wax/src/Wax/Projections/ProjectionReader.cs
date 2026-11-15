@@ -9,7 +9,8 @@
 // a time, as in the original. The worker loop leaves out the release checks
 // and heartbeat of the blue-green drill, which the bake-off does not run. A
 // claim that finds the checkpoint already at or past the pass's mark leaves
-// it alone rather than moving it back.
+// it alone rather than moving it back. The loop can sleep after a small pass,
+// and the process counts passes and events for the engine's pass-rate report.
 
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -49,8 +50,14 @@ public sealed class ProjectionReader(
     int batchSize = 500)
 {
     HighWaterMark mark = new(dataSource);
+    static long passCount;
+    static long eventCount;
 
     public IReadOnlyList<Projection> Projections => projections;
+
+    /// <summary>Passes run and events applied by every reader in this process,
+    /// for the engine's pass-rate report.</summary>
+    public static (long Passes, long Events) Totals => (Interlocked.Read(ref passCount), Interlocked.Read(ref eventCount));
 
     /// <summary>For tests: runs after a pass's unlocked look at a checkpoint and
     /// before its claim, the window in which another reader can move it.</summary>
@@ -151,11 +158,15 @@ public sealed class ProjectionReader(
                 }
             }
         }
+        Interlocked.Increment(ref passCount);
+        Interlocked.Add(ref eventCount, handled);
         return handled;
     }
 
-    /// <summary>Run until stopped, sleeping the poll interval whenever a pass finds nothing.</summary>
-    public async Task RunAsync(TimeSpan pollInterval, CancellationToken stoppingToken)
+    /// <summary>Run until stopped, sleeping the poll interval whenever a pass finds
+    /// nothing. When smallPassEvents is above zero, a pass that applies fewer events
+    /// than that sleeps smallPassSleep instead of starting the next pass at once.</summary>
+    public async Task RunAsync(TimeSpan pollInterval, CancellationToken stoppingToken, int smallPassEvents = 0, TimeSpan smallPassSleep = default)
     {
         logger?.LogInformation("Projection reader started for {Count} projections", projections.Count);
         var registered = false;
@@ -187,6 +198,10 @@ public sealed class ProjectionReader(
             if (handled == 0)
             {
                 await Delay(pollInterval, stoppingToken);
+            }
+            else if (handled < smallPassEvents)
+            {
+                await Delay(smallPassSleep, stoppingToken);
             }
         }
     }

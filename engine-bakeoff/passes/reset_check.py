@@ -1,12 +1,21 @@
-"""Times one event insert in csharp-wax's database straight after DISCARD ALL
-and with the session's plans warm, the check that opens round 2's diagnostic
-pass. It copies the seeded template to a throwaway database, builds one
-insert from a seeded event (the next sequence number on its aggregate, with
-a reason code so the foreign-key check runs), and runs it under EXPLAIN
-ANALYZE inside a transaction that is rolled back, in rounds of warm inserts
-and of inserts each preceded by DISCARD ALL, after one unrecorded round that
-brings the copy's pages into memory. It prints the medians of execution time
-and of the two triggers' times, then drops the copy.
+"""Times one event insert in csharp-wax's database straight after DISCARD ALL,
+after each of the commands DISCARD ALL stands for, and with the session's
+plans warm: the check that opens round 2's diagnostic pass and, with the
+split, the pass that tests its fix. It copies the seeded template to a
+throwaway database, builds one insert from a seeded event (the next sequence
+number on its aggregate, with a reason code so the foreign-key check runs),
+and runs it under EXPLAIN ANALYZE inside a transaction that is rolled back,
+in rounds of warm inserts and of inserts each preceded by a reset, after one
+unrecorded round that brings the copy's pages into memory. It prints the
+medians of execution time and of the two triggers' times, then times each
+reset command itself with psql's timing, which includes the round trip from
+psql inside the container, and drops the copy.
+
+PostgreSQL documents DISCARD ALL as CLOSE ALL; SET SESSION AUTHORIZATION
+DEFAULT; RESET ALL; DEALLOCATE ALL; UNLISTEN *; SELECT
+pg_advisory_unlock_all(); DISCARD PLANS; DISCARD TEMP; DISCARD SEQUENCES.
+The split also times the same list without DEALLOCATE ALL and DISCARD PLANS,
+a lighter reset that keeps a session's plans.
 
     py -3 reset_check.py [accounts] [rounds] [inserts per round]
 
@@ -52,11 +61,21 @@ def psql(database, sql):
     return result.stdout
 
 
+# The two kinds step 0 compares, then the split: each command DISCARD ALL
+# stands for, alone, and the lighter reset without the two that drop plans.
+STEP0 = {"warm": "", "after DISCARD ALL": "DISCARD ALL;"}
+PARTS = ["CLOSE ALL;", "SET SESSION AUTHORIZATION DEFAULT;", "RESET ALL;", "DEALLOCATE ALL;", "UNLISTEN *;",
+         "SELECT pg_advisory_unlock_all();", "DISCARD PLANS;", "DISCARD TEMP;", "DISCARD SEQUENCES;"]
+LIGHT = " ".join(part for part in PARTS if part not in ("DEALLOCATE ALL;", "DISCARD PLANS;"))
+LIGHT_NAME = "the list without DEALLOCATE ALL and DISCARD PLANS"
+SPLIT = {**{f"after {part.rstrip(';')}": part for part in PARTS}, f"after {LIGHT_NAME}": LIGHT}
+
+
 def session(reset):
-    """One psql session: the insert once untimed, so both kinds start from a
-    session that has run it, then PER_ROUND timed inserts. :ins is the psql
-    variable BUILD sets."""
-    one = ("DISCARD ALL;\n" if reset else "") + "BEGIN;\nEXPLAIN (ANALYZE, COSTS OFF) :ins;\nROLLBACK;\n"
+    """One psql session: the insert once untimed, so every kind starts from a
+    session that has run it, then PER_ROUND timed inserts, each after the
+    reset commands given. :ins is the psql variable BUILD sets."""
+    one = (reset + "\n" if reset else "") + "BEGIN;\nEXPLAIN (ANALYZE, COSTS OFF) :ins;\nROLLBACK;\n"
     out = psql(COPY, BUILD + "BEGIN;\n:ins;\nROLLBACK;\n" + one * PER_ROUND)
     timings = {"execution": [], "before_insert": [], "foreign_key": []}
     for block in out.split("Execution Time:")[:-1]:
@@ -73,23 +92,41 @@ def main():
     try:
         check = psql(COPY, BUILD + "\\echo has_reason=:has_reason\n")
         print(f"template {TEMPLATE}, {ROUNDS} rounds of {PER_ROUND} inserts each way; {check.strip()}")
-        results = {"warm": {"execution": [], "before_insert": [], "foreign_key": []},
-                   "after DISCARD ALL": {"execution": [], "before_insert": [], "foreign_key": []}}
         # A session that is not recorded first, so the copy's pages are in
-        # memory before anything is timed; then the rounds, alternating which
-        # kind goes first, so neither always runs on the colder cache.
-        session(False)
-        for n in range(ROUNDS):
-            kinds = (("warm", False), ("after DISCARD ALL", True))
-            for kind, reset in (kinds if n % 2 == 0 else kinds[::-1]):
-                for key, values in session(reset).items():
-                    results[kind][key] += [v for v in values if v is not None]
-        print("Median milliseconds per insert, with the count of inserts timed:")
-        print("| Insert | Execution | BEFORE INSERT trigger | Foreign-key check |")
-        print("| --- | --- | --- | --- |")
-        for kind, timings in results.items():
-            cells = [f"{statistics.median(v):.3f} ({len(v)})" if v else "none" for v in timings.values()]
-            print(f"| {kind} | " + " | ".join(cells) + " |")
+        # memory before anything is timed.
+        session("")
+        for title, kinds in (("Step 0", STEP0), ("The split", SPLIT)):
+            results = {kind: {"execution": [], "before_insert": [], "foreign_key": []} for kind in kinds}
+            # The rounds, reversing the order of the kinds each round, so no
+            # kind always runs on the colder cache.
+            for n in range(ROUNDS):
+                order = list(kinds.items())
+                for kind, reset in (order if n % 2 == 0 else order[::-1]):
+                    for key, values in session(reset).items():
+                        results[kind][key] += [v for v in values if v is not None]
+            print()
+            print(f"{title}: median milliseconds per insert, with the count of inserts timed:")
+            print("| Insert | Execution | BEFORE INSERT trigger | Foreign-key check |")
+            print("| --- | --- | --- | --- |")
+            for kind, timings in results.items():
+                cells = [f"{statistics.median(v):.3f} ({len(v)})" if v else "none" for v in timings.values()]
+                print(f"| {kind} | " + " | ".join(cells) + " |")
+        print()
+        print(f"Each reset command's own time: median milliseconds from psql's timing over {ROUNDS * PER_ROUND} calls, "
+              "with the round trip from psql inside the container:")
+        print("| Command | Median ms |")
+        print("| --- | --- |")
+        calls = ROUNDS * PER_ROUND
+        for command in ["DISCARD ALL;", *PARTS, LIGHT]:
+            out = psql(COPY, "\\timing on\n" + (command + "\n") * calls)
+            times = [float(x) for x in re.findall(r"Time: ([\d.]+) ms", out)]
+            # psql times each statement; the lighter reset is several, so each
+            # call's time is the sum of its parts.
+            size = command.count(";")
+            each = [sum(times[i:i + size]) for i in range(0, len(times), size)]
+            if len(each) != calls:
+                raise SystemExit(f"expected {calls} timings for {command}, read {len(each)}")
+            print(f"| {LIGHT_NAME if command == LIGHT else command.rstrip(';')} | {statistics.median(each):.3f} |")
     finally:
         psql("postgres", f"DROP DATABASE IF EXISTS {COPY} WITH (FORCE);\n")
 

@@ -153,11 +153,22 @@ The code-shape pass found the batched mode slower than plain mode on the payment
 
 All 41 tests pass in each of the four modes.
 
-## Driver settings (harness sides csharp-wax-noreset and csharp-wax-prepared)
+## Driver settings
 
-Two Npgsql settings can be set from the environment, for round 2's diagnostic pass. `DATABASE_NO_RESET_ON_CLOSE=true` sets No Reset On Close, so a connection returned to the pool keeps its session, cached plans included, instead of sending `DISCARD ALL`. `DATABASE_MAX_AUTO_PREPARE=20` sets Max Auto Prepare, so Npgsql prepares a statement on the server once it has run five times, keeping up to 20 prepared, where by default it prepares none; psycopg, which the Python sides use, prepares a statement after five uses by default. Each setting is applied only when its variable is set, so the default connection string is unchanged, and a value that is set but not understood stops the process, so a typo cannot run the default under another name. `build.sh` passes both to the test container.
+csharp-wax sets two Npgsql settings of its own. No Reset On Close means a connection returned to the pool keeps its session, cached plans included, instead of sending `DISCARD ALL`; this side sets no session state that a later user of the connection could inherit. Max Auto Prepare 20 means Npgsql prepares a statement on the server once it has run five times, keeping up to 20 prepared; psycopg, which the Python sides use, prepares a statement after five uses by default. [Round 2's diagnostic pass](../README.md#round-2s-diagnostic-pass) found that Npgsql's defaults, which do neither, accounted for csharp-wax's higher database cost per command, and the side has used both settings since 2026-11-15. Every csharp-wax run recorded before that date ran with Npgsql's defaults unless its side says otherwise.
 
-The harness side `csharp-wax-noreset` sets the first, `csharp-wax-prepared` sets both, and `csharp-wax-fair-prepared` sets both in the fair batched mode. `csharp-wax-rw8` changes no setting: it is plain csharp-wax, run with 8 rule workers instead of 16 from the plan's engine arguments. [Round 2's diagnostic pass](../README.md#round-2s-diagnostic-pass) reports what the settings change.
+Each setting can be overridden from the environment, and a value that is set but not understood stops the process, so a typo cannot run the default under another name. `DATABASE_NO_RESET_ON_CLOSE=false` and `DATABASE_MAX_AUTO_PREPARE=0` together restore Npgsql's defaults. `DATABASE_PLAN_CACHE_MODE` sets PostgreSQL's `plan_cache_mode` for every session, for a diagnostic. `build.sh` passes all three to the test container, and `run-engine` and `about` print the settings in force.
+
+Each harness mode keeps the settings it was measured with, so earlier results stay reproducible from this tree:
+
+- `csharp-wax` runs with this side's settings.
+- `csharp-wax-npgsql-defaults` runs with Npgsql's defaults: it is csharp-wax as every pass before 2026-11-15 measured it.
+- `csharp-wax-noreset` sets only No Reset On Close, and `csharp-wax-autoprepare` only Max Auto Prepare 20. `csharp-wax-prepared` sets both, as `csharp-wax` now does, and `csharp-wax-custom-plans` also sets `plan_cache_mode` to `force_custom_plan`.
+- `csharp-wax-ef`, `csharp-wax-batched`, `csharp-wax-fair-batched`, and `csharp-wax-rw8` run with Npgsql's defaults, as when they were measured, and `csharp-wax-fair-prepared` with both settings. `csharp-wax-rw8` is csharp-wax with 8 rule workers instead of 16, from the plan's engine arguments.
+
+## Reader pacing and pass counts
+
+`run-engine` takes three options for diagnostics, all off by default. With `--small-pass-events N` and `--small-pass-sleep-ms M`, a reader whose pass applies fewer than N events sleeps M milliseconds before its next pass, as it sleeps the poll interval after a pass that applies none. With `--pass-report-seconds S`, the engine prints every S seconds how many passes its readers ran and how many events they applied, so a run's pass rate can be followed over time in its engine log.
 
 ## Running it
 
