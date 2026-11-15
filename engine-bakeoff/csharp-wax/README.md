@@ -152,6 +152,12 @@ The code-shape pass found the batched mode slower than plain mode on the payment
 
 All 41 tests pass in each of the four modes.
 
+## Driver settings (harness sides csharp-wax-noreset and csharp-wax-prepared)
+
+Two Npgsql settings can be set from the environment, for round 2's diagnostic pass. `DATABASE_NO_RESET_ON_CLOSE=true` sets No Reset On Close, so a connection returned to the pool keeps its session, cached plans included, instead of sending `DISCARD ALL`. `DATABASE_MAX_AUTO_PREPARE=20` sets Max Auto Prepare, so Npgsql prepares a statement on the server once it has run five times, keeping up to 20 prepared, where by default it prepares none; psycopg, which the Python sides use, prepares a statement after five uses by default. Each setting is applied only when its variable is set, so the default connection string is unchanged, and a value that is set but not understood stops the process, so a typo cannot run the default under another name. `build.sh` passes both to the test container.
+
+The harness side `csharp-wax-noreset` sets the first, `csharp-wax-prepared` sets both, and `csharp-wax-fair-prepared` sets both in the fair batched mode. `csharp-wax-rw8` changes no setting: it is plain csharp-wax, run with 8 rule workers instead of 16 from the plan's engine arguments. [Round 2's diagnostic pass](../README.md#round-2s-diagnostic-pass) reports what the settings change.
+
 ## Running it
 
 The same as the champion, from this folder:
