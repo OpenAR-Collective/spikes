@@ -1,0 +1,694 @@
+{
+ "meta": {
+  "label": "round2-diag-csharp-wax-fair-prepared-placement-w8-no-engine-f2",
+  "side": "csharp-wax-fair-prepared",
+  "side_env": {
+   "WAX_STATE": "fair-batched",
+   "DATABASE_NO_RESET_ON_CLOSE": "true",
+   "DATABASE_MAX_AUTO_PREPARE": "20"
+  },
+  "workload": "placement",
+  "accounts": 500000,
+  "placements": 100000,
+  "engine_args": "--projection-workers 3 --rule-workers 16",
+  "engine_paused": true,
+  "hashing": "on",
+  "caps": "standard",
+  "caps_sha256": "5577265b0edaceba6cf8e429cb3ee36f91778c91f3cf36099ba80a86cfe2abab",
+  "pgbouncer": false,
+  "pool_size": null,
+  "repeat": 1,
+  "warmup_runs": 0,
+  "record": true,
+  "started": "2026-11-14T20:09:19",
+  "finished": "2026-11-14T20:12:02"
+ },
+ "summary": [
+  {
+   "workers": 8,
+   "runs": 1,
+   "succeeded_per_s": 948.641,
+   "p50_ms": 7.558,
+   "p99_ms": 14.962,
+   "bench_cpu_ms": 1.209,
+   "engine_cpu_ms": null,
+   "db_cpu_ms": 1.943,
+   "throttled": {
+    "db": 0.0,
+    "engine": null,
+    "bench": 0.0,
+    "pgbouncer": null
+   },
+   "pgbouncer_cpu_ms": null,
+   "host_probe_ms": 716.3,
+   "steal_pct": 0.0,
+   "wal_kb": 3.06,
+   "fpi": 0.0,
+   "engine_ready_s": null,
+   "statements": 13.0,
+   "commits": 1.0,
+   "transactions": 100000,
+   "fallback_chunks": 0,
+   "max_lag": 100000,
+   "catchup_s": null,
+   "rule_p50": null,
+   "rule_p99": null,
+   "late_p50": null,
+   "late_p99": null,
+   "gates": true
+  }
+ ],
+ "runs": [
+  {
+   "index": 1,
+   "side": "csharp-wax-fair-prepared",
+   "workload": "placement",
+   "workers": 8,
+   "accounts": 500000,
+   "placements": 100000,
+   "engine_args": "--projection-workers 3 --rule-workers 16",
+   "engine_paused": true,
+   "hashing": "on",
+   "caps": "standard",
+   "pgbouncer": false,
+   "pool_size": null,
+   "bench": {
+    "workload": "placement",
+    "workers": 8,
+    "sent": 100000,
+    "sent_total": 100000,
+    "succeeded": 100000,
+    "rejected": 0,
+    "failed": 0,
+    "retried": 0,
+    "elapsed_s": 105.414,
+    "latency_ms": {
+     "p50": 7.558,
+     "p95": 12.274,
+     "p99": 14.962,
+     "max": 211.004
+    },
+    "run_pk": "7f9603e9-5cfa-4e53-920d-5a5c883769a9",
+    "transactions": 100000,
+    "fallback_chunks": 0,
+    "append": "wax",
+    "hashing": "on",
+    "state": "fair-batched"
+   },
+   "bench_exit_code": 0,
+   "window_s": 113.183,
+   "sent_total": 100000,
+   "cpu_s": {
+    "db": 194.328,
+    "bench": 120.883
+   },
+   "cpu_throttling": {
+    "db": {
+     "nr_periods": 1089,
+     "nr_throttled": 0,
+     "throttled_s": 0.0,
+     "throttled_pct": 0.0
+    },
+    "bench": {
+     "nr_periods": 1064,
+     "nr_throttled": 0,
+     "throttled_s": 0.0,
+     "throttled_pct": 0.0
+    }
+   },
+   "host_cpu": {
+    "steal_pct": 0.0,
+    "busy_pct": 19.1
+   },
+   "host_probe_ms": 716.3,
+   "engine_ready_s": null,
+   "engine_idle_cores": null,
+   "db_activity": {
+    "wal": {
+     "wal_records": 3010871,
+     "wal_fpi": 0,
+     "wal_bytes": 313793890,
+     "wal_buffers_full": 0,
+     "wal_write": 29100,
+     "wal_sync": 29100,
+     "wal_write_time": 0,
+     "wal_sync_time": 0
+    },
+    "checkpointer": {
+     "num_timed": 0,
+     "num_requested": 0,
+     "restartpoints_timed": 0,
+     "restartpoints_req": 0,
+     "restartpoints_done": 0,
+     "write_time": 0,
+     "sync_time": 0,
+     "buffers_written": 0
+    },
+    "bgwriter": {
+     "buffers_clean": 0,
+     "maxwritten_clean": 0,
+     "buffers_alloc": 39912
+    },
+    "tables": {
+     "ar.account_balance_bucket": {
+      "n_tup_ins": 300000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 1
+     },
+     "core.event": {
+      "n_tup_ins": 100000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 1
+     },
+     "ar.account": {
+      "n_tup_ins": 100000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 1
+     }
+    },
+    "slru": {
+     "multixact_member": {
+      "blks_zeroed": 631,
+      "blks_hit": 407250,
+      "blks_read": 0,
+      "blks_written": 600,
+      "blks_exists": 0,
+      "flushes": 0,
+      "truncates": 0
+     },
+     "multixact_offset": {
+      "blks_zeroed": 93,
+      "blks_hit": 406282,
+      "blks_read": 0,
+      "blks_written": 78,
+      "blks_exists": 0,
+      "flushes": 0,
+      "truncates": 0
+     }
+    }
+   },
+   "host_probe_samples_ms": [
+    716.3,
+    748.1,
+    735.1,
+    711.9,
+    705.7
+   ],
+   "cpu_ms_per_command": {
+    "db": 1.943,
+    "bench": 1.209
+   },
+   "engine_catchup_cpu_s": null,
+   "statements": 1300079,
+   "statements_per_command": 13.0,
+   "top_statements": [
+    {
+     "calls": 100000,
+     "total_ms": 29367.8,
+     "mean_ms": 0.2937,
+     "rows": 100000,
+     "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+    },
+    {
+     "calls": 100000,
+     "total_ms": 12845.7,
+     "mean_ms": 0.1285,
+     "rows": 300000,
+     "query": "INSERT INTO ar.account_balance_bucket (account_balance_bucket_pk, balance_minor_units, account_fk, balance_bucket_definition_fk) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8), ($9, $10, $11, $12)"
+    },
+    {
+     "calls": 300000,
+     "total_ms": 11982.7,
+     "mean_ms": 0.0399,
+     "rows": 300000,
+     "query": "SELECT $2 FROM ONLY \"ar\".\"account\" x WHERE \"account_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+    },
+    {
+     "calls": 300000,
+     "total_ms": 6067.7,
+     "mean_ms": 0.0202,
+     "rows": 300000,
+     "query": "SELECT $2 FROM ONLY \"ar\".\"balance_bucket_definition\" x WHERE \"balance_bucket_definition_pk\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+    },
+    {
+     "calls": 100000,
+     "total_ms": 5819.0,
+     "mean_ms": 0.0582,
+     "rows": 100000,
+     "query": "SELECT EXISTS (SELECT $2 FROM ar.account WHERE account_pk = $1)"
+    },
+    {
+     "calls": 100000,
+     "total_ms": 3637.4,
+     "mean_ms": 0.0364,
+     "rows": 100000,
+     "query": "INSERT INTO ar.account (aggregate_sequence_number, account_pk, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+    },
+    {
+     "calls": 100000,
+     "total_ms": 1840.4,
+     "mean_ms": 0.0184,
+     "rows": 300000,
+     "query": "SELECT code, balance_bucket_definition_pk FROM ar.balance_bucket_definition WHERE code = ANY($1)"
+    },
+    {
+     "calls": 100000,
+     "total_ms": 902.7,
+     "mean_ms": 0.009,
+     "rows": 0,
+     "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+    },
+    {
+     "calls": 100000,
+     "total_ms": 115.2,
+     "mean_ms": 0.0012,
+     "rows": 0,
+     "query": "COMMIT"
+    },
+    {
+     "calls": 59,
+     "total_ms": 3.5,
+     "mean_ms": 0.0592,
+     "rows": 59,
+     "query": "SELECT coalesce(max(head) - min(position), $1), max(head) FROM core.bakeoff_progress"
+    },
+    {
+     "calls": 1,
+     "total_ms": 2.0,
+     "mean_ms": 1.9946,
+     "rows": 172,
+     "query": "SELECT ns.nspname, t.oid, t.typname, t.typtype, t.typnotnull, t.elemtypoid FROM ( -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a -- We first do this for the type (innerest-most subquery), and then for its element type -- This also returns"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.6,
+     "mean_ms": 0.3141,
+     "rows": 2,
+     "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT schemaname || $2 || relname AS name, n_tup_ins, n_tup_upd, n_tup_hot_upd, n_tup_del, n_dead_tup, autovacuum_count, autoanalyze_count FROM pg_stat_user_tables) t"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.3,
+     "mean_ms": 0.3267,
+     "rows": 1,
+     "query": "SELECT pg_stat_statements_reset()"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.3,
+     "mean_ms": 0.1416,
+     "rows": 2,
+     "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT name, blks_zeroed, blks_hit, blks_read, blks_written, blks_exists, flushes, truncates FROM pg_stat_slru WHERE name IN ($2, $3)) t"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.2,
+     "mean_ms": 0.1145,
+     "rows": 2,
+     "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT * FROM pg_stat_wal) t"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.1,
+     "mean_ms": 0.1371,
+     "rows": 1,
+     "query": "SELECT coalesce(sum(calls), $1) FROM pg_stat_statements WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.1,
+     "mean_ms": 0.0647,
+     "rows": 2,
+     "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT * FROM pg_stat_bgwriter) t"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.1,
+     "mean_ms": 0.111,
+     "rows": 0,
+     "query": "-- Load field definitions for (free-standing) composite types SELECT typ.oid, att.attname, att.atttypid FROM pg_type AS typ JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace) JOIN pg_class AS cls ON (cls.oid = typ.typrelid) JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid) WHERE (typ.typ"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.1,
+     "mean_ms": 0.0472,
+     "rows": 2,
+     "query": "SELECT coalesce(json_agg(t), $1) FROM (SELECT * FROM pg_stat_checkpointer) t"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.1,
+     "mean_ms": 0.0437,
+     "rows": 2,
+     "query": "SELECT xact_commit, xact_rollback FROM pg_stat_database WHERE datname = current_database()"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.1,
+     "mean_ms": 0.0679,
+     "rows": 1,
+     "query": "SELECT min(position), max(head) FROM core.bakeoff_progress"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.0,
+     "mean_ms": 0.0422,
+     "rows": 10,
+     "query": "SELECT value.code, value.reference_value_pk FROM core.reference_value value JOIN core.reference_type type ON type.reference_type_pk = value.reference_type_fk WHERE type.code = $1"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.0,
+     "mean_ms": 0.0371,
+     "rows": 0,
+     "query": "-- Load enum fields SELECT pg_type.oid, enumlabel FROM pg_enum JOIN pg_type ON pg_type.oid=enumtypid ORDER BY oid, enumsortorder"
+    },
+    {
+     "calls": 2,
+     "total_ms": 0.0,
+     "mean_ms": 0.0153,
+     "rows": 2,
+     "query": "SELECT clock_timestamp()"
+    },
+    {
+     "calls": 1,
+     "total_ms": 0.0,
+     "mean_ms": 0.0245,
+     "rows": 1,
+     "query": "SELECT version()"
+    }
+   ],
+   "commits_per_command": 1.0,
+   "rollbacks": 0,
+   "lag_samples": [
+    [
+     0.7,
+     0
+    ],
+    [
+     2.8,
+     1788
+    ],
+    [
+     4.8,
+     3865
+    ],
+    [
+     6.7,
+     5946
+    ],
+    [
+     8.7,
+     7924
+    ],
+    [
+     10.7,
+     9990
+    ],
+    [
+     12.7,
+     12025
+    ],
+    [
+     14.7,
+     14002
+    ],
+    [
+     16.6,
+     15914
+    ],
+    [
+     18.6,
+     18116
+    ],
+    [
+     20.5,
+     20290
+    ],
+    [
+     22.5,
+     22277
+    ],
+    [
+     24.5,
+     24400
+    ],
+    [
+     26.5,
+     26061
+    ],
+    [
+     28.5,
+     28104
+    ],
+    [
+     30.4,
+     29469
+    ],
+    [
+     32.4,
+     30836
+    ],
+    [
+     34.4,
+     32196
+    ],
+    [
+     36.4,
+     33987
+    ],
+    [
+     38.4,
+     36116
+    ],
+    [
+     40.3,
+     38091
+    ],
+    [
+     42.3,
+     40052
+    ],
+    [
+     44.3,
+     42105
+    ],
+    [
+     46.3,
+     44111
+    ],
+    [
+     48.3,
+     46099
+    ],
+    [
+     50.2,
+     48141
+    ],
+    [
+     52.3,
+     50164
+    ],
+    [
+     54.2,
+     52190
+    ],
+    [
+     56.2,
+     54107
+    ],
+    [
+     58.4,
+     56034
+    ],
+    [
+     60.3,
+     58022
+    ],
+    [
+     62.3,
+     59904
+    ],
+    [
+     64.3,
+     61937
+    ],
+    [
+     66.2,
+     63908
+    ],
+    [
+     68.3,
+     65560
+    ],
+    [
+     70.1,
+     67589
+    ],
+    [
+     72.1,
+     69463
+    ],
+    [
+     74.1,
+     71177
+    ],
+    [
+     76.1,
+     72718
+    ],
+    [
+     78.0,
+     74691
+    ],
+    [
+     80.5,
+     77533
+    ],
+    [
+     82.4,
+     79541
+    ],
+    [
+     84.3,
+     81652
+    ],
+    [
+     86.2,
+     83689
+    ],
+    [
+     88.3,
+     85711
+    ],
+    [
+     90.4,
+     87835
+    ],
+    [
+     92.3,
+     89562
+    ],
+    [
+     94.3,
+     91333
+    ],
+    [
+     96.4,
+     93444
+    ],
+    [
+     98.4,
+     95722
+    ],
+    [
+     100.4,
+     96966
+    ],
+    [
+     102.4,
+     98025
+    ],
+    [
+     104.3,
+     99170
+    ],
+    [
+     106.2,
+     100000
+    ],
+    [
+     108.1,
+     100000
+    ],
+    [
+     110.0,
+     100000
+    ],
+    [
+     111.8,
+     100000
+    ],
+    [
+     113.6,
+     100000
+    ],
+    [
+     115.4,
+     100000
+    ]
+   ],
+   "max_lag_events": 100000,
+   "end_head": 600000,
+   "catchup_s": null,
+   "settle_s": null,
+   "verify": {
+    "workload": "verify-chain",
+    "aggregates": 600000,
+    "events": 600000,
+    "problems": 0,
+    "ok": true,
+    "first_problems": [],
+    "elapsed_s": 7.365
+   },
+   "gates": {
+    "M new accounts under their derived keys, with the formulas' balances and one account.placed each": true,
+    "every hash chain verifies": true
+   },
+   "gates_skipped": [
+    "every account summary matches the account and its buckets",
+    "every payment read model row matches its payment",
+    "every payment line's applied amount matches the payment's distribution"
+   ],
+   "gates_pass": true,
+   "rule_latency_ms": {
+    "all": {
+     "count": 0,
+     "p50": null,
+     "p95": null,
+     "p99": null,
+     "max": null
+    }
+   },
+   "register_lateness_ms": {
+    "count": 0,
+    "p50": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+   },
+   "events_written": 100000,
+   "images": {
+    "db": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+    "bench": "sha256:ec9b5de334d5111aed0ff78fdfa5a4b882ed0345bb4234e6b0c63ec28cfa9ba4"
+   },
+   "limits": {
+    "db": {
+     "cpus": 6.0,
+     "mem_bytes": 12884901888
+    },
+    "bench": {
+     "cpus": 4.0,
+     "mem_bytes": 4294967296
+    }
+   },
+   "clock": {
+    "start": "2026-11-15 02:09:48.268839+00",
+    "end": "2026-11-15 02:11:41.453462+00"
+   },
+   "warmup": false
+  }
+ ]
+}

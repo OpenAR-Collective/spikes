@@ -80,7 +80,7 @@ The new code is about 1,200 lines of C# and a 190-line SQL schema: the reader is
 
 ## Tests
 
-The 40 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
+The 41 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
 
 - **Event store (9):** the champion's seven, plus a test that `TRUNCATE` is refused, and a test that the store assigns `global_sequence_number` and `recorded_at` and ignores any value a caller supplies.
 - **Reader (8):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The eighth is new: two readers sharing a projection apply each event exactly once.
