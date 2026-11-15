@@ -85,12 +85,15 @@ def test_both_marks_read_the_sequence_under_its_lock():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_the_marks_read_the_position_the_store_reports():
+def test_the_marks_read_the_highest_event_number():
     _write_event()
     with connection.cursor() as cursor:
         cursor.execute("SELECT max(global_sequence_number) FROM core.event")
         highest = cursor.fetchone()[0]
+        cursor.execute(direct_reader.POSITION_SQL)
+        direct = cursor.fetchone()[0]
     assert projections.sequence_position() == highest
+    assert direct == highest
 
 
 @pytest.mark.django_db(transaction=True)

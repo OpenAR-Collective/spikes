@@ -14,8 +14,9 @@ psql inside the container, and drops the copy.
 PostgreSQL documents DISCARD ALL as CLOSE ALL; SET SESSION AUTHORIZATION
 DEFAULT; RESET ALL; DEALLOCATE ALL; UNLISTEN *; SELECT
 pg_advisory_unlock_all(); DISCARD PLANS; DISCARD TEMP; DISCARD SEQUENCES.
-The split also times the same list without DEALLOCATE ALL and DISCARD PLANS,
-a lighter reset that keeps a session's plans.
+The split also times the reset Npgsql 9 sends in place of DISCARD ALL once a
+connection has a statement prepared: the same list without DEALLOCATE ALL and
+DISCARD PLANS, in Npgsql's order, which keeps a session's plans.
 
     py -3 reset_check.py [accounts] [rounds] [inserts per round]
 
@@ -62,12 +63,14 @@ def psql(database, sql):
 
 
 # The two kinds step 0 compares, then the split: each command DISCARD ALL
-# stands for, alone, and the lighter reset without the two that drop plans.
+# stands for, alone, and Npgsql's lighter reset without the two that drop
+# plans, as NpgsqlConnector.GenerateResetMessage writes it.
 STEP0 = {"warm": "", "after DISCARD ALL": "DISCARD ALL;"}
 PARTS = ["CLOSE ALL;", "SET SESSION AUTHORIZATION DEFAULT;", "RESET ALL;", "DEALLOCATE ALL;", "UNLISTEN *;",
          "SELECT pg_advisory_unlock_all();", "DISCARD PLANS;", "DISCARD TEMP;", "DISCARD SEQUENCES;"]
-LIGHT = " ".join(part for part in PARTS if part not in ("DEALLOCATE ALL;", "DISCARD PLANS;"))
-LIGHT_NAME = "the list without DEALLOCATE ALL and DISCARD PLANS"
+LIGHT = ("SET SESSION AUTHORIZATION DEFAULT; RESET ALL; CLOSE ALL; UNLISTEN *; SELECT pg_advisory_unlock_all(); "
+         "DISCARD SEQUENCES; DISCARD TEMP;")
+LIGHT_NAME = "Npgsql's reset with statements prepared"
 SPLIT = {**{f"after {part.rstrip(';')}": part for part in PARTS}, f"after {LIGHT_NAME}": LIGHT}
 
 
