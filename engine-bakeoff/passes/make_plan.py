@@ -19,7 +19,8 @@ whose fourth argument is the commit it measures:
 or "round2-laptop", round 2's pass on the laptop, which also takes the
 commit it measures as its fourth argument; or "round2-shape", round 2's
 code-shape pass, which does too; or "round2-diag", round 2's diagnostic pass,
-which does too.
+which does too; or "round2-fix", the pass that tests the reader fix after
+it, which does too.
 
 Runs that share a block stay together, back to back: the blocks are shuffled
 within their group, and the runs within each block.
@@ -184,7 +185,9 @@ def aws_5m_runs():
 # A mode side runs with the engine settings of the side it is a mode of.
 MODE_BASE = {"csharp-wax-ef": "csharp-wax", "csharp-wax-batched": "csharp-wax", "python-direct": "python",
              "csharp-wax-noreset": "csharp-wax", "csharp-wax-prepared": "csharp-wax",
-             "csharp-wax-fair-batched": "csharp-wax", "csharp-wax-fair-prepared": "csharp-wax"}
+             "csharp-wax-fair-batched": "csharp-wax", "csharp-wax-fair-prepared": "csharp-wax",
+             "csharp-wax-npgsql-defaults": "csharp-wax", "csharp-wax-autoprepare": "csharp-wax",
+             "csharp-wax-custom-plans": "csharp-wax"}
 
 # The EF Core mini-pass's configurations, all at 8 workers: the payment
 # file, real time, the accrual, and the payment file with the engine paused,
@@ -305,6 +308,41 @@ def round2_diag_runs():
     return planned
 
 
+# The pass that tests the reader fix and settles what the diagnostic pass left
+# open. Group 1 runs the payment file at 8 workers in one back-to-back block
+# of driver settings: csharp-wax with its own settings, with Npgsql's
+# defaults, with each setting alone, and with custom plans forced. Group 2 is
+# the fix: the configuration that failed twice in 20 runs, csharp-wax-rw8 on
+# the payment file at 8 workers, in six blocks of six, each block five plain
+# runs and one with a sleep after small reader passes, in an order drawn from
+# the seed. The second one-worker pair is left for another evening.
+FIX_DRIVER_BLOCK = ("csharp-wax", "csharp-wax-npgsql-defaults", "csharp-wax-noreset", "csharp-wax-autoprepare",
+                    "csharp-wax-custom-plans")
+FIX_BLOCKS, FIX_PLAIN_PER_BLOCK = 6, 5
+# Engine arguments the layout adds: every C# run with the engine prints its
+# readers' pass counts every 10 seconds, and the small-pass runs sleep 50 ms
+# after a pass that applies fewer than 100 events.
+FIX_PASS_REPORT = "--pass-report-seconds 10"
+FIX_SMALL_PASS = "--small-pass-events 100 --small-pass-sleep-ms 50"
+
+
+def round2_fix_runs():
+    planned = [run(1, side, "batch-payments", 8, block="drivers-d1", suffix="d1") for side in FIX_DRIVER_BLOCK]
+    for n in range(1, FIX_BLOCKS + 1):
+        planned += [run(2, "csharp-wax-rw8", "batch-payments", 8, block=f"fix-b{n}", suffix=f"b{n}-{k}")
+                    for k in range(1, FIX_PLAIN_PER_BLOCK + 1)]
+        planned.append(run(2, "csharp-wax-rw8", "batch-payments", 8, "small-pass-sleep", block=f"fix-b{n}", suffix=f"b{n}"))
+    return planned
+
+
+def round2_fix_engine_args(entry, args):
+    if entry["side"].startswith("csharp-wax") and entry["diagnostic"] != "no-engine":
+        args = f"{args} {FIX_PASS_REPORT}"
+    if entry["diagnostic"] == "small-pass-sleep":
+        args = f"{args} {FIX_SMALL_PASS}"
+    return args
+
+
 # Lines a layout adds to its plan's Markdown, under the generation line.
 NOTES = {
     "efcore": [
@@ -349,6 +387,17 @@ NOTES = {
         "",
         "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the earlier round 2 passes; every run records them. The laptop ran at different speeds on different evenings, so only comparisons within a back-to-back block are sound, and the pass's absolute figures do not compare with earlier passes.",
     ],
+    "round2-fix": [
+        "The pass that tests the reader fix after round 2's diagnostic pass, approved on 2026-11-15, in the window from 22:00 that day to 07:00 on 2026-11-16. The diagnostic pass and its follow-up repeats found that csharp-wax-rw8 on the payment file at 8 workers failed a read model gate in 2 of 20 runs, because the reader's high-water mark read the sequence without its lock and could run up to 32 numbers ahead for a moment. The measured tree is `{measured_commit}`: the published `main` (`9eacdbb`, the diagnostic pass and its sequence-read test) with the fix, which reads the mark with `pg_sequence_last_value()` and never moves a checkpoint back on a claim, and with No Reset On Close and Max Auto Prepare 20 as csharp-wax's own settings. Every earlier mode keeps the driver settings it was measured with, csharp-wax-rw8 included, so the fix is tested in exactly the configuration that failed. The plan commit adds only the plan files, the test record, and the generator's layout, and no code changes after it.",
+        "",
+        "Before group 1, [reset_check.py](reset_check.py) runs again on a throwaway copy of csharp-wax's template, with nothing else running: step 0, timed cleanly this time, and the split of DISCARD ALL into the commands it stands for. Its output is kept with the pass as `round2-fix.reset-check.txt`.",
+        "",
+        "Group 1 runs the payment file at 8 workers in one back-to-back block of five csharp-wax driver settings, in an order drawn from the seed: csharp-wax with its own settings; csharp-wax-npgsql-defaults, as earlier passes ran it; csharp-wax-noreset and csharp-wax-autoprepare, each setting alone, which the diagnostic pass did not measure apart, although Max Auto Prepare alone also switches Npgsql to a reset that keeps cached plans once a connection has a statement prepared, so it does not measure preparation apart from plan retention; and csharp-wax-custom-plans, which forces custom plans to test whether a generic plan made the prepared event insert slower. One block is an indication, not a result.",
+        "",
+        "Group 2 is the fix: 30 plain runs of csharp-wax-rw8 on the payment file at 8 workers, in six blocks of six, each with one more run that sleeps a reader 50 ms after a pass that applies fewer than 100 events. The plain runs ask whether the fix holds: if the failure rate were still near 2 in 20, 30 clean runs would happen by chance about 4 percent of the time. The small-pass runs test a hypothesis about the follow-up repeats that ran slower: that readers close to the head of the stream make many small passes, whose fixed cost slows the bench. Every C# run with the engine prints its readers' passes and events every 10 seconds, so each run's pass rate can be followed over time. A second one-worker pair with the engine paused would take about two and a half hours, and is left for another evening.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. The harness's own reads of the head of the stream, in both sides' progress views, still read the sequence without its lock, so a lag sample or the catch-up target can read up to 32 high for a moment. They decide only when the harness stops waiting for catch-up, never what a gate checks, and changing them would change both sides' measuring method, migrations, and seed templates, so they wait for a later change. A run that fails or stalls on catch-up is checked for this before anything else. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the earlier round 2 passes; every run records them. Only comparisons within a back-to-back block are sound.",
+    ],
 }
 
 
@@ -365,7 +414,11 @@ LAYOUTS = {
     "round2-laptop": (round2_laptop_runs, {}),
     "round2-shape": (round2_shape_runs, {}),
     "round2-diag": (round2_diag_runs, {}),
+    "round2-fix": (round2_fix_runs, {}),
 }
+
+# A layout's changes to the engine arguments each run would otherwise get.
+ENGINE_ARGS = {"round2-fix": round2_fix_engine_args}
 
 
 def pc_runs():
@@ -403,7 +456,7 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
-    if layout in ("efcore", "round2-laptop", "round2-shape", "round2-diag"):
+    if layout in ("efcore", "round2-laptop", "round2-shape", "round2-diag", "round2-fix"):
         settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
@@ -434,6 +487,8 @@ def main():
         entry["label"] = label(name, entry)
         side = entry["side"] if entry["side"] in tuned else MODE_BASE[entry["side"]]
         entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else tuned[side]
+        if layout in ENGINE_ARGS:
+            entry["engine_args"] = ENGINE_ARGS[layout](entry, entry["engine_args"])
     plan = {
         "name": name, "seed": seed, "layout": layout, "accounts": settings.get("accounts", ACCOUNTS),
         "placements": PLACEMENTS, "warmup_s": WARMUP_S, "duration_s": DURATION_S,
