@@ -2,7 +2,7 @@
 
 This folder holds the challenger side of the [engine bake-off](../README.md): the Wax command path in Python, adapted from the HiveAR prototype Andy Troiano published with his proposal to build Wax in Python on Django, plus the Foundation-written code that the bake-off's [workloads](../WORKLOADS.md) need beyond his prototype.
 
-Status: built to [WORKLOADS.md](../WORKLOADS.md). It builds, its 57 tests pass, and the commands the harness calls run end to end. It made 28 of round 1's 100 runs, and every one passed every correctness gate that applied to it. The results are in [results](../results/README.md), and [REPORT-ROUND-1.md](../REPORT-ROUND-1.md) discusses them.
+Status: built to [WORKLOADS.md](../WORKLOADS.md). It builds, its 101 tests pass, and the commands the harness calls run end to end. It made 28 of round 1's 100 runs, and every one passed every correctness gate that applied to it. The results are in [results](../results/README.md), and [REPORT-ROUND-1.md](../REPORT-ROUND-1.md) discusses them.
 
 ## Provenance
 
@@ -36,6 +36,7 @@ The harness side `python-direct` runs the same Python command path in plain SQL 
 - **What stays on Django:** the migrations, so the schema is the Python side's exactly; the seed loader; and `verify-chain`.
 - **What it runs:** the payment file, the interest accrual, and the real-time mix (`direct/drivers.py`, which reuse the Django side's driver logic, keys, and counts). The bulk and placement workloads still run only on the Django side.
 - **The proof:** `tests/test_direct_twin.py` sends twin accounts through Andy's `dispatch` and through the direct path, for payments to one account and to several with directions and a dispute, repeats, reused keys, refusals, a moved version, accrual in four cases, placement, disputes, hashing off, and the rule actions and the register's fire command, each with pipeline mode on and off, and requires the same events and state. With hashing off, a stale version must still be refused by the unique constraint. `tests/test_direct_reader.py` builds the three read models from one stream with his reader and with the direct reader and requires the same rows. `tests/test_direct_rules.py` lets the Django runner and poller act on one set of twin accounts and the direct ones on the other, through every rule, and requires the same events, state, register entries, and tasks.
+- **The reader fixes:** after round 2's diagnostic pass, both readers, Andy's in `wax/projections.py` and the direct one, read the sequence with `pg_sequence_last_value()`, under its lock, and a claim never moves a checkpoint back. `tests/test_reader_mark_and_claim.py` checks the statements both marks read with, and that neither reader moves a checkpoint back when another reader moves it between a pass's look and its claim.
 - **The switch in shared files:** `docker-compose.yml` sets `WAX_PATH` from `BAKEOFF_PATH`, `django` unless a side says otherwise, `bakeoff/__main__.py` sends `bench` to `direct/drivers.py` under `WAX_PATH=direct` and refuses a workload it has not been built for, and `bakeoff/engine.py` starts the direct reader, rule runners, and register pollers under the same setting.
 
 ## The harness's commands
@@ -64,16 +65,16 @@ The rule was to keep everything the Wax write path and its read side need, as An
 
 ### Kept unchanged
 
-These 35 files are byte-for-byte copies of the originals.
+These 34 files are byte-for-byte copies of the originals.
 
-- The Wax framework: `wax/commands.py` (command dispatch), `wax/projections.py` (the projection reader and its high-water mark), `wax/release.py`, `wax/apps.py`, both of his `wax/migrations/`, and the management commands `run_projections`, `projections`, and `verify_chain`.
+- The Wax framework: `wax/commands.py` (command dispatch), `wax/release.py`, `wax/apps.py`, both of his `wax/migrations/`, and the management commands `run_projections`, `projections`, and `verify_chain`.
 - The HiveAR slice: `hivear/allocation.py` (payment allocation and the waterfall), `hivear/currency.py`, all five of his `hivear/migrations/`, and the `seed_demo` command that loads a sample bucket registry.
 - The tests for those pieces: `tests/conftest.py`, `tests/test_event_store.py`, `tests/test_payments.py`, and `tests/test_projection_reader.py`.
 - Supporting files: `manage.py`, `pytest.ini`, `.dockerignore`, `config/__init__.py`, and `deploy/initdb/10-runtime-role.sh`, which creates the runtime database role.
 
 ### Changed
 
-Each of these thirteen files carries a header comment naming its source and its change.
+Each of these fourteen files carries a header comment naming its source and its change.
 
 | File | Change | Reason |
 | --- | --- | --- |
@@ -85,6 +86,7 @@ Each of these thirteen files carries a header comment naming its source and its 
 | `hivear/projections.py` | The account summary handles `account.interest_accrued` and `account.status_changed` and ignores the other new account events. | The reader stops on an event type it neither handles nor ignores. |
 | `wax/models.py` | Added the PendingEvent model. | The register. |
 | `wax/hashing.py` | Adds the `WAX_HASH=off` switch and its placeholder hash. The hash computation is unchanged. | The hashing-off diagnostic, which shows what hashing costs. |
+| `wax/projections.py` | The high-water mark reads the sequence with `pg_sequence_last_value()`, under the sequence's lock, and a claim that finds a checkpoint already at or past the pass's mark leaves it alone; a hook lets a test act between a pass's look at a checkpoint and its claim. | Round 2's diagnostic pass found that a plain read of the sequence can run up to 32 numbers ahead for a moment, which let a reader pass events whose transactions were still open, and that a reader on an older mark could move a checkpoint back. |
 | `wax/store.py` | With `WAX_HASH=off`, append skips the head read and stores the placeholder hash; the row lock and the unique constraint on the aggregate's version still catch a conflict. Unchanged otherwise. | The hashing-off diagnostic. |
 | `Dockerfile` | One Python stage; the default process is the projection reader; the image carries `bakeoff/` and `direct/`. | The frontend build, the OpenAPI export, static files, and gunicorn served the HTTP layer. |
 | `requirements.txt` | Removed `django-ninja`, `gunicorn`, and `whitenoise`. | They served the HTTP API and the frontend. |
@@ -117,7 +119,7 @@ docker compose up -d db
 docker compose run --rm tools
 ```
 
-That runs the 57 tests. To run the workloads by hand on a small seed:
+That runs the 101 tests. To run the workloads by hand on a small seed:
 
 ```
 docker compose up -d migrate
@@ -130,4 +132,4 @@ docker compose --profile tools --profile bakeoff down -v
 
 Measured runs go through the [harness](../harness/README.md), which applies the shared limits and database settings.
 
-Last checked on 2026-10-09 with Docker Desktop: all 57 tests pass. On 2026-10-08 a hand run on 2,000 seeded accounts posted the payment file and the accrual with no failures, ran the real-time mix for ten seconds, and left every reader at the head of the stream, every due first-contact entry fired with exactly one task, and every chain verified.
+Last checked on 2026-11-15 with Docker Desktop: all 101 tests pass. On 2026-10-08 a hand run on 2,000 seeded accounts posted the payment file and the accrual with no failures, ran the real-time mix for ten seconds, and left every reader at the head of the stream, every due first-contact entry fired with exactly one task, and every chain verified.

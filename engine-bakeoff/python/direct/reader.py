@@ -17,6 +17,11 @@ tables, and the projection names are the Python side's, so the harness's
 progress view and gates read them unchanged. The definition digest that
 wax/projections.py compares is computed from the Django handlers' source, so
 this reader leaves the stored digest as it is and does not compare it.
+
+Two fixes are shared with wax/projections.py. The mark reads the sequence with
+pg_sequence_last_value(), under the sequence's lock (see POSITION_SQL), and a
+claim that finds the checkpoint already at or past the pass's mark leaves it
+alone rather than moving it back.
 """
 
 import logging
@@ -31,6 +36,19 @@ from direct.db import as_json
 
 logger = logging.getLogger("direct.reader")
 EVENT_COLUMNS = "global_sequence_number, event_type, aggregate_pk_ref, aggregate_type, new_value, metadata"
+
+# The sequence position, read with pg_sequence_last_value(), which reads the
+# sequence under its buffer lock, and something that changes whenever the
+# database underneath this reader is not the one it was a moment ago. A plain
+# SELECT of last_value reads the row without that lock, and while nextval()
+# writes its WAL record, which it does on the first call after a checkpoint and
+# on every 33rd call after that, the row briefly holds a value 32 past the
+# number that call hands out. A mark built on such a read can pass events whose
+# transactions are still open.
+POSITION_SQL = (
+    "SELECT COALESCE(pg_sequence_last_value('core.seq_event_global_sequence'::regclass), 0), "
+    "pg_postmaster_start_time()::text || '/' || current_database()"
+)
 
 
 @dataclass(frozen=True)
@@ -61,18 +79,14 @@ class HighWaterMark:
         self.value = 0
 
     def advance(self, conn) -> int:
-        position_sql = (
-            "SELECT CASE WHEN is_called THEN last_value ELSE 0 END, "
-            "pg_postmaster_start_time()::text || '/' || current_database() FROM core.seq_event_global_sequence"
-        )
         with conn.cursor() as cur:
-            cur.execute(position_sql)
+            cur.execute(POSITION_SQL)
             position, identity = cur.fetchone()
             if identity != self._identity or position < self._last_sampled:
                 self._forget(identity)
             if position > self._last_sampled:
                 with conn.transaction():
-                    cur.execute(position_sql)
+                    cur.execute(POSITION_SQL)
                     position = cur.fetchone()[0]
                     cur.execute("SELECT pg_current_xact_id()::text::bigint")
                     boundary = cur.fetchone()[0]
@@ -246,6 +260,10 @@ class Reader:
         self.projections = projections
         self.batch_size = batch_size
         self.mark = HighWaterMark()
+        # For tests: called with the projection's name and the pass's mark
+        # after the unlocked look at a checkpoint and before its claim, the
+        # window in which another reader can move it.
+        self.before_claim = None
 
     def _handle(self, cur, item, event):
         handler = item.handler_for(event)
@@ -284,6 +302,8 @@ class Reader:
             row = cur.fetchone()
             if row is None or row[1] is not None or row[0] >= safe:
                 return 0
+            if self.before_claim:
+                self.before_claim(item.name, safe)
             with self.conn.transaction():
                 cur.execute(
                     "SELECT last_global_sequence_number FROM core.projection_checkpoint"
@@ -292,6 +312,11 @@ class Reader:
                 )
                 locked = cur.fetchone()
                 if locked is None:
+                    return 0
+                if locked[0] >= safe:
+                    # Another reader, on a later mark, moved the checkpoint to or
+                    # past this pass's mark after the look above. Writing this
+                    # pass's mark would move the checkpoint back.
                     return 0
                 cur.execute(
                     f"SELECT {EVENT_COLUMNS} FROM core.event WHERE global_sequence_number > %s"

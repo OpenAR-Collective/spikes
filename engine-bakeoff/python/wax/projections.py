@@ -1,3 +1,12 @@
+# Adapted from the HiveAR prototype by Andy Troiano
+# (https://github.com/atroiano/platform-design, commit 361b6aa,
+# prototype/wax/projections.py), Apache License 2.0.
+# Modified by The OpenAR Collective contributors.
+# Changes: the high-water mark reads the sequence with pg_sequence_last_value(),
+# under the sequence's lock, and a claim that finds the checkpoint already at
+# or past the pass's mark leaves it alone rather than moving it back; a hook
+# lets a test act between a pass's look at a checkpoint and its claim
+# (Foundation-written, after the engine bake-off's round 2 diagnostic pass).
 """Asynchronous read model maintenance: the subscribe operation in WAX-0001.
 
 Events are delivered in global_sequence_number order, which is also each
@@ -96,12 +105,22 @@ def _row(sql, params=None):
 
 
 # The sequence position, and something that changes whenever the database
-# underneath this process is not the one it was a moment ago.
+# underneath this process is not the one it was a moment ago. The position is
+# read with pg_sequence_last_value(), which reads the sequence under its buffer
+# lock. A plain SELECT of last_value reads the row without that lock, and while
+# nextval() writes its WAL record, which it does on the first call after a
+# checkpoint and on every 33rd call after that, the row briefly holds a value
+# 32 past the number that call hands out. A mark built on such a read can pass
+# events whose transactions are still open.
 _POSITION = (
-    "SELECT CASE WHEN is_called THEN last_value ELSE 0 END, "
-    "pg_postmaster_start_time()::text || '/' || current_database() "
-    "FROM core.seq_event_global_sequence"
+    "SELECT COALESCE(pg_sequence_last_value('core.seq_event_global_sequence'::regclass), 0), "
+    "pg_postmaster_start_time()::text || '/' || current_database()"
 )
+
+# For tests: called with the projection's name and the pass's mark after the
+# unlocked look at a checkpoint and before its claim, the window in which
+# another worker can move it.
+before_claim = None
 
 
 def sequence_position() -> int:
@@ -313,6 +332,8 @@ def _advance(item, safe, batch_size) -> int:
         retry(item.name)
     if last >= safe:
         return 0
+    if before_claim:
+        before_claim(item.name, safe)
 
     with transaction.atomic():
         # SKIP LOCKED lets several workers, of either color, share a version.
@@ -322,6 +343,11 @@ def _advance(item, safe, batch_size) -> int:
             [item.name],
         )
         if locked is None:
+            return 0
+        if locked[0] >= safe:
+            # Another worker, on a later mark, moved the checkpoint to or past
+            # this pass's mark after the look above. Writing this pass's mark
+            # would move the checkpoint back.
             return 0
         events = list(
             Event.objects.filter(

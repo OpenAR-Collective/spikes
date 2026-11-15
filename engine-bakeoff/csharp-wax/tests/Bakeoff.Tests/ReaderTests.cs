@@ -8,7 +8,9 @@
 // anywhere on the server and other test classes run at the same time. The
 // test that the reader refuses to run inside another transaction has no
 // counterpart: the C# reader opens its own connections and cannot be handed
-// one. Added: two readers sharing a projection apply each event once.
+// one. Added: two readers sharing a projection apply each event once; the
+// sequence position is read under the sequence's lock; and a claim never
+// moves a checkpoint back.
 
 using System.Text.Json.Nodes;
 using Npgsql;
@@ -288,6 +290,49 @@ public sealed class ReaderTests(DatabaseFixture db) : IClassFixture<DatabaseFixt
         mark.Value = position + 1_000;   // as if the store had been ahead
         mark.LastSampled = position + 1_000;
         Assert.True(await mark.AdvanceAsync() <= await new ProjectionReader(db.Engine.DataSource, []).SequencePositionAsync());
+    }
+
+    [Fact]
+    public void The_sequence_position_is_read_under_the_sequence_lock()
+    {
+        // A plain SELECT of last_value can see, for a moment, a number 32 past
+        // any handed out, and a mark built on it can pass open transactions'
+        // events. The race is too rare to provoke here (a few times in tens of
+        // millions of reads under a heavy nextval load), so this checks the reads.
+        Assert.StartsWith("SELECT COALESCE(pg_sequence_last_value(", EventStore.PositionSql);
+        Assert.StartsWith("SELECT COALESCE(pg_sequence_last_value(", HighWaterMark.PositionSql);
+        Assert.DoesNotContain("last_value ELSE", EventStore.PositionSql + HighWaterMark.PositionSql);
+    }
+
+    [Fact]
+    public async Task A_claim_never_moves_the_checkpoint_back()
+    {
+        // A pass looks at the checkpoint without a lock, then claims it. Another
+        // reader on a later mark can move it in between; this pass's mark is
+        // then behind the checkpoint, and writing it would move the checkpoint back.
+        var capture = new Capture();
+        var projection = capture.Build(NewName("capture"));
+        var reader = await Reader(projection);
+        long? movedTo = null;
+        reader.BeforeClaim = async (name, safe) =>
+        {
+            if (movedTo is null && name == projection.Name)
+            {
+                movedTo = safe + 10;
+                await new Scenario(db).Execute(
+                    "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2 WHERE projection_name = $1", name, movedTo.Value);
+            }
+        };
+        await Write(Guid.NewGuid(), 1, "one");
+
+        var deadline = DateTime.UtcNow + Patience;
+        while (movedTo is null)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "the reader never reached a claim");
+            await reader.RunOnceAsync();
+            await Task.Delay(50);
+        }
+        Assert.Equal(movedTo.Value, (await Row(reader, projection.Name)).Position);
     }
 
     [Fact]

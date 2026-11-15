@@ -3,7 +3,8 @@
 // prototype/wax/projections.py, class HighWaterMark), Apache License 2.0.
 // Modified by The OpenAR Collective contributors.
 // Changes: ported to C#, reading through its own connections from a data
-// source, so it can never run inside another transaction.
+// source, so it can never run inside another transaction. The sequence is
+// read with pg_sequence_last_value(), under its lock.
 
 using Npgsql;
 using Wax.Store;
@@ -30,11 +31,11 @@ namespace Wax.Projections;
 public sealed class HighWaterMark(NpgsqlDataSource dataSource, int maxPending = 64)
 {
     // The sequence position, and something that changes whenever the database
-    // underneath this reader is not the one it was a moment ago.
-    const string PositionSql =
-        "SELECT CASE WHEN is_called THEN last_value ELSE 0 END, " +
-        "pg_postmaster_start_time()::text || '/' || current_database() " +
-        "FROM core.event_global_sequence_seq";
+    // underneath this reader is not the one it was a moment ago. The position
+    // is read under the sequence's lock, as EventStore.PositionSql explains.
+    internal const string PositionSql =
+        "SELECT COALESCE(pg_sequence_last_value('core.event_global_sequence_seq'::regclass), 0), " +
+        "pg_postmaster_start_time()::text || '/' || current_database()";
 
     readonly LinkedList<(long Boundary, long Position)> pending = new();
     string? identity;

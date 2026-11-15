@@ -7,7 +7,9 @@
 // types a projection covers, and its read model writes go out in one batch
 // inside a savepoint; when the batch fails, the page is replayed one event at
 // a time, as in the original. The worker loop leaves out the release checks
-// and heartbeat of the blue-green drill, which the bake-off does not run.
+// and heartbeat of the blue-green drill, which the bake-off does not run. A
+// claim that finds the checkpoint already at or past the pass's mark leaves
+// it alone rather than moving it back.
 
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -49,6 +51,10 @@ public sealed class ProjectionReader(
     HighWaterMark mark = new(dataSource);
 
     public IReadOnlyList<Projection> Projections => projections;
+
+    /// <summary>For tests: runs after a pass's unlocked look at a checkpoint and
+    /// before its claim, the window in which another reader can move it.</summary>
+    internal Func<string, long, Task>? BeforeClaim { get; set; }
 
     /// <summary>Forget the mark. Called after any error or reconnect.</summary>
     public void Reset() => mark = new HighWaterMark(dataSource);
@@ -258,6 +264,10 @@ public sealed class ProjectionReader(
         {
             return 0;
         }
+        if (BeforeClaim is { } beforeClaim)
+        {
+            await beforeClaim(projection.Name, safe);
+        }
 
         await using var connection = await dataSource.OpenConnectionAsync(cancellation);
         await using var transaction = await connection.BeginTransactionAsync(cancellation);
@@ -273,6 +283,13 @@ public sealed class ProjectionReader(
                 return 0;
             }
             locked = claimed;
+        }
+        if (locked >= safe)
+        {
+            // Another reader, on a later mark, moved the checkpoint to or past
+            // this pass's mark after the look above. Writing this pass's mark
+            // would move the checkpoint back.
+            return 0;
         }
 
         var events = new List<StoredEvent>();

@@ -220,9 +220,18 @@ public static class EventStore
     static NpgsqlParameter Array<T>(T[] values, NpgsqlDbType type) =>
         new() { Value = values, NpgsqlDbType = NpgsqlDbType.Array | type };
 
-    /// <summary>The sequence's position now: at or past every event already written.</summary>
+    /// <summary>
+    /// The sequence's position now: at or past every event already written.
+    ///
+    /// Read through pg_sequence_last_value(), which reads the sequence under
+    /// its buffer lock. A plain SELECT of last_value reads the row without that
+    /// lock, and while nextval() writes its WAL record, which it does on the
+    /// first call after a checkpoint and on every 33rd call after that, the row
+    /// briefly holds a value 32 past the number that call hands out. A high-water mark built
+    /// on such a read can pass events whose transactions are still open.
+    /// </summary>
     public const string PositionSql =
-        "SELECT CASE WHEN is_called THEN last_value ELSE 0 END FROM core.event_global_sequence_seq";
+        "SELECT COALESCE(pg_sequence_last_value('core.event_global_sequence_seq'::regclass), 0)";
 }
 
 /// <summary>SQL written with ? placeholders, as PostgreSQL's $1, $2, and so on.</summary>
