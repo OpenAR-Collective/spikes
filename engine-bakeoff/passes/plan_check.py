@@ -14,8 +14,11 @@ prepares the insert, runs it enough times to settle its plan choice and the
 foreign-key check's, then runs it under EXPLAIN ANALYZE inside a transaction
 that is rolled back, in rounds that alternate the order of the modes, after
 one unrecorded session that brings the copy's pages into memory. It prints
-the medians of execution time and of the two triggers' times, and the
-prepared statement's generic and custom plan counts, then drops the copy.
+the medians of planning time, execution time, and the two triggers' times,
+and the prepared statement's generic and custom plan counts, then drops the
+copy. EXPLAIN EXECUTE's planning time includes building a custom plan, which
+execution time, like pg_stat_statements' figure, leaves out; the foreign-key
+check's planning happens inside its trigger, so it falls in execution time.
 
     py -3 plan_check.py [accounts] [rounds] [inserts per round]
 
@@ -77,8 +80,10 @@ def session(mode):
     settle = "BEGIN;\n:exe;\nROLLBACK;\n" * SETTLE
     timed = "BEGIN;\nEXPLAIN (ANALYZE, COSTS OFF) :exe;\nROLLBACK;\n" * PER_ROUND
     out = psql(COPY, f"SET plan_cache_mode = {mode};\n" + BUILD + PREPARE + settle + timed + COUNTS)
-    timings = {"execution": [], "before_insert": [], "foreign_key": []}
+    timings = {"planning": [], "execution": [], "before_insert": [], "foreign_key": []}
     for block in out.split("Execution Time:")[:-1]:
+        planning = re.search(r"Planning Time: ([\d.]+) ms", block)
+        timings["planning"].append(float(planning.group(1)) if planning else None)
         before = re.search(r"Trigger trg_event_before_insert: time=([\d.]+)", block)
         fk = re.search(r"Trigger for constraint \S+: time=([\d.]+)", block)
         timings["before_insert"].append(float(before.group(1)) if before else None)
@@ -95,7 +100,7 @@ def main():
         print(f"template {TEMPLATE}, {ROUNDS} rounds of {PER_ROUND} timed inserts per mode after {SETTLE} untimed;"
               f" {check.strip()}")
         session("auto")
-        results = {mode: {"execution": [], "before_insert": [], "foreign_key": []} for mode in MODES}
+        results = {mode: {"planning": [], "execution": [], "before_insert": [], "foreign_key": []} for mode in MODES}
         counts = {mode: [] for mode in MODES}
         for n in range(ROUNDS):
             # The order of the modes turns each round, so no mode always runs first.
@@ -107,8 +112,8 @@ def main():
         print()
         print("Median milliseconds per insert, with the count of inserts timed, and the prepared statement's plan"
               " choices in each session (generic, custom):")
-        print("| plan_cache_mode | Execution | BEFORE INSERT trigger | Foreign-key check | Plan choices per session |")
-        print("| --- | --- | --- | --- | --- |")
+        print("| plan_cache_mode | Planning | Execution | BEFORE INSERT trigger | Foreign-key check | Plan choices per session |")
+        print("| --- | --- | --- | --- | --- | --- |")
         for mode, timings in results.items():
             cells = [f"{statistics.median(v):.3f} ({len(v)})" if v else "none" for v in timings.values()]
             choices = ", ".join(f"{g} and {c}" if (g, c) != (None, None) else "none"

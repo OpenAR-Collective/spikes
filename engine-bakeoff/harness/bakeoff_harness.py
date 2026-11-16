@@ -427,14 +427,42 @@ class SideSampler:
 
     def start(self):
         self.output = self.path.open("w", encoding="utf-8")
+        self.started = time.perf_counter()
         self.process = subprocess.Popen(
             ["docker", "exec", "-e", f"PGAPPNAME={SIDE_SAMPLER_NAME}", self.side.container("db"), "psql", "-U", "hivear",
              "-d", self.database, "-AtXq", "-c", self.sql], stdout=self.output, stderr=subprocess.STDOUT)
 
+    def backend_cpu(self):
+        """The sampler's own cost, measured: the CPU seconds used by its backend
+        and by the psql that runs it, both in the database container, from
+        /proc (user and system time in clock ticks), and the seconds since it
+        started; (None, None, None) if unread."""
+        db = self.side.container("db")
+        pid = self.side.psql("postgres", f"SELECT pid FROM pg_stat_activity WHERE application_name = '{SIDE_SAMPLER_NAME}'"
+                                         f" AND datname = '{self.database}'", check=False)
+        if not pid or not pid.isdigit():
+            return None, None, None
+        # The backend by its PID; the psql by the application name in its environment.
+        stats = sh(["docker", "exec", db, "sh", "-c",
+                    f"cat /proc/{pid}/stat; echo; for p in $(grep -l PGAPPNAME={SIDE_SAMPLER_NAME} /proc/[0-9]*/environ"
+                    " 2>/dev/null); do cat ${p%/environ}/stat; echo; done"], check=False).stdout
+        ticks = sh(["docker", "exec", db, "getconf", "CLK_TCK"], check=False).stdout.strip()
+        cpu = []
+        for line in filter(None, (line.strip() for line in stats.splitlines())):
+            fields = line.rsplit(")", 1)[-1].split()
+            # After the command name the fields start at the third: utime is the 14th, stime the 15th.
+            if len(fields) >= 13 and ticks.isdigit():
+                cpu.append((int(fields[11]) + int(fields[12])) / int(ticks))
+        if not cpu:
+            return None, None, None
+        return cpu[0], sum(cpu[1:]), time.perf_counter() - self.started
+
     def stop(self):
-        """Cancels the loop and returns what it recorded: line counts and the probe's median."""
+        """Cancels the loop and returns what it recorded: line counts, the
+        probe's median, and its backend's own CPU."""
         if not self.process:
             return None
+        cpu_s, client_cpu_s, lifetime_s = self.backend_cpu()
         self.side.psql("postgres", f"SELECT pg_cancel_backend(pid) FROM pg_stat_activity"
                                    f" WHERE application_name = '{SIDE_SAMPLER_NAME}'", check=False)
         try:
@@ -456,7 +484,11 @@ class SideSampler:
                         continue  # a line cut short when the loop was stopped
         return {"file": self.path.name, "samples": kinds,
                 "probe_ms_median": round(statistics.median(probes), 1) if probes else None,
-                "probe_ms_max": max(probes) if probes else None}
+                "probe_ms_max": max(probes) if probes else None,
+                "backend_cpu_s": round(cpu_s, 2) if cpu_s is not None else None,
+                "client_cpu_s": round(client_cpu_s, 2) if client_cpu_s is not None else None,
+                "lifetime_s": round(lifetime_s, 1) if lifetime_s is not None else None,
+                "cores": round((cpu_s + client_cpu_s) / lifetime_s, 4) if cpu_s is not None and lifetime_s else None}
 
 
 def kernel_cpu_ticks(container):
