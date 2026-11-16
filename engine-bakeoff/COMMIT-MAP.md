@@ -103,3 +103,20 @@ The pass's results cite the original ID of its plan commit, and its plan and tes
 | `4a318a737eb3` | [`7a1a2ae73f9f`](https://github.com/OpenAR-Collective/spikes/commit/7a1a2ae73f9fbc0616c486f45f647e06ecbae4d9) | 2026-11-13 | Plan round 2's code-shape pass |
 | `2f0820732b32` | [`7b9474dc92dd`](https://github.com/OpenAR-Collective/spikes/commit/7b9474dc92ddc2b7073fabcad2ab45b474884b19) | 2026-11-13 | Record round 2's code-shape pass |
 | `a8f0bba2a23c` | [`2cc0d239e9f7`](https://github.com/OpenAR-Collective/spikes/commit/2cc0d239e9f754ddaa569a7e2f489d40cc82e64f) | 2026-11-14 | Add the script that tabulates round 2's code-shape pass |
+
+## The fourth rewrite
+
+The commits of round 2's fix pass were rewritten once before they were published. Two commit messages credited reviews by name, and that wording became neutral, so the first of those commits and every commit after it changed ID. As in the earlier rewrites, the names of unrelated software in the host records became `unrelated-container`, and local file paths left the pass log. Apart from those changes the rewrite changed no result, code, or method text. It kept every author, author date, and commit subject, and the commit dates are those of the rewrite. The two commits before the first of them, which add the fix and make the driver settings csharp-wax's own, kept their IDs.
+
+The pass's results and its log cite the original ID of its plan commit, and its plan and test record cite the original ID of the commit they call the measured tree. This table maps each original commit to its published counterpart, oldest first.
+
+*Each row maps one original commit of the fourth rewrite to its published counterpart, with its author date and subject.*
+
+| Original | Published | Date | Subject |
+| --- | --- | --- | --- |
+| `fd98f9394d0f` | [`550ad8648564`](https://github.com/OpenAR-Collective/spikes/commit/550ad8648564c4d98a29aac4a54c059f6b0e133d) | 2026-11-15 | Apply the reviews of the reader fix |
+| `17a9837349ab` | [`49c46c6aee46`](https://github.com/OpenAR-Collective/spikes/commit/49c46c6aee46447c5216ecc208992560381430ab) | 2026-11-15 | Describe csharp-wax's driver settings in the sides table |
+| `d34b97f48d79` | [`0530b296e754`](https://github.com/OpenAR-Collective/spikes/commit/0530b296e754ebf84bad473fe0d98b507047ede5) | 2026-11-15 | Plan the pass that tests the reader fix |
+| `a29d435c0350` | [`cea683378bb0`](https://github.com/OpenAR-Collective/spikes/commit/cea683378bb0b45ff90fefb885fe7909958320e2) | 2026-11-16 | Record the pass that tests the reader fix |
+| `59e95f3034bd` | [`93dec172ae0d`](https://github.com/OpenAR-Collective/spikes/commit/93dec172ae0d248b0ff07e4b0ef060ca02b155d2) | 2026-11-16 | Add the script that tabulates the pass that tests the reader fix |
+| `735ef0b34a19` | [`8f8be1742c2e`](https://github.com/OpenAR-Collective/spikes/commit/8f8be1742c2e7a40923f5024d9a5b4a1df344d2b) | 2026-11-16 | Tell the rate regime apart from the readers' cadence in the fix tables |
