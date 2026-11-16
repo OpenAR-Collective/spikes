@@ -360,6 +360,97 @@ class LagSampler(threading.Thread):
         self.join(10)
 
 
+# The side sampler: a connection of its own in the run's database, from the
+# start of the bench to the end of the catch-up, that records what the
+# database's backends wait on and how fast one core runs, so a change of pace
+# within a run can be set against both. Each second it counts the backends
+# that are not idle in pg_stat_activity, by type, state, and wait event (CPU
+# where none is waited on), leaving out background processes idle in their
+# main loops (the Activity waits). Every tenth second it times a fixed CPU-bound
+# statement, a fifth of the host probe's, and reads the cluster's WAL counters
+# and the database's commits. It is one DO block that commits after every
+# sample, so it holds no snapshot between samples, and prints each sample as a
+# notice with its UTC time; the harness cancels it when the catch-up ends. Its
+# probe costs about 140 ms of one core every 10 seconds in the database container.
+SIDE_SAMPLER_NAME = "bakeoff_side_sampler"
+SIDE_SAMPLER_SQL = """DO $sampler$
+DECLARE
+  began timestamptz := clock_timestamp();
+  tick bigint := 0;
+  stamp text;
+  started timestamptz;
+  total bigint;
+  waits text;
+  wal record;
+  db record;
+BEGIN
+  PERFORM set_config('jit', 'off', false);
+  WHILE clock_timestamp() < began + interval '{limit_s} seconds' LOOP
+    stamp := to_char(clock_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+    PERFORM pg_stat_clear_snapshot();
+    SELECT string_agg(k || '=' || n, ' ' ORDER BY k) INTO waits FROM (
+      SELECT concat_ws('/', replace(backend_type, ' ', '_'), coalesce(replace(state, ' ', '_'), '-'),
+                       coalesce(wait_event_type, 'CPU'), coalesce(wait_event, '-')) AS k, count(*) AS n
+      FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND state IS DISTINCT FROM 'idle'
+        AND wait_event_type IS DISTINCT FROM 'Activity' GROUP BY 1) t;
+    RAISE NOTICE 'waits % %', stamp, coalesce(waits, '');
+    IF tick % 10 = 0 THEN
+      started := clock_timestamp();
+      SELECT sum(x) INTO total FROM (SELECT generate_series(1, 4000000) AS x) s;
+      RAISE NOTICE 'probe % %', stamp, round((extract(epoch FROM clock_timestamp() - started) * 1000)::numeric, 1);
+      SELECT * INTO wal FROM pg_stat_wal;
+      SELECT * INTO db FROM pg_stat_database WHERE datname = current_database();
+      RAISE NOTICE 'stats % commits=% rollbacks=% wal_records=% wal_fpi=% wal_bytes=% wal_buffers_full=% wal_write=% wal_sync=%',
+        stamp, db.xact_commit, db.xact_rollback, wal.wal_records, wal.wal_fpi, wal.wal_bytes, wal.wal_buffers_full,
+        wal.wal_write, wal.wal_sync;
+    END IF;
+    tick := tick + 1;
+    COMMIT;
+    PERFORM pg_sleep(greatest(0, extract(epoch FROM began + tick * interval '1 second' - clock_timestamp())));
+  END LOOP;
+END
+$sampler$"""
+
+
+class SideSampler:
+    """Runs SIDE_SAMPLER_SQL in the run's database, its output to a file."""
+
+    def __init__(self, side, database, path, limit_s):
+        self.side, self.database, self.path = side, database, path
+        self.sql = SIDE_SAMPLER_SQL.replace("{limit_s}", str(int(limit_s)))
+        self.process = self.output = None
+
+    def start(self):
+        self.output = self.path.open("w", encoding="utf-8")
+        self.process = subprocess.Popen(
+            ["docker", "exec", "-e", f"PGAPPNAME={SIDE_SAMPLER_NAME}", self.side.container("db"), "psql", "-U", "hivear",
+             "-d", self.database, "-AtXq", "-c", self.sql], stdout=self.output, stderr=subprocess.STDOUT)
+
+    def stop(self):
+        """Cancels the loop and returns what it recorded: line counts and the probe's median."""
+        if not self.process:
+            return None
+        self.side.psql("postgres", f"SELECT pg_cancel_backend(pid) FROM pg_stat_activity"
+                                   f" WHERE application_name = '{SIDE_SAMPLER_NAME}'", check=False)
+        try:
+            self.process.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait(timeout=30)
+        self.output.close()
+        self.process = None
+        kinds, probes = {}, []
+        for line in self.path.read_text(encoding="utf-8", errors="replace").splitlines():
+            parts = line.split()
+            if len(parts) >= 3 and parts[0] == "NOTICE:" and parts[1] in ("waits", "probe", "stats"):
+                kinds[parts[1]] = kinds.get(parts[1], 0) + 1
+                if parts[1] == "probe":
+                    probes.append(float(parts[3]))
+        return {"file": self.path.name, "samples": kinds,
+                "probe_ms_median": round(statistics.median(probes), 1) if probes else None,
+                "probe_ms_max": max(probes) if probes else None}
+
+
 def kernel_cpu_ticks(container):
     """The aggregate cpu line of /proc/stat as seen from a container: user, nice,
     system, idle, iowait, irq, softirq, and steal, in clock ticks."""
@@ -633,6 +724,11 @@ def run_one(side, args, workers, index, raw_dir):
     probe_ms, probe_samples = host_probe(side, database)
     side.psql(database, "SELECT pg_stat_statements_reset()")
     before = counters(side, database, containers)
+    side_sampler = None
+    if args.side_sampler:
+        side_sampler = SideSampler(side, database, raw_dir / f"{stem}.sampler.txt",
+                                   args.timeout + args.catchup_timeout + 600)
+        side_sampler.start()
     sampler = LagSampler(side, database)
     sampler.start()
 
@@ -666,6 +762,8 @@ def run_one(side, args, workers, index, raw_dir):
     # does not report sent_total cannot be measured, so stop here.
     if "sent_total" not in bench_json:
         sampler.stop()
+        if side_sampler:
+            side_sampler.stop()
         finish()
         raise RuntimeError(f"run {index}: the bench JSON has no sent_total, which WORKLOADS.md requires;"
                            f" exit code {result.returncode}. Output is in {raw_dir / (stem + '.stdout.txt')}")
@@ -698,6 +796,7 @@ def run_one(side, args, workers, index, raw_dir):
             break
         time.sleep(0.5)
     sampler.stop()
+    side_sampled = side_sampler.stop() if side_sampler else None
 
     # With hashing off, events carry a placeholder hash, so the chain cannot verify.
     verify = None
@@ -751,6 +850,7 @@ def run_one(side, args, workers, index, raw_dir):
         "engine_idle_cores": engine_idle_cores,
         "db_activity": activity_delta(before, after),
         "host_probe_samples_ms": probe_samples,
+        "side_sampler": side_sampled,
         "cpu_ms_per_command": {k: (round(v * 1000 / sent_total, 3) if v is not None and sent_total else None)
                                for k, v in cpu_window.items()},
         "engine_catchup_cpu_s": (round((catchup_cpu - engine_after) / 1e6, 3)
@@ -1154,6 +1254,9 @@ def main():
             p.add_argument("--engine-ready-timeout", type=float, default=180,
                            help="seconds to wait for the engine to finish starting before the run goes ahead anyway")
             p.add_argument("--catchup-timeout", type=float, default=1800)
+            p.add_argument("--side-sampler", action="store_true",
+                           help="diagnostic: sample wait events each second and a CPU probe every 10 s from a side"
+                                " connection, through the bench and the catch-up, to raw/*.sampler.txt")
             p.add_argument("--timeout", type=float, default=6 * 3600)
             p.add_argument("--label")
             p.add_argument("--keep", action="store_true", help="keep each run's database")

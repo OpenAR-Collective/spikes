@@ -37,6 +37,8 @@ Two flags change what a run does, to show where the time goes. Each is named in 
 
 `run.md` lists every gate a diagnostic skipped, and `results.json` records each run's skipped gates beside the ones that ran.
 
+`--side-sampler` adds an observer rather than changing what a run does: a connection of its own in the run's database, from the start of the bench to the end of the catch-up, which shows what a change of pace within a run goes with. Each second it counts the backends that are not idle in `pg_stat_activity` by type, state, and wait event, leaving out background processes idle in their main loops. Every 10 seconds it times a fixed CPU-bound statement, a fifth of the host probe's, and reads the WAL and commit counters. Its output, one line per sample with its UTC time, is `raw/*.sampler.txt`, and `results.json` records the probe's median and maximum. The probe uses about 140 ms of one core every 10 seconds in the database container. A plan can ask [run_pass.py](../passes/run_pass.py) for the sampler in every run, and, on Windows, for the host's processor counters every 5 seconds through the whole pass, logged with `typeperf` to `<plan>.host-counters.csv` without the host's name.
+
 ## Using it
 
 From this folder, with Docker, on the benchmark machine. On Windows, run it with `py`; it calls Docker directly, so Git Bash path rewriting does not apply. On Linux, run it with `python3`.

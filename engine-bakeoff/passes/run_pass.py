@@ -12,12 +12,16 @@ ran before it. A run whose estimated time would carry it past the deadline is
 skipped and the next one is tried; a run still going at the deadline is
 stopped, and its partial output is moved out of results/. Progress goes to
 <name>.status.json and the harness's output to <name>.log, beside this file.
+A plan that asks for the side sampler gets it in every run; one that asks for
+the host counters gets the Windows host's processor counters every 5 seconds
+from the first run to the last, in <name>.host-counters.csv.
 """
 
 import argparse
 import contextlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -123,7 +127,51 @@ def command(plan, entry):
         args += ["--no-engine"]
     if entry["diagnostic"] == "hash-off":
         args += ["--hash", "off"]
+    if plan.get("side_sampler"):
+        args += ["--side-sampler"]
     return args
+
+
+# The Windows host's processor counters: its speed against nominal, the share
+# of it a power or thermal limit allows and the flags that name the limit,
+# Windows' own busy figures, the CPU of the virtual machine Docker runs in,
+# and the hypervisor's run time across every logical processor.
+HOST_COUNTERS = [
+    r"\Processor Information(_Total)\% Processor Performance",
+    r"\Processor Information(_Total)\% Performance Limit",
+    r"\Processor Information(_Total)\Performance Limit Flags",
+    r"\Processor Information(_Total)\% Processor Utility",
+    r"\Processor(_Total)\% Processor Time",
+    r"\Process(vmmemWSL)\% Processor Time",
+    r"\Hyper-V Hypervisor Logical Processor(_Total)\% Total Run Time",
+    r"\Hyper-V Hypervisor Logical Processor(_Total)\% Guest Run Time",
+]
+
+
+def start_host_counters(name):
+    """Logs HOST_COUNTERS every 5 seconds with typeperf, on Windows only."""
+    if os.name != "nt":
+        print("host counters: not on Windows, so none are logged", flush=True)
+        return None
+    raw = HARNESS / "out" / f"{name}.host-counters.raw.csv"
+    raw.parent.mkdir(parents=True, exist_ok=True)
+    process = subprocess.Popen(["typeperf", *HOST_COUNTERS, "-si", "5", "-f", "CSV", "-o", str(raw), "-y"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return process, raw
+
+
+def stop_host_counters(started, name):
+    """Stops the log and writes it beside the plan without the host's name,
+    which typeperf puts in every column heading."""
+    if not started:
+        return
+    process, raw = started
+    process.terminate()
+    process.wait(timeout=30)
+    lines = raw.read_text(encoding="utf-8", errors="replace").splitlines() if raw.exists() else []
+    if lines:
+        lines[0] = re.sub(r'\\\\[^\\"]+\\', r"\\", lines[0])
+    (HERE / f"{name}.host-counters.csv").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def sh(args):
@@ -269,9 +317,11 @@ def main():
 
     if not args.dry_run:
         clean_databases(plan)
+    host_counters = start_host_counters(args.name) if plan.get("host_counters") and not args.dry_run else None
     clock = datetime.now()
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
-    with opened as log:
+    with opened as log, contextlib.ExitStack() as stack:
+        stack.callback(stop_host_counters, host_counters, args.name)
         for entry in plan["runs"]:
             expected = timedelta(seconds=estimate(plan, entry, seen))
             record = {"order": entry["order"], "group": entry["group"], "label": entry["label"],

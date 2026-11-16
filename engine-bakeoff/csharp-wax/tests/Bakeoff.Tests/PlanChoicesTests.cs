@@ -1,0 +1,101 @@
+using Npgsql;
+using Wax;
+using Xunit;
+
+namespace Bakeoff.Tests;
+
+/// <summary>
+/// The plan-choice read the bench makes after its timer: pg_prepared_statements
+/// shows each session only its own statements, so the read must reach every
+/// connection the pool holds, and what it finds depends on the reset Npgsql
+/// gives a connection returned to the pool.
+/// </summary>
+public sealed class PlanChoicesTests(DatabaseFixture db) : IClassFixture<DatabaseFixture>
+{
+    const string Sql = "SELECT count(*) FROM core.event WHERE global_sequence_number > $1";
+
+    NpgsqlDataSource Source(bool noResetOnClose, int maxAutoPrepare) => NpgsqlDataSource.Create(
+        new NpgsqlConnectionStringBuilder(db.ConnectionString)
+        {
+            // Its own application name, so the count of open connections sees
+            // only this data source's, not the fixture's.
+            ApplicationName = $"plan-choices-{Guid.NewGuid():N}"[..30],
+            NoResetOnClose = noResetOnClose,
+            MaxAutoPrepare = maxAutoPrepare,
+            AutoPrepareMinUsages = 2,
+        }.ConnectionString);
+
+    static async Task Run(NpgsqlConnection connection, int times, bool prepare)
+    {
+        await using var command = new NpgsqlCommand(Sql, connection);
+        command.Parameters.Add(new NpgsqlParameter { Value = 0L });
+        if (prepare)
+        {
+            await command.PrepareAsync();
+        }
+        for (var i = 0; i < times; i++)
+        {
+            await command.ExecuteScalarAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Every_pooled_connection_is_read_once()
+    {
+        await using var source = Source(noResetOnClose: true, maxAutoPrepare: 0);
+        await using (var first = await source.OpenConnectionAsync())
+        await using (var second = await source.OpenConnectionAsync())
+        {
+            await Run(first, 7, prepare: true);
+            await Run(second, 3, prepare: true);
+        }
+
+        var connections = await PlanChoices.ReadAsync(source);
+
+        Assert.Equal(2, connections.Count);
+        Assert.Equal(2, connections.Select(connection => connection.Pid).Distinct().Count());
+        var executions = connections
+            .Select(connection => Assert.Single(connection.Statements, statement => statement.Text == Sql))
+            .Select(statement => statement.GenericPlans + statement.CustomPlans)
+            .Order();
+        Assert.Equal([3L, 7L], executions);
+    }
+
+    [Fact]
+    public async Task The_lighter_reset_keeps_what_auto_prepare_prepared()
+    {
+        // Max Auto Prepare alone: Npgsql resets a returned connection, but once
+        // it has a statement prepared the reset leaves out DEALLOCATE ALL.
+        // Three uses in the first session prepare the statement; three more
+        // sessions on the same pooled connection then follow resets.
+        await using var source = Source(noResetOnClose: false, maxAutoPrepare: 20);
+        for (var i = 0; i < 4; i++)
+        {
+            await using var connection = await source.OpenConnectionAsync();
+            await Run(connection, i == 0 ? 3 : 1, prepare: false);
+        }
+
+        var read = Assert.Single(await PlanChoices.ReadAsync(source));
+
+        var statement = Assert.Single(read.Statements, statement => statement.Text == Sql);
+        Assert.InRange(statement.GenericPlans + statement.CustomPlans, 4, 6);
+    }
+
+    [Fact]
+    public async Task Discard_all_leaves_nothing_to_read()
+    {
+        // Npgsql's defaults: a returned connection gets DISCARD ALL, which
+        // deallocates its prepared statements, so an empty read is expected.
+        await using var source = Source(noResetOnClose: false, maxAutoPrepare: 0);
+        await using (var connection = await source.OpenConnectionAsync())
+        {
+            await Run(connection, 3, prepare: false);
+        }
+
+        var read = Assert.Single(await PlanChoices.ReadAsync(source));
+
+        Assert.Equal(0, read.Prepared);
+        Assert.Empty(read.Statements);
+        Assert.NotEqual(0, read.Pid);
+    }
+}

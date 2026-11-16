@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using HiveAR;
+using Npgsql;
 using Wax;
 using Wax.Batches;
 using Wax.Commands;
@@ -150,6 +151,21 @@ static class Bench
                 return 2;
         }
         clock.Stop();
+        // After the timer, before the pool is disposed: the plan choices of the
+        // statements prepared on this process's own connections, which no other
+        // session can see, and the reset Npgsql gives a connection returned to
+        // the pool, which decides whether they survive it.
+        IReadOnlyList<PlanChoices.Connection>? planChoices = null;
+        string? planChoicesError = null;
+        try
+        {
+            planChoices = await PlanChoices.ReadAsync(engine.DataSource);
+        }
+        catch (Exception error) when (error is NpgsqlException or InvalidOperationException or TimeoutException)
+        {
+            planChoicesError = error.Message;
+        }
+        var driver = new NpgsqlConnectionStringBuilder(engine.DataSource.ConnectionString);
         Print(new
         {
             workload,
@@ -176,6 +192,22 @@ static class Bench
                 HiveAR.Data.StateAccess.FairBatched => "fair-batched",
                 _ => "sql",
             },
+            driver_settings = WaxSettings.DriverSettings(engine.DataSource.ConnectionString),
+            reset_on_return = driver.NoResetOnClose ? "none"
+                : driver.MaxAutoPrepare > 0 ? "the lighter reset once a statement is prepared, DISCARD ALL before"
+                : "DISCARD ALL",
+            plan_choices = planChoices?.Select(connection => new
+            {
+                pid = connection.Pid,
+                prepared = connection.Prepared,
+                statements = connection.Statements.Select(statement => new
+                {
+                    statement = statement.Text,
+                    generic_plans = statement.GenericPlans,
+                    custom_plans = statement.CustomPlans,
+                }),
+            }),
+            plan_choices_error = planChoicesError,
         });
         return tally.Failed == 0 ? 0 : 1;
     }

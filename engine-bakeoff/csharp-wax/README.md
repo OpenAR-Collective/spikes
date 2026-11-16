@@ -81,12 +81,13 @@ The new code is about 1,200 lines of C# and a 190-line SQL schema: the reader is
 
 ## Tests
 
-The 43 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
+The 46 tests run against a real PostgreSQL, each test class in a fresh database. They are the champion's 32 with these changes:
 
 - **Event store (9):** the champion's seven, plus a test that `TRUNCATE` is refused, and a test that the store assigns `global_sequence_number` and `recorded_at` and ignores any value a caller supplies.
 - **Reader (10):** the prototype's reader tests, ported against this reader: an uncommitted lower sequence is never skipped; one aggregate's events arrive in its own order; a rolled-back sequence number does not hold a projection back; a failing projection stops alone and resumes; an unknown event type stops a projection until a release that knows it is adopted; an ignored type is passed over on purpose; and the mark is forgotten when the database goes back in time. The other three are new. Two readers sharing a projection apply each event exactly once. The sequence position is read under the sequence's lock: the race a plain read loses is too rare to provoke in a test, a few times in tens of millions of reads under a heavy `nextval()` load, so the test checks the statements. A claim never moves a checkpoint back: a hook that runs between a pass's look at a checkpoint and its claim moves the checkpoint past the pass's mark, as another reader would, and without the fix the test fails.
 - **Read models, workloads, seed and batches, rules, and bulk:** the champion's tests, with the projection reader in place of Marten's daemon and two rule runner partitions in place of the subscription.
 - **Twin (3):** the EF Core mode, the batched mode, and the fair batched mode, each against the plain mode, described below.
+- **Plan choices (3):** the bench's read of `pg_prepared_statements`, described under Driver settings below: it reads every pooled connection once, it finds what Max Auto Prepare prepared after Npgsql's lighter reset, and it finds nothing after `DISCARD ALL`, as expected.
 
 The prototype's test that the reader refuses to run inside another transaction has no counterpart here, because the C# reader opens its own connections and cannot be handed one. Because the high-water mark waits on the oldest transaction holding a transaction ID anywhere on the server, and xunit runs test classes at the same time, a test that waits for the reader retries for a few seconds rather than expecting the first pass to finish.
 
@@ -165,6 +166,8 @@ Each harness mode keeps the settings it was measured with, so earlier results st
 - `csharp-wax-npgsql-defaults` runs with Npgsql's defaults: it is csharp-wax as every pass before 2026-11-15 measured it.
 - `csharp-wax-noreset` sets only No Reset On Close, and `csharp-wax-autoprepare` only Max Auto Prepare 20. Once a pooled connection has a statement prepared, Npgsql resets it without `DEALLOCATE ALL` and `DISCARD PLANS`, so `csharp-wax-autoprepare` also keeps the session's cached plans: it does not measure preparation apart from plan retention, and no Npgsql setting would. `csharp-wax-prepared` sets both, as `csharp-wax` now does, and `csharp-wax-custom-plans` also sets `plan_cache_mode` to `force_custom_plan`.
 - `csharp-wax-ef`, `csharp-wax-batched`, `csharp-wax-fair-batched`, and `csharp-wax-rw8` run with Npgsql's defaults, as when they were measured, and `csharp-wax-fair-prepared` with both settings. `csharp-wax-rw8` is csharp-wax with 8 rule workers instead of 16, from the plan's engine arguments.
+
+After its timer stops, the bench reads how often PostgreSQL chose a generic or a custom plan for each statement prepared on its own connections, from `pg_prepared_statements`, and adds it to its result as `plan_choices`, one entry per connection with the connection's backend PID, beside `driver_settings` and `reset_on_return`. A session sees only its own prepared statements, so the bench holds every connection its pool has open at once, counted in `pg_stat_activity` by its client address and application name, and reads each. Under Npgsql's defaults the read finds nothing, because `DISCARD ALL` deallocates a returned connection's statements. The plans of the statements inside the event trigger and the foreign-key check are cached apart and do not show, although `plan_cache_mode` governs them too.
 
 ## Reader pacing and pass counts
 
