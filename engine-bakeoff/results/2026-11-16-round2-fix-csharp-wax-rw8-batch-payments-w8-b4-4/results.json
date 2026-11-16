@@ -1,0 +1,1825 @@
+{
+ "meta": {
+  "label": "round2-fix-csharp-wax-rw8-batch-payments-w8-b4-4",
+  "side": "csharp-wax-rw8",
+  "side_env": {
+   "DATABASE_NO_RESET_ON_CLOSE": "false",
+   "DATABASE_MAX_AUTO_PREPARE": "0"
+  },
+  "workload": "batch-payments",
+  "accounts": 500000,
+  "placements": null,
+  "engine_args": "--projection-workers 3 --rule-workers 8 --pass-report-seconds 10",
+  "engine_paused": false,
+  "hashing": "on",
+  "caps": "standard",
+  "caps_sha256": "5577265b0edaceba6cf8e429cb3ee36f91778c91f3cf36099ba80a86cfe2abab",
+  "pgbouncer": false,
+  "pool_size": null,
+  "repeat": 1,
+  "warmup_runs": 0,
+  "record": true,
+  "started": "2026-11-16T02:25:21",
+  "finished": "2026-11-16T02:36:27"
+ },
+ "summary": [
+  {
+   "workers": 8,
+   "runs": 1,
+   "succeeded_per_s": 868.838,
+   "p50_ms": 8.908,
+   "p99_ms": 17.177,
+   "bench_cpu_ms": 1.108,
+   "engine_cpu_ms": 0.574,
+   "db_cpu_ms": 4.453,
+   "throttled": {
+    "db": 0.1,
+    "engine": 0.0,
+    "bench": 0.0,
+    "pgbouncer": null
+   },
+   "pgbouncer_cpu_ms": null,
+   "host_probe_ms": 736.1,
+   "steal_pct": 0.0,
+   "wal_kb": 4.04,
+   "fpi": 0.0,
+   "engine_ready_s": 13.4,
+   "statements": 17.06,
+   "commits": 3.15,
+   "transactions": 500000,
+   "fallback_chunks": 0,
+   "max_lag": 1070,
+   "catchup_s": 3.5,
+   "rule_p50": null,
+   "rule_p99": null,
+   "late_p50": null,
+   "late_p99": null,
+   "gates": true
+  }
+ ],
+ "runs": [
+  {
+   "index": 1,
+   "side": "csharp-wax-rw8",
+   "workload": "batch-payments",
+   "workers": 8,
+   "accounts": 500000,
+   "placements": null,
+   "engine_args": "--projection-workers 3 --rule-workers 8 --pass-report-seconds 10",
+   "engine_paused": false,
+   "hashing": "on",
+   "caps": "standard",
+   "pgbouncer": false,
+   "pool_size": null,
+   "bench": {
+    "workload": "batch-payments",
+    "workers": 8,
+    "sent": 500000,
+    "sent_total": 500000,
+    "succeeded": 500000,
+    "rejected": 0,
+    "failed": 0,
+    "retried": 0,
+    "elapsed_s": 575.481,
+    "latency_ms": {
+     "p50": 8.908,
+     "p95": 13.775,
+     "p99": 17.177,
+     "max": 373.4
+    },
+    "run_pk": "e8b6ef62-f098-4447-a2eb-94b8419ea98d",
+    "transactions": 500000,
+    "fallback_chunks": 0,
+    "append": "wax",
+    "hashing": "on",
+    "state": "sql"
+   },
+   "bench_exit_code": 0,
+   "window_s": 583.733,
+   "sent_total": 500000,
+   "cpu_s": {
+    "db": 2226.453,
+    "bench": 553.816,
+    "engine": 286.786
+   },
+   "cpu_throttling": {
+    "db": {
+     "nr_periods": 5836,
+     "nr_throttled": 3,
+     "throttled_s": 1.031,
+     "throttled_pct": 0.1
+    },
+    "bench": {
+     "nr_periods": 5765,
+     "nr_throttled": 0,
+     "throttled_s": 0.0,
+     "throttled_pct": 0.0
+    },
+    "engine": {
+     "nr_periods": 5836,
+     "nr_throttled": 0,
+     "throttled_s": 0.0,
+     "throttled_pct": 0.0
+    }
+   },
+   "host_cpu": {
+    "steal_pct": 0.0,
+    "busy_pct": 34.2
+   },
+   "host_probe_ms": 736.1,
+   "engine_ready_s": 13.4,
+   "engine_idle_cores": 0.11,
+   "db_activity": {
+    "wal": {
+     "wal_records": 15847598,
+     "wal_fpi": 6,
+     "wal_bytes": 2069809640,
+     "wal_buffers_full": 0,
+     "wal_write": 166332,
+     "wal_sync": 166332,
+     "wal_write_time": 0,
+     "wal_sync_time": 0
+    },
+    "checkpointer": {
+     "num_timed": 0,
+     "num_requested": 0,
+     "restartpoints_timed": 0,
+     "restartpoints_req": 0,
+     "restartpoints_done": 0,
+     "write_time": 0,
+     "sync_time": 0,
+     "buffers_written": 0
+    },
+    "bgwriter": {
+     "buffers_clean": 0,
+     "maxwritten_clean": 0,
+     "buffers_alloc": 220032
+    },
+    "tables": {
+     "ar.account_balance_bucket": {
+      "n_tup_ins": 0,
+      "n_tup_upd": 583334,
+      "n_tup_hot_upd": 517435,
+      "n_tup_del": 0,
+      "n_dead_tup": 82765,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 3
+     },
+     "ar.account": {
+      "n_tup_ins": 0,
+      "n_tup_upd": 500000,
+      "n_tup_hot_upd": 483201,
+      "n_tup_del": 0,
+      "n_dead_tup": 25218,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 7
+     },
+     "ar.account_summary_read_model": {
+      "n_tup_ins": 0,
+      "n_tup_upd": 500000,
+      "n_tup_hot_upd": 470775,
+      "n_tup_del": 0,
+      "n_dead_tup": 43503,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 6
+     },
+     "core.projection_checkpoint": {
+      "n_tup_ins": 0,
+      "n_tup_upd": 53846,
+      "n_tup_hot_upd": 53835,
+      "n_tup_del": 0,
+      "n_dead_tup": 6,
+      "autovacuum_count": 10,
+      "autoanalyze_count": 10
+     },
+     "core.batch_job_chunk": {
+      "n_tup_ins": 500,
+      "n_tup_upd": 1000,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 96,
+      "autovacuum_count": 5,
+      "autoanalyze_count": 6
+     },
+     "core.batch_job_run": {
+      "n_tup_ins": 1,
+      "n_tup_upd": 1,
+      "n_tup_hot_upd": 1,
+      "n_tup_del": 0,
+      "n_dead_tup": 1,
+      "autovacuum_count": 0,
+      "autoanalyze_count": 0
+     },
+     "ar.account_payment_read_model_v2": {
+      "n_tup_ins": 500000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 8,
+      "autoanalyze_count": 10
+     },
+     "ar.payment_read_model": {
+      "n_tup_ins": 500000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 8,
+      "autoanalyze_count": 10
+     },
+     "core.event": {
+      "n_tup_ins": 1000000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 4,
+      "autoanalyze_count": 8
+     },
+     "ar.payment": {
+      "n_tup_ins": 500000,
+      "n_tup_upd": 0,
+      "n_tup_hot_upd": 0,
+      "n_tup_del": 0,
+      "n_dead_tup": 0,
+      "autovacuum_count": 8,
+      "autoanalyze_count": 10
+     }
+    },
+    "slru": {
+     "multixact_member": {
+      "blks_zeroed": 1676,
+      "blks_hit": 1308527,
+      "blks_read": 0,
+      "blks_written": 1645,
+      "blks_exists": 0,
+      "flushes": 0,
+      "truncates": 0
+     },
+     "multixact_offset": {
+      "blks_zeroed": 238,
+      "blks_hit": 1304879,
+      "blks_read": 0,
+      "blks_written": 223,
+      "blks_exists": 0,
+      "flushes": 0,
+      "truncates": 0
+     }
+    }
+   },
+   "host_probe_samples_ms": [
+    755.8,
+    731.0,
+    721.4,
+    736.1,
+    738.9
+   ],
+   "cpu_ms_per_command": {
+    "db": 4.453,
+    "bench": 1.108,
+    "engine": 0.574
+   },
+   "engine_catchup_cpu_s": 0.971,
+   "statements": 8527551,
+   "statements_per_command": 17.06,
+   "top_statements": [
+    {
+     "calls": 1000000,
+     "total_ms": 274340.8,
+     "mean_ms": 0.2743,
+     "rows": 1000000,
+     "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+    },
+    {
+     "calls": 583334,
+     "total_ms": 33139.1,
+     "mean_ms": 0.0568,
+     "rows": 583334,
+     "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 29294.8,
+     "mean_ms": 0.0586,
+     "rows": 1500000,
+     "query": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 28037.3,
+     "mean_ms": 0.0561,
+     "rows": 500000,
+     "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $7) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3, last_payment_at = $4, last_payment_minor_units = $5 WHERE acc"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 26384.2,
+     "mean_ms": 0.0528,
+     "rows": 500000,
+     "query": "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, currency_code, received_at, status, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 23846.5,
+     "mean_ms": 0.0477,
+     "rows": 500000,
+     "query": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrued_through = $4, queue_code = $5::text WHERE account_pk = $6"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 23190.3,
+     "mean_ms": 0.0464,
+     "rows": 500000,
+     "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 21137.4,
+     "mean_ms": 0.0423,
+     "rows": 500000,
+     "query": "SELECT EXISTS (SELECT $2 FROM ar.payment WHERE payment_pk = $1)"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 19345.4,
+     "mean_ms": 0.0387,
+     "rows": 500000,
+     "query": "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) ON CONFLICT (payment_read_model_pk) DO UPDATE SET amount_minor_units = EX"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 19016.7,
+     "mean_ms": 0.038,
+     "rows": 500000,
+     "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+    },
+    {
+     "calls": 26573,
+     "total_ms": 16060.0,
+     "mean_ms": 0.6044,
+     "rows": 1500000,
+     "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+    },
+    {
+     "calls": 500000,
+     "total_ms": 15339.9,
+     "mean_ms": 0.0307,
+     "rows": 500000,
+     "query": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)"
+    },
+    {
+     "calls": 27273,
+     "total_ms": 11911.7,
+     "mean_ms": 0.4368,
+     "rows": 500000,
+     "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+    },
+    {
+     "calls": 733366,
+     "total_ms": 9451.7,
+     "mean_ms": 0.0129,
+     "rows": 0,
+     "query": "DISCARD ALL"
+    },
+    {
+     "calls": 587081,
+     "total_ms": 3311.4,
+     "mean_ms": 0.0056,
+     "rows": 0,
+     "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+    },
+    {
+     "calls": 53846,
+     "total_ms": 3299.1,
+     "mean_ms": 0.0613,
+     "rows": 53846,
+     "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2, updated_at = now() WHERE projection_name = $1"
+    },
+    {
+     "calls": 500,
+     "total_ms": 2151.1,
+     "mean_ms": 4.3023,
+     "rows": 500000,
+     "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+    },
+    {
+     "calls": 44121,
+     "total_ms": 1429.9,
+     "mean_ms": 0.0324,
+     "rows": 44121,
+     "query": "SELECT last_global_sequence_number, definition_digest, failed_at IS NOT NULL, failure_kind, failed_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+    },
+    {
+     "calls": 42895,
+     "total_ms": 1317.7,
+     "mean_ms": 0.0307,
+     "rows": 42895,
+     "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+    },
+    {
+     "calls": 30315,
+     "total_ms": 1137.1,
+     "mean_ms": 0.0375,
+     "rows": 26632,
+     "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1 AND failed_at IS NULL FOR UPDATE SKIP LOCKED"
+    },
+    {
+     "calls": 57602,
+     "total_ms": 1111.1,
+     "mean_ms": 0.0193,
+     "rows": 57602,
+     "query": "SELECT COALESCE(pg_sequence_last_value($1::regclass), $2), pg_postmaster_start_time()::text || $3 || current_database()"
+    },
+    {
+     "calls": 56765,
+     "total_ms": 568.9,
+     "mean_ms": 0.01,
+     "rows": 56765,
+     "query": "SELECT COALESCE(pg_sequence_last_value($1::regclass), $2)"
+    },
+    {
+     "calls": 56765,
+     "total_ms": 525.1,
+     "mean_ms": 0.0093,
+     "rows": 56765,
+     "query": "SELECT pg_current_xact_id()::text::bigint"
+    },
+    {
+     "calls": 583339,
+     "total_ms": 462.0,
+     "mean_ms": 0.0008,
+     "rows": 0,
+     "query": "COMMIT"
+    },
+    {
+     "calls": 56790,
+     "total_ms": 410.9,
+     "mean_ms": 0.0072,
+     "rows": 56790,
+     "query": "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint"
+    }
+   ],
+   "commits_per_command": 3.15,
+   "rollbacks": 3742,
+   "lag_samples": [
+    [
+     0.8,
+     0
+    ],
+    [
+     2.6,
+     892
+    ],
+    [
+     4.4,
+     936
+    ],
+    [
+     6.1,
+     578
+    ],
+    [
+     8.0,
+     752
+    ],
+    [
+     9.8,
+     956
+    ],
+    [
+     11.6,
+     896
+    ],
+    [
+     13.4,
+     754
+    ],
+    [
+     15.3,
+     510
+    ],
+    [
+     17.4,
+     923
+    ],
+    [
+     19.1,
+     943
+    ],
+    [
+     21.0,
+     732
+    ],
+    [
+     22.8,
+     904
+    ],
+    [
+     24.6,
+     962
+    ],
+    [
+     26.4,
+     901
+    ],
+    [
+     28.2,
+     855
+    ],
+    [
+     30.0,
+     854
+    ],
+    [
+     31.8,
+     835
+    ],
+    [
+     33.6,
+     976
+    ],
+    [
+     35.4,
+     991
+    ],
+    [
+     37.2,
+     847
+    ],
+    [
+     39.1,
+     839
+    ],
+    [
+     40.9,
+     1027
+    ],
+    [
+     42.7,
+     881
+    ],
+    [
+     44.6,
+     391
+    ],
+    [
+     46.4,
+     793
+    ],
+    [
+     48.2,
+     958
+    ],
+    [
+     50.0,
+     788
+    ],
+    [
+     51.8,
+     720
+    ],
+    [
+     53.6,
+     818
+    ],
+    [
+     55.4,
+     706
+    ],
+    [
+     57.2,
+     994
+    ],
+    [
+     59.1,
+     1037
+    ],
+    [
+     60.8,
+     858
+    ],
+    [
+     62.7,
+     848
+    ],
+    [
+     64.5,
+     866
+    ],
+    [
+     66.3,
+     936
+    ],
+    [
+     68.0,
+     926
+    ],
+    [
+     69.8,
+     910
+    ],
+    [
+     71.6,
+     954
+    ],
+    [
+     73.4,
+     953
+    ],
+    [
+     75.8,
+     913
+    ],
+    [
+     77.7,
+     918
+    ],
+    [
+     79.5,
+     824
+    ],
+    [
+     81.3,
+     610
+    ],
+    [
+     83.1,
+     823
+    ],
+    [
+     84.9,
+     938
+    ],
+    [
+     86.7,
+     976
+    ],
+    [
+     88.5,
+     782
+    ],
+    [
+     90.4,
+     544
+    ],
+    [
+     92.3,
+     632
+    ],
+    [
+     94.1,
+     902
+    ],
+    [
+     95.9,
+     1038
+    ],
+    [
+     97.7,
+     992
+    ],
+    [
+     99.5,
+     984
+    ],
+    [
+     101.3,
+     744
+    ],
+    [
+     103.1,
+     664
+    ],
+    [
+     104.9,
+     944
+    ],
+    [
+     106.7,
+     872
+    ],
+    [
+     108.5,
+     594
+    ],
+    [
+     110.3,
+     1014
+    ],
+    [
+     112.2,
+     876
+    ],
+    [
+     114.0,
+     980
+    ],
+    [
+     115.8,
+     744
+    ],
+    [
+     117.6,
+     619
+    ],
+    [
+     119.3,
+     850
+    ],
+    [
+     121.2,
+     620
+    ],
+    [
+     123.0,
+     949
+    ],
+    [
+     124.9,
+     892
+    ],
+    [
+     126.7,
+     775
+    ],
+    [
+     128.5,
+     311
+    ],
+    [
+     130.4,
+     630
+    ],
+    [
+     132.1,
+     578
+    ],
+    [
+     134.0,
+     386
+    ],
+    [
+     135.8,
+     918
+    ],
+    [
+     137.7,
+     852
+    ],
+    [
+     139.5,
+     802
+    ],
+    [
+     141.4,
+     589
+    ],
+    [
+     143.3,
+     588
+    ],
+    [
+     145.1,
+     982
+    ],
+    [
+     146.9,
+     858
+    ],
+    [
+     148.7,
+     988
+    ],
+    [
+     150.5,
+     990
+    ],
+    [
+     152.3,
+     983
+    ],
+    [
+     154.1,
+     854
+    ],
+    [
+     155.9,
+     704
+    ],
+    [
+     157.7,
+     740
+    ],
+    [
+     159.5,
+     898
+    ],
+    [
+     161.4,
+     664
+    ],
+    [
+     163.2,
+     972
+    ],
+    [
+     164.9,
+     1001
+    ],
+    [
+     166.7,
+     796
+    ],
+    [
+     168.5,
+     1034
+    ],
+    [
+     170.3,
+     924
+    ],
+    [
+     172.1,
+     894
+    ],
+    [
+     173.9,
+     780
+    ],
+    [
+     175.7,
+     682
+    ],
+    [
+     177.6,
+     330
+    ],
+    [
+     179.5,
+     680
+    ],
+    [
+     181.3,
+     952
+    ],
+    [
+     183.1,
+     810
+    ],
+    [
+     184.9,
+     955
+    ],
+    [
+     186.7,
+     843
+    ],
+    [
+     188.5,
+     868
+    ],
+    [
+     190.4,
+     622
+    ],
+    [
+     192.2,
+     953
+    ],
+    [
+     194.0,
+     851
+    ],
+    [
+     195.8,
+     700
+    ],
+    [
+     197.6,
+     956
+    ],
+    [
+     199.4,
+     895
+    ],
+    [
+     201.2,
+     873
+    ],
+    [
+     203.0,
+     682
+    ],
+    [
+     204.8,
+     948
+    ],
+    [
+     206.5,
+     859
+    ],
+    [
+     208.4,
+     574
+    ],
+    [
+     210.3,
+     558
+    ],
+    [
+     212.1,
+     951
+    ],
+    [
+     214.0,
+     866
+    ],
+    [
+     215.8,
+     883
+    ],
+    [
+     217.6,
+     710
+    ],
+    [
+     219.4,
+     641
+    ],
+    [
+     221.3,
+     1034
+    ],
+    [
+     223.1,
+     1070
+    ],
+    [
+     225.0,
+     966
+    ],
+    [
+     226.8,
+     815
+    ],
+    [
+     228.6,
+     910
+    ],
+    [
+     230.5,
+     980
+    ],
+    [
+     232.2,
+     830
+    ],
+    [
+     234.0,
+     916
+    ],
+    [
+     235.9,
+     747
+    ],
+    [
+     237.7,
+     760
+    ],
+    [
+     239.5,
+     774
+    ],
+    [
+     241.3,
+     978
+    ],
+    [
+     243.1,
+     936
+    ],
+    [
+     244.9,
+     977
+    ],
+    [
+     246.7,
+     838
+    ],
+    [
+     248.5,
+     968
+    ],
+    [
+     250.3,
+     822
+    ],
+    [
+     252.2,
+     860
+    ],
+    [
+     254.1,
+     611
+    ],
+    [
+     256.0,
+     418
+    ],
+    [
+     257.8,
+     440
+    ],
+    [
+     259.7,
+     428
+    ],
+    [
+     261.5,
+     878
+    ],
+    [
+     263.3,
+     684
+    ],
+    [
+     265.1,
+     1011
+    ],
+    [
+     266.9,
+     804
+    ],
+    [
+     268.9,
+     555
+    ],
+    [
+     270.7,
+     874
+    ],
+    [
+     272.5,
+     477
+    ],
+    [
+     274.4,
+     290
+    ],
+    [
+     276.2,
+     926
+    ],
+    [
+     278.0,
+     739
+    ],
+    [
+     279.8,
+     608
+    ],
+    [
+     281.6,
+     978
+    ],
+    [
+     283.4,
+     377
+    ],
+    [
+     285.2,
+     964
+    ],
+    [
+     287.1,
+     622
+    ],
+    [
+     288.9,
+     842
+    ],
+    [
+     290.7,
+     960
+    ],
+    [
+     292.5,
+     932
+    ],
+    [
+     294.3,
+     978
+    ],
+    [
+     296.1,
+     828
+    ],
+    [
+     297.9,
+     1012
+    ],
+    [
+     299.7,
+     820
+    ],
+    [
+     301.5,
+     852
+    ],
+    [
+     303.3,
+     832
+    ],
+    [
+     305.1,
+     923
+    ],
+    [
+     306.9,
+     986
+    ],
+    [
+     308.7,
+     766
+    ],
+    [
+     310.5,
+     598
+    ],
+    [
+     312.3,
+     1011
+    ],
+    [
+     314.1,
+     900
+    ],
+    [
+     316.0,
+     878
+    ],
+    [
+     317.8,
+     500
+    ],
+    [
+     319.7,
+     390
+    ],
+    [
+     321.5,
+     790
+    ],
+    [
+     323.3,
+     708
+    ],
+    [
+     325.1,
+     830
+    ],
+    [
+     327.0,
+     668
+    ],
+    [
+     328.8,
+     632
+    ],
+    [
+     330.7,
+     617
+    ],
+    [
+     332.5,
+     926
+    ],
+    [
+     334.3,
+     602
+    ],
+    [
+     336.2,
+     562
+    ],
+    [
+     338.0,
+     700
+    ],
+    [
+     339.8,
+     584
+    ],
+    [
+     341.6,
+     682
+    ],
+    [
+     343.4,
+     1042
+    ],
+    [
+     345.2,
+     872
+    ],
+    [
+     347.2,
+     945
+    ],
+    [
+     349.0,
+     676
+    ],
+    [
+     350.9,
+     614
+    ],
+    [
+     352.7,
+     958
+    ],
+    [
+     354.6,
+     636
+    ],
+    [
+     356.4,
+     749
+    ],
+    [
+     358.2,
+     886
+    ],
+    [
+     360.1,
+     640
+    ],
+    [
+     361.9,
+     752
+    ],
+    [
+     363.8,
+     608
+    ],
+    [
+     365.6,
+     852
+    ],
+    [
+     367.4,
+     917
+    ],
+    [
+     369.2,
+     966
+    ],
+    [
+     370.9,
+     912
+    ],
+    [
+     372.7,
+     788
+    ],
+    [
+     374.6,
+     782
+    ],
+    [
+     376.4,
+     842
+    ],
+    [
+     378.2,
+     982
+    ],
+    [
+     380.0,
+     834
+    ],
+    [
+     381.9,
+     703
+    ],
+    [
+     383.7,
+     518
+    ],
+    [
+     385.6,
+     814
+    ],
+    [
+     387.4,
+     970
+    ],
+    [
+     389.2,
+     976
+    ],
+    [
+     391.0,
+     864
+    ],
+    [
+     392.9,
+     922
+    ],
+    [
+     394.7,
+     810
+    ],
+    [
+     396.4,
+     996
+    ],
+    [
+     398.2,
+     774
+    ],
+    [
+     400.1,
+     928
+    ],
+    [
+     401.9,
+     956
+    ],
+    [
+     403.7,
+     950
+    ],
+    [
+     405.6,
+     905
+    ],
+    [
+     407.3,
+     874
+    ],
+    [
+     409.2,
+     726
+    ],
+    [
+     411.0,
+     679
+    ],
+    [
+     412.9,
+     652
+    ],
+    [
+     414.7,
+     918
+    ],
+    [
+     416.5,
+     723
+    ],
+    [
+     418.4,
+     652
+    ],
+    [
+     420.2,
+     976
+    ],
+    [
+     422.2,
+     776
+    ],
+    [
+     424.0,
+     772
+    ],
+    [
+     425.8,
+     668
+    ],
+    [
+     427.6,
+     1025
+    ],
+    [
+     429.4,
+     556
+    ],
+    [
+     431.2,
+     462
+    ],
+    [
+     433.0,
+     870
+    ],
+    [
+     434.8,
+     526
+    ],
+    [
+     436.7,
+     603
+    ],
+    [
+     438.5,
+     1026
+    ],
+    [
+     440.3,
+     880
+    ],
+    [
+     442.1,
+     764
+    ],
+    [
+     443.9,
+     906
+    ],
+    [
+     445.7,
+     848
+    ],
+    [
+     447.5,
+     678
+    ],
+    [
+     449.3,
+     572
+    ],
+    [
+     451.1,
+     786
+    ],
+    [
+     452.9,
+     783
+    ],
+    [
+     454.7,
+     623
+    ],
+    [
+     456.5,
+     368
+    ],
+    [
+     458.4,
+     666
+    ],
+    [
+     460.2,
+     512
+    ],
+    [
+     462.0,
+     1000
+    ],
+    [
+     463.8,
+     748
+    ],
+    [
+     465.6,
+     808
+    ],
+    [
+     467.4,
+     893
+    ],
+    [
+     469.3,
+     444
+    ],
+    [
+     471.1,
+     952
+    ],
+    [
+     472.9,
+     838
+    ],
+    [
+     474.7,
+     986
+    ],
+    [
+     476.5,
+     854
+    ],
+    [
+     478.3,
+     982
+    ],
+    [
+     480.1,
+     843
+    ],
+    [
+     481.9,
+     780
+    ],
+    [
+     483.7,
+     974
+    ],
+    [
+     485.5,
+     861
+    ],
+    [
+     487.3,
+     908
+    ],
+    [
+     489.1,
+     789
+    ],
+    [
+     490.9,
+     899
+    ],
+    [
+     492.7,
+     1003
+    ],
+    [
+     494.4,
+     773
+    ],
+    [
+     496.3,
+     976
+    ],
+    [
+     498.0,
+     834
+    ],
+    [
+     499.9,
+     680
+    ],
+    [
+     501.7,
+     955
+    ],
+    [
+     503.6,
+     652
+    ],
+    [
+     505.5,
+     700
+    ],
+    [
+     507.4,
+     710
+    ],
+    [
+     509.2,
+     768
+    ],
+    [
+     511.1,
+     975
+    ],
+    [
+     512.9,
+     786
+    ],
+    [
+     514.7,
+     1046
+    ],
+    [
+     516.5,
+     947
+    ],
+    [
+     518.3,
+     708
+    ],
+    [
+     520.1,
+     692
+    ],
+    [
+     521.9,
+     975
+    ],
+    [
+     523.7,
+     1042
+    ],
+    [
+     525.5,
+     681
+    ],
+    [
+     527.3,
+     1024
+    ],
+    [
+     529.1,
+     948
+    ],
+    [
+     530.8,
+     865
+    ],
+    [
+     532.7,
+     582
+    ],
+    [
+     534.5,
+     934
+    ],
+    [
+     536.3,
+     900
+    ],
+    [
+     538.1,
+     946
+    ],
+    [
+     539.9,
+     820
+    ],
+    [
+     541.7,
+     828
+    ],
+    [
+     543.5,
+     860
+    ],
+    [
+     545.3,
+     822
+    ],
+    [
+     547.2,
+     636
+    ],
+    [
+     549.0,
+     964
+    ],
+    [
+     551.6,
+     802
+    ],
+    [
+     553.4,
+     569
+    ],
+    [
+     555.2,
+     965
+    ],
+    [
+     557.0,
+     842
+    ],
+    [
+     558.8,
+     968
+    ],
+    [
+     560.6,
+     844
+    ],
+    [
+     562.5,
+     820
+    ],
+    [
+     564.3,
+     584
+    ],
+    [
+     566.0,
+     749
+    ],
+    [
+     567.9,
+     333
+    ],
+    [
+     569.9,
+     308
+    ],
+    [
+     571.8,
+     400
+    ],
+    [
+     573.7,
+     343
+    ],
+    [
+     575.4,
+     550
+    ],
+    [
+     577.2,
+     0
+    ],
+    [
+     579.1,
+     0
+    ],
+    [
+     580.9,
+     0
+    ],
+    [
+     582.8,
+     0
+    ],
+    [
+     584.7,
+     0
+    ],
+    [
+     586.5,
+     0
+    ],
+    [
+     588.4,
+     0
+    ]
+   ],
+   "max_lag_events": 1070,
+   "end_head": 1500000,
+   "catchup_s": 3.5,
+   "settle_s": 3.8,
+   "verify": {
+    "workload": "verify-chain",
+    "aggregates": 1000000,
+    "events": 1500000,
+    "problems": 0,
+    "ok": true,
+    "first_problems": [],
+    "elapsed_s": 15.963
+   },
+   "gates": {
+    "one payment per account, keyed for this run": true,
+    "balances fell by exactly 2,500 x N": true,
+    "every hash chain verifies": true,
+    "every account summary matches the account and its buckets": true,
+    "every payment read model row matches its payment": true,
+    "every payment line's applied amount matches the payment's distribution": true
+   },
+   "gates_skipped": [],
+   "gates_pass": true,
+   "rule_latency_ms": {
+    "all": {
+     "count": 0,
+     "p50": null,
+     "p95": null,
+     "p99": null,
+     "max": null
+    }
+   },
+   "register_lateness_ms": {
+    "count": 0,
+    "p50": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+   },
+   "events_written": 1000000,
+   "images": {
+    "db": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+    "bench": "sha256:b50c331a47b13f5bc668ec6751350b25df7ab7a75c6322773e934c933366e3eb",
+    "engine": "sha256:b50c331a47b13f5bc668ec6751350b25df7ab7a75c6322773e934c933366e3eb"
+   },
+   "limits": {
+    "db": {
+     "cpus": 6.0,
+     "mem_bytes": 12884901888
+    },
+    "bench": {
+     "cpus": 4.0,
+     "mem_bytes": 4294967296
+    },
+    "engine": {
+     "cpus": 2.0,
+     "mem_bytes": 2147483648
+    }
+   },
+   "clock": {
+    "start": "2026-11-16 08:25:57.941844+00",
+    "end": "2026-11-16 08:35:41.67201+00"
+   },
+   "warmup": false
+  }
+ ]
+}

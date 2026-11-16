@@ -1,0 +1,36 @@
+template bakeoff_seed_500000, 3 rounds of 25 inserts each way; has_reason=t
+
+Step 0: median milliseconds per insert, with the count of inserts timed:
+| Insert | Execution | BEFORE INSERT trigger | Foreign-key check |
+| --- | --- | --- | --- |
+| warm | 0.196 (75) | 0.031 (75) | 0.023 (75) |
+| after DISCARD ALL | 0.274 (75) | 0.061 (75) | 0.073 (75) |
+
+The split: median milliseconds per insert, with the count of inserts timed:
+| Insert | Execution | BEFORE INSERT trigger | Foreign-key check |
+| --- | --- | --- | --- |
+| after CLOSE ALL | 0.268 (75) | 0.044 (75) | 0.030 (75) |
+| after SET SESSION AUTHORIZATION DEFAULT | 0.178 (75) | 0.027 (75) | 0.017 (75) |
+| after RESET ALL | 0.170 (75) | 0.027 (75) | 0.017 (75) |
+| after DEALLOCATE ALL | 0.185 (75) | 0.030 (75) | 0.018 (75) |
+| after UNLISTEN * | 0.184 (75) | 0.029 (75) | 0.018 (75) |
+| after SELECT pg_advisory_unlock_all() | 0.185 (75) | 0.028 (75) | 0.019 (75) |
+| after DISCARD PLANS | 0.266 (75) | 0.058 (75) | 0.072 (75) |
+| after DISCARD TEMP | 0.179 (75) | 0.028 (75) | 0.018 (75) |
+| after DISCARD SEQUENCES | 0.227 (75) | 0.036 (75) | 0.025 (75) |
+| after Npgsql's reset with statements prepared | 0.255 (75) | 0.044 (75) | 0.028 (75) |
+
+Each reset command's own time: median milliseconds from psql's timing over 75 calls, with the round trip from psql inside the container:
+| Command | Median ms |
+| --- | --- |
+| DISCARD ALL | 0.072 |
+| CLOSE ALL | 0.146 |
+| SET SESSION AUTHORIZATION DEFAULT | 0.098 |
+| RESET ALL | 0.095 |
+| DEALLOCATE ALL | 0.075 |
+| UNLISTEN * | 0.089 |
+| SELECT pg_advisory_unlock_all() | 0.133 |
+| DISCARD PLANS | 0.077 |
+| DISCARD TEMP | 0.084 |
+| DISCARD SEQUENCES | 0.162 |
+| Npgsql's reset with statements prepared | 0.563 |

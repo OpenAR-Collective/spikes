@@ -1,0 +1,902 @@
+
+===== 1 round2-fix-csharp-wax-custom-plans-batch-payments-w8-d1 2026-11-15T22:00:43
+python bakeoff_harness.py run --side csharp-wax-custom-plans --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-custom-plans-batch-payments-w8-d1 --record
+[harness 22:01:31] run 1: csharp-wax-custom-plans batch-payments with 8 workers
+[harness 22:09:38]   500000 sent, 500000 succeeded, 437.235 s; gates PASS
+[harness 22:09:38] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-custom-plans-batch-payments-w8-d1
+# round2-fix-csharp-wax-custom-plans-batch-payments-w8-d1
+
+Recorded run. Side: csharp-wax-custom-plans (DATABASE_NO_RESET_ON_CLOSE=true, DATABASE_MAX_AUTO_PREPARE=20, DATABASE_PLAN_CACHE_MODE=force_custom_plan). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T22:00:57, finished 2026-11-15T22:09:38.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 1143.55 | 6.836 | 11.728 | 0.88 | 0.548 | 3.013 | 16.11 | 2.0 | 500000 (0) | 1276 | 2.9 | None / None | None / None | 0.0 / 0.0 / 0.0 | 724.2 | 0.0 | 4.05 (0.0) | 12.6 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 2 round2-fix-csharp-wax-autoprepare-batch-payments-w8-d1 2026-11-15T22:09:39
+python bakeoff_harness.py run --side csharp-wax-autoprepare --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-autoprepare-batch-payments-w8-d1 --record
+[harness 22:10:24] run 1: csharp-wax-autoprepare batch-payments with 8 workers
+[harness 22:20:29]   500000 sent, 500000 succeeded, 548.387 s; gates PASS
+[harness 22:20:29] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-autoprepare-batch-payments-w8-d1
+# round2-fix-csharp-wax-autoprepare-batch-payments-w8-d1
+
+Recorded run. Side: csharp-wax-autoprepare (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=20). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T22:09:51, finished 2026-11-15T22:20:29.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 911.765 | 8.55 | 16.334 | 1.159 | 0.908 | 3.695 | 30.12 | 4.24 | 500000 (0) | 1168 | 3.7 | None / None | None / None | 0.0 / 0.0 / 0.0 | 697.0 | 0.0 | 4.07 (0.0) | 13.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 3 round2-fix-csharp-wax-npgsql-defaults-batch-payments-w8-d1 2026-11-15T22:20:30
+python bakeoff_harness.py run --side csharp-wax-npgsql-defaults --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-npgsql-defaults-batch-payments-w8-d1 --record
+[harness 22:21:23] run 1: csharp-wax-npgsql-defaults batch-payments with 8 workers
+[harness 22:33:00]   500000 sent, 500000 succeeded, 640.949 s; gates PASS
+[harness 22:33:00] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-npgsql-defaults-batch-payments-w8-d1
+# round2-fix-csharp-wax-npgsql-defaults-batch-payments-w8-d1
+
+Recorded run. Side: csharp-wax-npgsql-defaults (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T22:20:44, finished 2026-11-15T22:33:00.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 780.093 | 9.467 | 19.494 | 1.125 | 0.957 | 5.076 | 18.99 | 4.37 | 500000 (0) | 1058 | 3.7 | None / None | None / None | 0.1 / 0.0 / 0.0 | 821.9 | 0.0 | 4.06 (0.0) | 13.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 4 round2-fix-csharp-wax-batch-payments-w8-d1 2026-11-15T22:33:02
+python bakeoff_harness.py run --side csharp-wax --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-batch-payments-w8-d1 --record
+[harness 22:33:53] run 1: csharp-wax batch-payments with 8 workers
+[harness 22:46:49]   500000 sent, 500000 succeeded, 719.16 s; gates PASS
+[harness 22:46:49] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-batch-payments-w8-d1
+# round2-fix-csharp-wax-batch-payments-w8-d1
+
+Recorded run. Side: csharp-wax. Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T22:33:15, finished 2026-11-15T22:46:49.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 695.256 | 10.514 | 20.712 | 1.341 | 1.161 | 4.401 | 17.38 | 2.68 | 500000 (0) | 1140 | 3.6 | None / None | None / None | 0.1 / 0.0 / 0.0 | 736.2 | 0.0 | 4.07 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 5 round2-fix-csharp-wax-noreset-batch-payments-w8-d1 2026-11-15T22:46:53
+python bakeoff_harness.py run --side csharp-wax-noreset --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 16 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-noreset-batch-payments-w8-d1 --record
+[harness 22:47:42] run 1: csharp-wax-noreset batch-payments with 8 workers
+[harness 23:01:23]   500000 sent, 500000 succeeded, 762.245 s; gates PASS
+[harness 23:01:23] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-noreset-batch-payments-w8-d1
+# round2-fix-csharp-wax-noreset-batch-payments-w8-d1
+
+Recorded run. Side: csharp-wax-noreset (DATABASE_NO_RESET_ON_CLOSE=true, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 16 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T22:47:05, finished 2026-11-15T23:01:23.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 655.957 | 10.888 | 22.686 | 1.186 | 1.169 | 5.448 | 18.11 | 2.84 | 500000 (0) | 992 | 3.5 | None / None | None / None | 0.1 / 0.0 / 0.0 | 742.6 | 0.0 | 4.08 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 6 round2-fix-csharp-wax-rw8-batch-payments-w8-b5-2 2026-11-15T23:01:29
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b5-2 --record
+[harness 23:02:20] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 23:13:33]   500000 sent, 500000 succeeded, 616.901 s; gates PASS
+[harness 23:13:33] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-b5-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b5-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:01:44, finished 2026-11-15T23:13:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 810.503 | 9.246 | 19.11 | 1.131 | 0.7 | 4.641 | 17.64 | 3.45 | 500000 (0) | 1050 | 3.2 | None / None | None / None | 0.0 / 0.0 / 0.0 | 742.6 | 0.0 | 4.05 (0.0) | 13.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 7 round2-fix-csharp-wax-rw8-batch-payments-w8-b5-3 2026-11-15T23:13:36
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b5-3 --record
+[harness 23:14:26] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 23:24:45]   500000 sent, 500000 succeeded, 565.021 s; gates PASS
+[harness 23:24:45] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-b5-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b5-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:13:49, finished 2026-11-15T23:24:45.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 884.923 | 8.772 | 16.851 | 1.086 | 0.577 | 4.39 | 17.14 | 3.18 | 500000 (0) | 1056 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 736.0 | 0.0 | 4.04 (0.0) | 13.7 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 8 round2-fix-csharp-wax-rw8-batch-payments-w8-b5-4 2026-11-15T23:24:47
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b5-4 --record
+[harness 23:25:37] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 23:35:58]   500000 sent, 500000 succeeded, 565.303 s; gates PASS
+[harness 23:35:58] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-b5-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b5-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:25:01, finished 2026-11-15T23:35:58.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 884.481 | 8.796 | 16.815 | 1.086 | 0.557 | 4.346 | 16.98 | 3.11 | 500000 (0) | 1062 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 727.3 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 9 round2-fix-csharp-wax-rw8-batch-payments-w8-b5-5 2026-11-15T23:36:03
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b5-5 --record
+[harness 23:36:53] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 23:47:12]   500000 sent, 500000 succeeded, 564.602 s; gates PASS
+[harness 23:47:12] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-b5-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b5-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:36:17, finished 2026-11-15T23:47:12.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 885.58 | 8.777 | 16.788 | 1.075 | 0.583 | 4.364 | 17.2 | 3.22 | 500000 (0) | 1063 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 731.5 | 0.0 | 4.04 (0.0) | 13.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 10 round2-fix-csharp-wax-rw8-batch-payments-w8-b5-1 2026-11-15T23:47:15
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b5-1 --record
+[harness 23:48:05] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 23:58:26]   500000 sent, 500000 succeeded, 566.475 s; gates PASS
+[harness 23:58:26] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-b5-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b5-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:47:28, finished 2026-11-15T23:58:26.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 882.651 | 8.8 | 16.805 | 1.087 | 0.584 | 4.389 | 17.18 | 3.21 | 500000 (0) | 1068 | 3.4 | None / None | None / None | 0.1 / 0.0 / 0.0 | 743.0 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 11 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b5 2026-11-15T23:58:31
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b5 --record
+[harness 23:59:20] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 00:09:42]   500000 sent, 500000 succeeded, 565.899 s; gates PASS
+[harness 00:09:42] wrote engine-bakeoff\results\2026-11-15-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-15T23:58:44, finished 2026-11-16T00:09:42.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 883.55 | 8.798 | 16.863 | 1.085 | 0.531 | 4.361 | 16.92 | 3.08 | 500000 (0) | 1068 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 743.7 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 12 round2-fix-csharp-wax-rw8-batch-payments-w8-b1-3 2026-11-16T00:09:47
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b1-3 --record
+[harness 00:10:37] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 00:20:56]   500000 sent, 500000 succeeded, 565.216 s; gates PASS
+[harness 00:20:56] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b1-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b1-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T00:10:01, finished 2026-11-16T00:20:56.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 884.618 | 8.788 | 16.741 | 1.082 | 0.552 | 4.346 | 16.98 | 3.11 | 500000 (0) | 1068 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 740.2 | 0.0 | 4.04 (0.0) | 13.6 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 13 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b1 2026-11-16T00:20:58
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b1 --record
+[harness 00:21:48] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 00:32:09]   500000 sent, 500000 succeeded, 565.989 s; gates PASS
+[harness 00:32:09] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T00:21:11, finished 2026-11-16T00:32:09.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 883.409 | 8.8 | 16.952 | 1.078 | 0.542 | 4.342 | 16.91 | 3.08 | 500000 (0) | 1065 | 3.3 | None / None | None / None | 0.0 / 0.0 / 0.0 | 721.2 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 14 round2-fix-csharp-wax-rw8-batch-payments-w8-b1-5 2026-11-16T00:32:14
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b1-5 --record
+[harness 00:33:04] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 00:43:26]   500000 sent, 500000 succeeded, 567.191 s; gates PASS
+[harness 00:43:26] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b1-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b1-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T00:32:28, finished 2026-11-16T00:43:26.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 881.537 | 8.812 | 16.778 | 1.085 | 0.567 | 4.379 | 17.09 | 3.16 | 500000 (0) | 1066 | 3.2 | None / None | None / None | 0.0 / 0.0 / 0.0 | 748.5 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 15 round2-fix-csharp-wax-rw8-batch-payments-w8-b1-4 2026-11-16T00:43:30
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b1-4 --record
+[harness 00:44:21] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 00:54:46]   500000 sent, 500000 succeeded, 570.938 s; gates PASS
+[harness 00:54:46] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b1-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b1-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T00:43:44, finished 2026-11-16T00:54:46.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 875.752 | 8.846 | 17.191 | 1.089 | 0.568 | 4.407 | 17.06 | 3.15 | 500000 (0) | 1047 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 760.8 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 16 round2-fix-csharp-wax-rw8-batch-payments-w8-b1-1 2026-11-16T00:54:52
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b1-1 --record
+[harness 00:55:42] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 01:06:05]   500000 sent, 500000 succeeded, 569.68 s; gates PASS
+[harness 01:06:05] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b1-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b1-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T00:55:05, finished 2026-11-16T01:06:05.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 877.686 | 8.831 | 16.918 | 1.095 | 0.602 | 4.452 | 17.24 | 3.23 | 500000 (0) | 1080 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 739.2 | 0.0 | 4.04 (0.0) | 13.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 17 round2-fix-csharp-wax-rw8-batch-payments-w8-b1-2 2026-11-16T01:06:08
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b1-2 --record
+[harness 01:06:56] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 01:17:21]   500000 sent, 500000 succeeded, 568.019 s; gates PASS
+[harness 01:17:21] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b1-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b1-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T01:06:20, finished 2026-11-16T01:17:21.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 880.252 | 8.829 | 16.846 | 1.081 | 0.587 | 4.422 | 17.2 | 3.22 | 500000 (0) | 1050 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 719.3 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 18 round2-fix-csharp-wax-rw8-batch-payments-w8-b6-1 2026-11-16T01:17:24
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b6-1 --record
+[harness 01:18:15] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 01:28:35]   500000 sent, 500000 succeeded, 561.923 s; gates PASS
+[harness 01:28:35] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b6-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b6-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T01:17:39, finished 2026-11-16T01:28:35.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 889.802 | 8.738 | 16.583 | 1.039 | 0.537 | 4.282 | 17.07 | 3.15 | 500000 (0) | 1072 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 713.0 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 19 round2-fix-csharp-wax-rw8-batch-payments-w8-b6-4 2026-11-16T01:28:37
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b6-4 --record
+[harness 01:29:29] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 01:39:46]   500000 sent, 500000 succeeded, 564.173 s; gates PASS
+[harness 01:39:46] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b6-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b6-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T01:28:53, finished 2026-11-16T01:39:46.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 886.253 | 8.783 | 16.8 | 1.068 | 0.593 | 4.375 | 17.23 | 3.23 | 500000 (0) | 1052 | 3.4 | None / None | None / None | 0.1 / 0.0 / 0.0 | 709.0 | 0.0 | 4.05 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 20 round2-fix-csharp-wax-rw8-batch-payments-w8-b6-5 2026-11-16T01:39:48
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b6-5 --record
+[harness 01:40:37] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 01:51:02]   500000 sent, 500000 succeeded, 570.113 s; gates PASS
+[harness 01:51:02] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b6-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b6-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T01:40:01, finished 2026-11-16T01:51:02.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 877.019 | 8.846 | 16.946 | 1.091 | 0.57 | 4.41 | 17.13 | 3.18 | 500000 (0) | 1097 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 768.6 | 0.0 | 4.04 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 21 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b6 2026-11-16T01:51:04
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b6 --record
+[harness 01:51:54] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:02:20]   500000 sent, 500000 succeeded, 572.642 s; gates PASS
+[harness 02:02:20] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b6
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b6
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T01:51:18, finished 2026-11-16T02:02:20.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 873.146 | 8.87 | 17.228 | 1.101 | 0.553 | 4.42 | 16.94 | 3.09 | 500000 (0) | 1063 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 722.4 | 0.0 | 4.04 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 22 round2-fix-csharp-wax-rw8-batch-payments-w8-b6-2 2026-11-16T02:02:25
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b6-2 --record
+[harness 02:03:15] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:13:43]   500000 sent, 500000 succeeded, 572.626 s; gates PASS
+[harness 02:13:43] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b6-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b6-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:02:39, finished 2026-11-16T02:13:43.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 873.17 | 8.873 | 17.138 | 1.094 | 0.598 | 4.421 | 17.2 | 3.22 | 500000 (0) | 1034 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 740.8 | 0.0 | 4.05 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 23 round2-fix-csharp-wax-rw8-batch-payments-w8-b6-3 2026-11-16T02:13:47
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b6-3 --record
+[harness 02:14:37] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:25:06]   500000 sent, 500000 succeeded, 574.089 s; gates PASS
+[harness 02:25:06] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b6-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b6-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:14:00, finished 2026-11-16T02:25:06.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 870.945 | 8.881 | 17.326 | 1.085 | 0.58 | 4.416 | 17.05 | 3.15 | 500000 (0) | 1044 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 751.9 | 0.0 | 4.04 (0.0) | 14.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 24 round2-fix-csharp-wax-rw8-batch-payments-w8-b4-4 2026-11-16T02:25:08
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b4-4 --record
+[harness 02:25:58] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:36:27]   500000 sent, 500000 succeeded, 575.481 s; gates PASS
+[harness 02:36:27] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b4-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b4-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:25:21, finished 2026-11-16T02:36:27.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 868.838 | 8.908 | 17.177 | 1.108 | 0.574 | 4.453 | 17.06 | 3.15 | 500000 (0) | 1070 | 3.5 | None / None | None / None | 0.1 / 0.0 / 0.0 | 736.1 | 0.0 | 4.04 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 25 round2-fix-csharp-wax-rw8-batch-payments-w8-b4-5 2026-11-16T02:36:29
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b4-5 --record
+[harness 02:37:21] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:47:49]   500000 sent, 500000 succeeded, 571.219 s; gates PASS
+[harness 02:47:49] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b4-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b4-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:36:43, finished 2026-11-16T02:47:49.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 875.321 | 8.833 | 17.126 | 1.081 | 0.601 | 4.437 | 17.25 | 3.24 | 500000 (0) | 1057 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 721.4 | 0.0 | 4.05 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 26 round2-fix-csharp-wax-rw8-batch-payments-w8-b4-3 2026-11-16T02:47:50
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b4-3 --record
+[harness 02:48:40] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 02:59:06]   500000 sent, 500000 succeeded, 572.098 s; gates PASS
+[harness 02:59:06] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b4-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b4-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:48:04, finished 2026-11-16T02:59:06.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 873.976 | 8.836 | 17.187 | 1.094 | 0.639 | 4.459 | 17.38 | 3.3 | 500000 (0) | 1068 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 823.1 | 0.0 | 4.05 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 27 round2-fix-csharp-wax-rw8-batch-payments-w8-b4-1 2026-11-16T02:59:11
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b4-1 --record
+[harness 03:00:00] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 03:10:29]   500000 sent, 500000 succeeded, 573.635 s; gates PASS
+[harness 03:10:29] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b4-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b4-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T02:59:25, finished 2026-11-16T03:10:29.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 871.634 | 8.874 | 17.148 | 1.1 | 0.592 | 4.436 | 17.14 | 3.19 | 500000 (0) | 1044 | 3.7 | None / None | None / None | 0.0 / 0.0 / 0.0 | 702.1 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 28 round2-fix-csharp-wax-rw8-batch-payments-w8-b4-2 2026-11-16T03:10:33
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b4-2 --record
+[harness 03:11:23] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 03:21:52]   500000 sent, 500000 succeeded, 574.396 s; gates PASS
+[harness 03:21:52] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b4-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b4-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T03:10:46, finished 2026-11-16T03:21:52.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 870.48 | 8.876 | 17.33 | 1.099 | 0.574 | 4.435 | 17.1 | 3.17 | 500000 (0) | 1064 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 709.3 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 29 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b4 2026-11-16T03:21:54
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b4 --record
+[harness 03:22:43] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 03:33:12]   500000 sent, 500000 succeeded, 573.911 s; gates PASS
+[harness 03:33:12] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T03:22:07, finished 2026-11-16T03:33:12.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 871.215 | 8.883 | 17.188 | 1.095 | 0.535 | 4.418 | 16.94 | 3.09 | 500000 (0) | 2348 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 761.6 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 30 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b2 2026-11-16T03:33:15
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b2 --record
+[harness 03:34:04] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 03:44:33]   500000 sent, 500000 succeeded, 573.367 s; gates PASS
+[harness 03:44:33] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T03:33:29, finished 2026-11-16T03:44:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 872.042 | 8.867 | 17.292 | 1.092 | 0.537 | 4.42 | 16.91 | 3.08 | 500000 (0) | 1074 | 3.3 | None / None | None / None | 0.0 / 0.0 / 0.0 | 721.7 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 31 round2-fix-csharp-wax-rw8-batch-payments-w8-b2-4 2026-11-16T03:44:36
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b2-4 --record
+[harness 03:45:27] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 03:55:55]   500000 sent, 500000 succeeded, 573.381 s; gates PASS
+[harness 03:55:55] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b2-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b2-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T03:44:51, finished 2026-11-16T03:55:55.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 872.021 | 8.86 | 17.297 | 1.086 | 0.601 | 4.421 | 17.24 | 3.24 | 500000 (0) | 1066 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 733.7 | 0.0 | 4.05 (0.0) | 13.0 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 32 round2-fix-csharp-wax-rw8-batch-payments-w8-b2-2 2026-11-16T03:55:58
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b2-2 --record
+[harness 03:56:47] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 04:07:13]   500000 sent, 500000 succeeded, 569.797 s; gates PASS
+[harness 04:07:13] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b2-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b2-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T03:56:11, finished 2026-11-16T04:07:13.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 877.505 | 8.836 | 16.927 | 1.096 | 0.583 | 4.396 | 17.09 | 3.17 | 500000 (0) | 1073 | 3.7 | None / None | None / None | 0.0 / 0.0 / 0.0 | 722.2 | 0.0 | 4.04 (0.0) | 13.2 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 33 round2-fix-csharp-wax-rw8-batch-payments-w8-b2-5 2026-11-16T04:07:19
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b2-5 --record
+[harness 04:08:08] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 04:18:33]   500000 sent, 500000 succeeded, 569.628 s; gates PASS
+[harness 04:18:33] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b2-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b2-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T04:07:32, finished 2026-11-16T04:18:33.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 877.766 | 8.828 | 17 | 1.088 | 0.577 | 4.411 | 17.1 | 3.17 | 500000 (0) | 1066 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 742.1 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 34 round2-fix-csharp-wax-rw8-batch-payments-w8-b2-3 2026-11-16T04:18:35
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b2-3 --record
+[harness 04:19:25] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 04:29:45]   500000 sent, 500000 succeeded, 565.529 s; gates PASS
+[harness 04:29:45] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b2-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b2-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T04:18:48, finished 2026-11-16T04:29:45.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 884.128 | 8.788 | 16.898 | 1.082 | 0.578 | 4.37 | 17.13 | 3.18 | 500000 (0) | 1069 | 3.6 | None / None | None / None | 0.0 / 0.0 / 0.0 | 751.5 | 0.0 | 4.04 (0.0) | 13.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 35 round2-fix-csharp-wax-rw8-batch-payments-w8-b2-1 2026-11-16T04:29:46
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b2-1 --record
+[harness 04:30:35] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 04:41:00]   500000 sent, 500000 succeeded, 567.835 s; gates PASS
+[harness 04:41:00] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b2-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b2-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T04:30:00, finished 2026-11-16T04:41:00.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 880.537 | 8.81 | 17.02 | 1.088 | 0.564 | 4.374 | 17.09 | 3.16 | 500000 (0) | 1070 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 775.2 | 0.0 | 4.04 (0.0) | 13.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 36 round2-fix-csharp-wax-rw8-batch-payments-w8-b3-2 2026-11-16T04:41:02
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b3-2 --record
+[harness 04:41:52] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 04:52:14]   500000 sent, 500000 succeeded, 567.791 s; gates PASS
+[harness 04:52:14] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b3-2
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b3-2
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T04:41:16, finished 2026-11-16T04:52:14.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 880.606 | 8.797 | 17.062 | 1.074 | 0.597 | 4.385 | 17.21 | 3.22 | 500000 (0) | 1062 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 715.1 | 0.0 | 4.05 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 37 round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b3 2026-11-16T04:52:19
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b3 --record
+[harness 04:53:09] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 05:03:34]   500000 sent, 500000 succeeded, 571.984 s; gates PASS
+[harness 05:03:34] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --small-pass-events 100 --small-pass-sleep-ms 50`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T04:52:33, finished 2026-11-16T05:03:34.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 874.15 | 8.843 | 17.35 | 1.099 | 0.542 | 4.396 | 16.92 | 3.09 | 500000 (0) | 1079 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 746.7 | 0.0 | 4.04 (0.0) | 13.1 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 38 round2-fix-csharp-wax-rw8-batch-payments-w8-b3-5 2026-11-16T05:03:40
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b3-5 --record
+[harness 05:04:29] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 05:14:50]   500000 sent, 500000 succeeded, 567.088 s; gates PASS
+[harness 05:14:50] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b3-5
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b3-5
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T05:03:53, finished 2026-11-16T05:14:50.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 881.697 | 8.811 | 16.968 | 1.09 | 0.574 | 4.374 | 17.07 | 3.15 | 500000 (0) | 1066 | 3.4 | None / None | None / None | 0.1 / 0.0 / 0.0 | 713.5 | 0.0 | 4.04 (0.0) | 13.4 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 39 round2-fix-csharp-wax-rw8-batch-payments-w8-b3-1 2026-11-16T05:14:56
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b3-1 --record
+[harness 05:15:47] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 05:26:09]   500000 sent, 500000 succeeded, 567.355 s; gates PASS
+[harness 05:26:09] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b3-1
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b3-1
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T05:15:09, finished 2026-11-16T05:26:09.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 881.282 | 8.801 | 17.046 | 1.083 | 0.541 | 4.341 | 16.99 | 3.12 | 500000 (0) | 1086 | 3.3 | None / None | None / None | 0.0 / 0.0 / 0.0 | 728.5 | 0.0 | 4.04 (0.0) | 13.6 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 40 round2-fix-csharp-wax-rw8-batch-payments-w8-b3-3 2026-11-16T05:26:13
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b3-3 --record
+[harness 05:27:02] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 05:37:24]   500000 sent, 500000 succeeded, 567.227 s; gates PASS
+[harness 05:37:24] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b3-3
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b3-3
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T05:26:26, finished 2026-11-16T05:37:24.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 881.481 | 8.799 | 17.098 | 1.089 | 0.574 | 4.373 | 17.16 | 3.19 | 500000 (0) | 1085 | 3.4 | None / None | None / None | 0.0 / 0.0 / 0.0 | 742.1 | 0.0 | 4.04 (0.0) | 13.5 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
+
+===== 41 round2-fix-csharp-wax-rw8-batch-payments-w8-b3-4 2026-11-16T05:37:29
+python bakeoff_harness.py run --side csharp-wax-rw8 --workload batch-payments --workers 8 --accounts 500000 --engine-args=--projection-workers 3 --rule-workers 8 --pass-report-seconds 10 --catchup-timeout 3600 --label round2-fix-csharp-wax-rw8-batch-payments-w8-b3-4 --record
+[harness 05:38:18] run 1: csharp-wax-rw8 batch-payments with 8 workers
+[harness 05:48:42]   500000 sent, 500000 succeeded, 567.346 s; gates PASS
+[harness 05:48:42] wrote engine-bakeoff\results\2026-11-16-round2-fix-csharp-wax-rw8-batch-payments-w8-b3-4
+# round2-fix-csharp-wax-rw8-batch-payments-w8-b3-4
+
+Recorded run. Side: csharp-wax-rw8 (DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0). Workload: batch-payments. Accounts: 500,000. Engine arguments: `--projection-workers 3 --rule-workers 8 --pass-report-seconds 10`. pgBouncer: no. Caps: standard (5577265b0eda). Warm-up runs per worker count: 0; measured runs: 1. Started 2026-11-16T05:37:42, finished 2026-11-16T05:48:42.
+
+Machine: Windows-11-10.0.26300-SP0; Docker 29.9.2 on Docker Desktop, 16 CPUs, 31 GiB. Host: 13th Gen Intel(R) Core(TM) i7-13620H, 16 logical cores, 64 GiB RAM; disks: NVMe Samsung SSD 990 PRO 4TB (NVMe SSD), NVMe WD PC SN740 SDDQNQD-512G-1014 (NVMe SSD); power plan Acer, on AC power. Docker Desktop 4.98.0 (245422). PostgreSQL: PostgreSQL 17.11 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit. Repository commit d34b97f48d79aed0779d8715169e3be1bf165010. Other containers running: 14.
+
+Medians of the measured runs. CPU is milliseconds per command, from each container's cgroup counter over the whole bench command, divided by every command it sent, the warm-up's included (sent_total); engine CPU spent catching up afterward is in the raw results. Statements and commits per command are divided the same way, and count everything the run's database executed in that window, the engine's reads and rules included. Catch-up is the time from the end of the bench command until every reader reached the head as it stood at that end; events written afterward do not count. Rule latency and register lateness are in milliseconds. Transactions are those the bench driver reports committing; in a bulk workload, latency is per transaction, that is, per chunk. Throttled is the percentage of each container's scheduler periods in which it hit its CPU limit; a container throttled for much of the run was capped by its limit. Host probe is the median of five timings of a fixed CPU-bound statement in the run's database just before the bench, outside the measured window; a probe well above the night's usual marks a run during which the machine itself ran slow. Steal is the share of the kernel's CPU time taken by the hypervisor for other tenants over the bench command, from /proc/stat as the database container sees it. WAL is the write-ahead log written per command over the bench command, with full-page images per command; the WAL, checkpointer, background writer, and per-table update and vacuum counts are in the raw results. Engine ready is how long the engine took to finish starting, judged by its CPU, before the probe and the bench began.
+
+| Workers | Succeeded/s | p50 ms | p99 ms | Bench CPU | Engine CPU | DB CPU | Statements/cmd | Commits/cmd | Transactions (fallback chunks) | Max lag (events) | Catch-up s | Rule p50 / p99 | Lateness p50 / p99 | Throttled % db / engine / bench | Host probe ms | Steal % | WAL KB/cmd (FPI/cmd) | Engine ready s | Gates |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 8 | 881.296 | 8.809 | 17.054 | 1.084 | 0.578 | 4.34 | 17.08 | 3.16 | 500000 (0) | 1052 | 3.5 | None / None | None / None | 0.0 / 0.0 / 0.0 | 745.0 | 0.0 | 4.04 (0.0) | 13.3 | pass |
+
+Each run's top statements by total time, from pg_stat_statements, are in its `raw/` `.statements.json`.
+
+Raw output, one set per run, is in `raw/`: the bench command's stdout and stderr, verify-chain's output, the engine's log, and the full measurements as JSON. `environment.json` holds the PostgreSQL settings and the image of every container.
+
