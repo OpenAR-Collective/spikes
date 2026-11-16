@@ -364,19 +364,23 @@ class LagSampler(threading.Thread):
 # start of the bench to the end of the catch-up, that records what the
 # database's backends wait on and how fast one core runs, so a change of pace
 # within a run can be set against both. Each second it counts the backends
-# that are not idle in pg_stat_activity, by type, state, and wait event (CPU
-# where none is waited on), leaving out background processes idle in their
-# main loops (the Activity waits). Every tenth second it times a fixed CPU-bound
+# that are not idle in pg_stat_activity, by type, state, and wait event (none
+# where no wait event is reported, which includes a backend on a core and one
+# waiting for a core), leaving out background processes idle in their main
+# loops (the Activity waits). Every tenth second it times a fixed CPU-bound
 # statement, a fifth of the host probe's, and reads the cluster's WAL counters
 # and the database's commits. It is one DO block that commits after every
-# sample, so it holds no snapshot between samples, and prints each sample as a
-# notice with its UTC time; the harness cancels it when the catch-up ends. Its
-# probe costs about 140 ms of one core every 10 seconds in the database container.
+# sample, so no snapshot it holds is more than about a second old, and prints
+# each sample as a notice with its UTC time. A sample that runs late skips the
+# ticks it missed, so a stall shows as a gap. The harness cancels it when the
+# catch-up ends. Its probe costs about 150 ms of one core every 10 seconds in
+# the database container.
 SIDE_SAMPLER_NAME = "bakeoff_side_sampler"
 SIDE_SAMPLER_SQL = """DO $sampler$
 DECLARE
   began timestamptz := clock_timestamp();
   tick bigint := 0;
+  probe_at bigint := 0;
   stamp text;
   started timestamptz;
   total bigint;
@@ -390,11 +394,12 @@ BEGIN
     PERFORM pg_stat_clear_snapshot();
     SELECT string_agg(k || '=' || n, ' ' ORDER BY k) INTO waits FROM (
       SELECT concat_ws('/', replace(backend_type, ' ', '_'), coalesce(replace(state, ' ', '_'), '-'),
-                       coalesce(wait_event_type, 'CPU'), coalesce(wait_event, '-')) AS k, count(*) AS n
+                       coalesce(wait_event_type, 'none'), coalesce(wait_event, '-')) AS k, count(*) AS n
       FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND state IS DISTINCT FROM 'idle'
         AND wait_event_type IS DISTINCT FROM 'Activity' GROUP BY 1) t;
     RAISE NOTICE 'waits % %', stamp, coalesce(waits, '');
-    IF tick % 10 = 0 THEN
+    IF tick >= probe_at THEN
+      probe_at := (tick / 10 + 1) * 10;
       started := clock_timestamp();
       SELECT sum(x) INTO total FROM (SELECT generate_series(1, 4000000) AS x) s;
       RAISE NOTICE 'probe % %', stamp, round((extract(epoch FROM clock_timestamp() - started) * 1000)::numeric, 1);
@@ -404,7 +409,7 @@ BEGIN
         stamp, db.xact_commit, db.xact_rollback, wal.wal_records, wal.wal_fpi, wal.wal_bytes, wal.wal_buffers_full,
         wal.wal_write, wal.wal_sync;
     END IF;
-    tick := tick + 1;
+    tick := greatest(tick + 1, ceil(extract(epoch FROM clock_timestamp() - began))::bigint);
     COMMIT;
     PERFORM pg_sleep(greatest(0, extract(epoch FROM began + tick * interval '1 second' - clock_timestamp())));
   END LOOP;
@@ -445,7 +450,10 @@ class SideSampler:
             if len(parts) >= 3 and parts[0] == "NOTICE:" and parts[1] in ("waits", "probe", "stats"):
                 kinds[parts[1]] = kinds.get(parts[1], 0) + 1
                 if parts[1] == "probe":
-                    probes.append(float(parts[3]))
+                    try:
+                        probes.append(float(parts[3]))
+                    except (IndexError, ValueError):
+                        continue  # a line cut short when the loop was stopped
         return {"file": self.path.name, "samples": kinds,
                 "probe_ms_median": round(statistics.median(probes), 1) if probes else None,
                 "probe_ms_max": max(probes) if probes else None}
@@ -738,7 +746,14 @@ def run_one(side, args, workers, index, raw_dir):
     elif args.workload in PLACEMENTS:
         command += ["--accounts", str(args.placements)]
     log(f"run {index}: {side.name} {args.workload} with {workers} workers")
-    result = sh(["docker", "exec", bench, *command], check=False, timeout=args.timeout)
+    try:
+        result = sh(["docker", "exec", bench, *command], check=False, timeout=args.timeout)
+    except BaseException:
+        # A bench that times out or is interrupted leaves no loop running behind it.
+        sampler.stop()
+        if side_sampler:
+            side_sampler.stop()
+        raise
     after = counters(side, database, containers)
     _, end_head = sampler.positions()
     statements = int(side.psql(database, """SELECT coalesce(sum(calls), 0) FROM pg_stat_statements

@@ -135,7 +135,8 @@ def command(plan, entry):
 # The Windows host's processor counters: its speed against nominal, the share
 # of it a power or thermal limit allows and the flags that name the limit,
 # Windows' own busy figures, the CPU of the virtual machine Docker runs in,
-# and the hypervisor's run time across every logical processor.
+# the hypervisor's run time across every logical processor, and each logical
+# processor's own load and speed.
 HOST_COUNTERS = [
     r"\Processor Information(_Total)\% Processor Performance",
     r"\Processor Information(_Total)\% Performance Limit",
@@ -145,17 +146,25 @@ HOST_COUNTERS = [
     r"\Process(vmmemWSL)\% Processor Time",
     r"\Hyper-V Hypervisor Logical Processor(_Total)\% Total Run Time",
     r"\Hyper-V Hypervisor Logical Processor(_Total)\% Guest Run Time",
+    # Each logical processor's load and speed: a hybrid processor's
+    # performance and efficiency cores run at different speeds, and the
+    # totals cannot show load moving from one kind to the other.
+    r"\Processor Information(*)\% Processor Time",
+    r"\Processor Information(*)\% Processor Performance",
 ]
 
 
-def start_host_counters(name):
-    """Logs HOST_COUNTERS every 5 seconds with typeperf, on Windows only."""
+def start_host_counters(name, deadline):
+    """Logs HOST_COUNTERS every 5 seconds with typeperf, on Windows only, for a
+    sample count that ends it soon after the deadline even if this runner dies."""
     if os.name != "nt":
         print("host counters: not on Windows, so none are logged", flush=True)
         return None
     raw = HARNESS / "out" / f"{name}.host-counters.raw.csv"
     raw.parent.mkdir(parents=True, exist_ok=True)
-    process = subprocess.Popen(["typeperf", *HOST_COUNTERS, "-si", "5", "-f", "CSV", "-o", str(raw), "-y"],
+    samples = max(1, int((deadline - datetime.now()).total_seconds() / 5)) + 60
+    process = subprocess.Popen(["typeperf", *HOST_COUNTERS, "-si", "5", "-sc", str(samples), "-f", "CSV",
+                                "-o", str(raw), "-y"],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return process, raw
 
@@ -317,7 +326,7 @@ def main():
 
     if not args.dry_run:
         clean_databases(plan)
-    host_counters = start_host_counters(args.name) if plan.get("host_counters") and not args.dry_run else None
+    host_counters = start_host_counters(args.name, deadline) if plan.get("host_counters") and not args.dry_run else None
     clock = datetime.now()
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
     with opened as log, contextlib.ExitStack() as stack:
@@ -362,6 +371,9 @@ def main():
                 break
     status["finished"] = f"{datetime.now():%Y-%m-%dT%H:%M:%S}"
     if not args.dry_run:
+        # Nothing a run started outlives the pass: a run stopped at the deadline
+        # can leave work inside its database container, such as the side sampler.
+        stop_databases()
         save()
     states = [run["state"] for run in status["runs"]]
     print(f"{states.count('done') + states.count('would run')} run, {states.count('failed')} failed, "

@@ -23,8 +23,12 @@ public static partial class PlanChoices
 {
     /// <summary>One prepared statement on one connection. Npgsql names the
     /// statements it prepares itself _auto0 and so on, so the text is what
-    /// identifies one.</summary>
-    public sealed record Statement(string Text, long GenericPlans, long CustomPlans);
+    /// identifies one: shortened for reading, with the first 8 characters of
+    /// the full text's MD5 to keep apart two statements that begin alike.
+    /// Npgsql replaces its least-used statement when Max Auto Prepare is
+    /// reached, and the replacement's counts start again, so a connection
+    /// holding that many may report partial counts.</summary>
+    public sealed record Statement(string Text, string Hash, long GenericPlans, long CustomPlans);
 
     /// <summary>One physical connection and its prepared statements, the most executed first.</summary>
     public sealed record Connection(int Pid, int Prepared, IReadOnlyList<Statement> Statements);
@@ -34,8 +38,8 @@ public static partial class PlanChoices
         "AND client_addr IS NOT DISTINCT FROM inet_client_addr() AND application_name = current_setting('application_name')";
 
     const string ReadSql =
-        "SELECT pg_backend_pid(), statement, generic_plans, custom_plans FROM pg_prepared_statements " +
-        "UNION ALL SELECT pg_backend_pid(), NULL, NULL, NULL WHERE NOT EXISTS (SELECT FROM pg_prepared_statements)";
+        "SELECT pg_backend_pid(), statement, left(md5(statement), 8), generic_plans, custom_plans FROM pg_prepared_statements " +
+        "UNION ALL SELECT pg_backend_pid(), NULL, NULL, NULL, NULL WHERE NOT EXISTS (SELECT FROM pg_prepared_statements)";
 
     /// <summary>Reads at most maxConnections connections, each with at most
     /// limit statements; a statement's text is shortened to 100 characters.</summary>
@@ -70,7 +74,8 @@ public static partial class PlanChoices
                         pid = rows.GetInt32(0);
                         if (!rows.IsDBNull(1))
                         {
-                            statements.Add(new Statement(Shorten(rows.GetString(1)), rows.GetInt64(2), rows.GetInt64(3)));
+                            statements.Add(new Statement(Shorten(rows.GetString(1)), rows.GetString(2), rows.GetInt64(3),
+                                rows.GetInt64(4)));
                         }
                     }
                 }

@@ -154,17 +154,31 @@ static class Bench
         // After the timer, before the pool is disposed: the plan choices of the
         // statements prepared on this process's own connections, which no other
         // session can see, and the reset Npgsql gives a connection returned to
-        // the pool, which decides whether they survive it.
+        // the pool, which decides whether they survive it. The read is outside
+        // elapsed_s but inside the harness's window, so it is bounded at 5
+        // seconds and its own time is recorded. Behind pgBouncer the pool's
+        // connections are the bouncer's, not the server's, so it is skipped.
         IReadOnlyList<PlanChoices.Connection>? planChoices = null;
         string? planChoicesError = null;
-        try
+        var planClock = Stopwatch.StartNew();
+        if (Environment.GetEnvironmentVariable("DATABASE_POOLED") == "1")
         {
-            planChoices = await PlanChoices.ReadAsync(engine.DataSource);
+            planChoicesError = "skipped: the connections go through pgBouncer";
         }
-        catch (Exception error) when (error is NpgsqlException or InvalidOperationException or TimeoutException)
+        else
         {
-            planChoicesError = error.Message;
+            using var bound = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try
+            {
+                planChoices = await PlanChoices.ReadAsync(engine.DataSource, cancellation: bound.Token);
+            }
+            catch (Exception error) when (error is NpgsqlException or InvalidOperationException or TimeoutException
+                                              or OperationCanceledException)
+            {
+                planChoicesError = error.Message;
+            }
         }
+        planClock.Stop();
         var driver = new NpgsqlConnectionStringBuilder(engine.DataSource.ConnectionString);
         Print(new
         {
@@ -203,11 +217,13 @@ static class Bench
                 statements = connection.Statements.Select(statement => new
                 {
                     statement = statement.Text,
+                    hash = statement.Hash,
                     generic_plans = statement.GenericPlans,
                     custom_plans = statement.CustomPlans,
                 }),
             }),
             plan_choices_error = planChoicesError,
+            plan_choices_ms = Math.Round(planClock.Elapsed.TotalMilliseconds, 1),
         });
         return tally.Failed == 0 ? 0 : 1;
     }

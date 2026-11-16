@@ -54,11 +54,13 @@ public sealed class PlanChoicesTests(DatabaseFixture db) : IClassFixture<Databas
 
         Assert.Equal(2, connections.Count);
         Assert.Equal(2, connections.Select(connection => connection.Pid).Distinct().Count());
-        var executions = connections
+        var statements = connections
             .Select(connection => Assert.Single(connection.Statements, statement => statement.Text == Sql))
-            .Select(statement => statement.GenericPlans + statement.CustomPlans)
-            .Order();
-        Assert.Equal([3L, 7L], executions);
+            .ToList();
+        Assert.Equal([3L, 7L], statements.Select(statement => statement.GenericPlans + statement.CustomPlans).Order());
+        // The same text on both connections, so the same hash of it.
+        Assert.Single(statements.Select(statement => statement.Hash).Distinct());
+        Assert.Matches("^[0-9a-f]{8}$", statements[0].Hash);
     }
 
     [Fact]
