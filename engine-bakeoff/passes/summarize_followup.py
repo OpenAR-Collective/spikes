@@ -189,7 +189,9 @@ def load(entry, host):
                for name in {*HOST_COLUMNS.values(), *(key for sample in in_host for key in sample)}},
         })
     fast = [r["events_s"] for r in rows if not r["slow"]]
-    run_start = utc(run["clock"]["start"].replace(" ", "T").replace("+00", "Z")) if run.get("clock") else None
+    clock = run.get("clock") or {}
+    run_start = utc(clock["start"].replace(" ", "T").replace("+00", "Z")) if clock.get("start") else None
+    run_end = utc(clock["end"].replace(" ", "T").replace("+00", "Z")) if clock.get("end") else None
     return {
         "folder": folder, "rows": rows, "start": run_start,
         "rate": commands / bench["elapsed_s"],
@@ -204,7 +206,9 @@ def load(entry, host):
         "probe": median(value for _, value in probes), "host_probe": run.get("host_probe_ms"),
         "sampler_cores": (run.get("side_sampler") or {}).get("cores"),
         "db_cores": (run.get("cpu_s") or {}).get("db") / run["window_s"] if (run.get("cpu_s") or {}).get("db") else None,
-        "perf": median(value.get("perf") for stamp, value in host if run_start and run_start <= stamp),
+        # The run's own bench window, from the clock's start to its end.
+        "perf": median(value.get("perf") for stamp, value in host
+                       if run_start and run_end and run_start <= stamp < run_end),
         "gates": run.get("gates_pass"),
         "failed": [name for name, passed in (run.get("gates") or {}).items() if passed is False],
     }
@@ -269,7 +273,7 @@ def main():
             "with the engine only), the side sampler's CPU probe (median milliseconds for 4 million rows, every 10 seconds "
             "through the run), the side sampler's own CPU (measured from its backend and its psql, as a percentage of one "
             "core and of the database container's CPU over the bench), the host probe before the run (median milliseconds "
-            "for 20 million rows), the host's processor performance against nominal (median percent through the run), and "
+            "for 20 million rows), the host's processor performance against nominal (median percent over the bench), and "
             "the gates.*", "",
             "| Order | Group | Run | Start | Commands/s | Slow-regime share % | Sampler probe ms | Sampler CPU % of a core "
             "| Sampler share of DB CPU % | Host probe ms | Processor performance % | Gates |", "| --- " * 12 + "|"]
