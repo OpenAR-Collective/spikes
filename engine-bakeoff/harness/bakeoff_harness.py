@@ -783,8 +783,9 @@ def run_one(side, args, workers, index, raw_dir):
     # The server's settings that bear on writing and flushing WAL, as the
     # harness's own session sees them; a session's own options, such as a
     # diagnostic synchronous_commit, show in the bench's plan-choice read.
-    settings = {row["name"]: row["setting"] + (row["unit"] or "") for row in
-                _json_rows(side, database, "SELECT name, setting, unit FROM pg_settings WHERE name IN ("
+    # current_setting renders each value with its unit, as SHOW does.
+    settings = {row["name"]: row["value"] for row in
+                _json_rows(side, database, "SELECT name, current_setting(name) AS value FROM pg_settings WHERE name IN ("
                            + ", ".join(f"'{name}'" for name in SERVER_SETTINGS) + ") ORDER BY name") or []}
     # Before the measured window, and before the statement statistics reset.
     probe_ms, probe_samples = host_probe(side, database)

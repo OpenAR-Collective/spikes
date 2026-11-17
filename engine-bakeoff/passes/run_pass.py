@@ -207,10 +207,11 @@ def stop_host_counters(started, name):
 
 
 def start_process_snapshot(name, deadline):
-    """Every 30 seconds, each Windows process's CPU and bytes written over the
-    interval, from process_snapshot.ps1, to a raw file that stays in the
-    harness's ignored out/ folder, since it names every process on the host.
-    It ends itself 5 minutes after the deadline even if this runner dies."""
+    """Every 30 seconds, each Windows process's CPU, bytes written, and write
+    operations over the interval, from process_snapshot.ps1, to a raw file
+    that stays in the harness's ignored out/ folder, since it names every
+    process on the host. It ends itself 5 minutes after the deadline even if
+    this runner dies."""
     if os.name != "nt":
         print("process snapshot: not on Windows, so none is taken", flush=True)
         return None
@@ -234,25 +235,30 @@ NAMED_PROCESSES = ("vmmemWSL", "System", "Docker Desktop.exe", "wsl.exe", "wslse
 
 def stop_process_snapshot(process, name):
     """Stops the snapshot and writes its committed copy, <name>.processes.csv,
-    beside the plan."""
+    beside the plan. Returns whether it was still running, and its exit code
+    if it had already ended."""
     if not process:
-        return
-    process.terminate()
-    process.wait(timeout=30)
+        return None
+    code = process.poll()
+    if code is None:
+        process.terminate()
+        process.wait(timeout=30)
+    ended = {"running_at_stop": code is None, "exit_code_before_stop": code}
     raw = HARNESS / "out" / f"{name}.processes.raw.csv"
     if not raw.exists():
-        return
+        return ended
     rows = raw.read_text(encoding="utf-8", errors="replace").splitlines()
     kept = [rows[0]] if rows else []
     for line in rows[1:]:
         cells = line.split(",")
-        if len(cells) != 8:
+        if len(cells) != 9:
             continue
-        stamp, interval, pid, parent, process_name, cpu, written, mine = cells
+        stamp, interval, pid, parent, process_name, cpu, written, operations, mine = cells
         if not (process_name.startswith(("_", "com.docker.")) or process_name in NAMED_PROCESSES or mine == "1"):
             process_name = "unrelated-process"
-        kept.append(",".join((stamp, interval, pid, parent, process_name, cpu, written, mine)))
+        kept.append(",".join((stamp, interval, pid, parent, process_name, cpu, written, operations, mine)))
     (HERE / f"{name}.processes.csv").write_text("\n".join(kept) + "\n", encoding="utf-8", newline="\n")
+    return ended
 
 
 def sh(args):
@@ -308,12 +314,13 @@ def fsync_check(plan, name, tag):
     that fails or takes over 5 minutes is recorded as an error and the pass
     goes on: it is a reading beside the runs, not one of them."""
     started = datetime.now()
+    stopped = []
     # The check's own start and end, from just before the tool starts to just
     # after it stops, without the database's start and stop around it.
     try:
         harness = harness_module()
         side = harness.Side(next(entry["side"] for entry in plan["runs"] if entry.get("kind") != "idle"))
-        stop_databases()
+        stopped = stop_databases()
         side.up_db()
         db = side.container("db")
         started = datetime.now()
@@ -328,8 +335,10 @@ def fsync_check(plan, name, tag):
         out.write(f"===== {tag} {started:%Y-%m-%dT%H:%M:%S} to {finished:%Y-%m-%dT%H:%M:%S} exit {code}\n")
         out.write(output + "\n")
     rates = parse_fsync(result.stdout) if result else {}
-    return {"tag": tag, "started": f"{started:%Y-%m-%dT%H:%M:%S}", "finished": f"{finished:%Y-%m-%dT%H:%M:%S}",
-            "seconds": round((finished - started).total_seconds(), 1), "exit_code": code, **rates}
+    # What was still up before the check, which the run's own stop no longer sees.
+    return {"tag": tag, "stopped_before": stopped, "started": f"{started:%Y-%m-%dT%H:%M:%S}",
+            "finished": f"{finished:%Y-%m-%dT%H:%M:%S}", "seconds": round((finished - started).total_seconds(), 1),
+            "exit_code": code, **rates}
 
 
 def stop_run(process, entry):
@@ -480,7 +489,7 @@ def main():
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
     with opened as log, contextlib.ExitStack() as stack:
         stack.callback(stop_host_counters, host_counters, args.name)
-        stack.callback(stop_process_snapshot, snapshot, args.name)
+        stack.callback(lambda: status.update(process_snapshot=stop_process_snapshot(snapshot, args.name)))
         for entry in plan["runs"]:
             if entry.get("kind") == "idle":
                 # An idle gap: the storage check first, if the plan asks for
@@ -553,13 +562,15 @@ def main():
             print(f"[{datetime.now():%H:%M}] {entry['order']:>3} {record['state']}", flush=True)
             if datetime.now() >= deadline:
                 break
+        # The last check, while the host counters and the snapshot still run,
+        # and only with 5 minutes in hand, so it cannot run past the deadline.
+        if not args.dry_run and plan.get("fsync_check") and datetime.now() + timedelta(minutes=5) < deadline:
+            status["fsync_check_end"] = fsync_check(plan, args.name, "end")
     status["finished"] = f"{datetime.now():%Y-%m-%dT%H:%M:%S}"
     if not args.dry_run:
         # Nothing a run started outlives the pass: a run stopped at the deadline
         # can leave work inside its database container, such as the side sampler.
         stop_databases()
-        if plan.get("fsync_check") and datetime.now() < deadline:
-            status["fsync_check_end"] = fsync_check(plan, args.name, "end")
         save()
     states = [run["state"] for run in status["runs"] if run.get("kind") != "idle"]
     gaps = [run["state"] for run in status["runs"] if run.get("kind") == "idle"]
