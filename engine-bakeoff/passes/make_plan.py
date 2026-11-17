@@ -20,10 +20,13 @@ or "round2-laptop", round 2's pass on the laptop, which also takes the
 commit it measures as its fourth argument; or "round2-shape", round 2's
 code-shape pass, which does too; or "round2-diag", round 2's diagnostic pass,
 which does too; or "round2-fix", the pass that tests the reader fix after
-it, which does too.
+it, which does too; or "round2-followup", round 2's follow-up tests after
+the fix pass, which does too; or "round2-flush", the night that times the
+WAL flush, which does too.
 
 Runs that share a block stay together, back to back: the blocks are shuffled
-within their group, and the runs within each block.
+within their group, and the runs within each block. A group laid out as a
+Latin square, or whose runs carry a fixed position, is the exception.
 """
 
 import json
@@ -187,7 +190,7 @@ MODE_BASE = {"csharp-wax-ef": "csharp-wax", "csharp-wax-batched": "csharp-wax", 
              "csharp-wax-noreset": "csharp-wax", "csharp-wax-prepared": "csharp-wax",
              "csharp-wax-fair-batched": "csharp-wax", "csharp-wax-fair-prepared": "csharp-wax",
              "csharp-wax-npgsql-defaults": "csharp-wax", "csharp-wax-autoprepare": "csharp-wax",
-             "csharp-wax-custom-plans": "csharp-wax"}
+             "csharp-wax-custom-plans": "csharp-wax", "csharp-wax-rw8-sync-off-diagnostic": "csharp-wax-rw8"}
 
 # The EF Core mini-pass's configurations, all at 8 workers: the payment
 # file, real time, the accrual, and the payment file with the engine paused,
@@ -343,6 +346,63 @@ def round2_fix_engine_args(entry, args):
     return args
 
 
+# Round 2's follow-up tests after the fix pass. Group 1 confirms or refutes the
+# custom-plans indication: csharp-wax with its own settings, with custom plans
+# forced, and with Max Auto Prepare alone, in three blocks laid out as a Latin
+# square. Group 2 runs the configuration with the most runs in both rate
+# regimes again and again, for the side sampler to watch. Group 3 is the second
+# one-worker pair, in the reverse of the first pair's order. Group 4 fills
+# whatever time is left with more of group 2.
+FOLLOWUP_PLAN_ARMS = ("csharp-wax", "csharp-wax-custom-plans", "csharp-wax-autoprepare")
+FOLLOWUP_PLAN_BLOCKS = 3
+FOLLOWUP_REGIME_RUNS, FOLLOWUP_FILL_RUNS = 16, 12
+FOLLOWUP_SINGLE = ("csharp-wax-prepared", "python-direct")
+
+
+def round2_followup_runs():
+    planned = []
+    for n in range(1, FOLLOWUP_PLAN_BLOCKS + 1):
+        planned += [dict(run(1, side, "batch-payments", 8, block=f"plans-c{n}", suffix=f"c{n}"), latin=True)
+                    for side in FOLLOWUP_PLAN_ARMS]
+    planned += [run(2, "csharp-wax-rw8", "batch-payments", 8, suffix=f"s{k}") for k in range(1, FOLLOWUP_REGIME_RUNS + 1)]
+    planned += [dict(run(3, side, "batch-payments", 1, "no-engine", block="single-r2", suffix="r2"), position=k)
+                for k, side in enumerate(FOLLOWUP_SINGLE)]
+    planned += [run(4, "csharp-wax-rw8", "batch-payments", 8, suffix=f"f{k}") for k in range(1, FOLLOWUP_FILL_RUNS + 1)]
+    return planned
+
+
+# Round 2's flush-timing night: PostgreSQL times every WAL write and sync, and
+# the storage, the host's disk, and its processes are read beside each run.
+# Group 1 asks whether the high level belongs to being first or to custom
+# plans, with csharp-wax-rw8 first this time. Group 2 is four idle gaps, each
+# followed by one csharp-wax-rw8 run. Group 3 is the one diagnostic with
+# synchronous_commit off for the bench's sessions, between two csharp-wax-rw8
+# runs. Group 4 runs csharp-wax-rw8 back to back to the end of the night.
+# Every group runs in its fixed order.
+FLUSH_GAPS, FLUSH_GAP_MINUTES, FLUSH_FILL_RUNS = 4, 25, 40
+FLUSH_DISK = {"physical": "0 C:", "logical": "C:"}
+
+
+def idle(group, minutes, suffix):
+    return {"group": group, "kind": "idle", "minutes": minutes, "side": "idle", "workload": "idle", "workers": 0,
+            "diagnostic": None, "suffix": suffix}
+
+
+def round2_flush_runs():
+    planned = [run(1, "csharp-wax-rw8", "batch-payments", 8, suffix="a1"),
+               run(1, "csharp-wax-custom-plans", "batch-payments", 8, suffix="a2")]
+    for k in range(1, FLUSH_GAPS + 1):
+        planned += [idle(2, FLUSH_GAP_MINUTES, f"g{k}"), run(2, "csharp-wax-rw8", "batch-payments", 8, suffix=f"b{k}")]
+    planned += [run(3, "csharp-wax-rw8", "batch-payments", 8, suffix="d1"),
+                run(3, "csharp-wax-rw8-sync-off-diagnostic", "batch-payments", 8, "sync-off", suffix="d2"),
+                run(3, "csharp-wax-rw8", "batch-payments", 8, suffix="d3")]
+    planned += [run(4, "csharp-wax-rw8", "batch-payments", 8, suffix=f"c{k}") for k in range(1, FLUSH_FILL_RUNS + 1)]
+    for group in {entry["group"] for entry in planned}:
+        for position, entry in enumerate(entry for entry in planned if entry["group"] == group):
+            entry["position"] = position
+    return planned
+
+
 # Lines a layout adds to its plan's Markdown, under the generation line.
 NOTES = {
     "efcore": [
@@ -398,6 +458,42 @@ NOTES = {
         "",
         "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. The harness's own reads of the head of the stream, in both sides' progress views, still read the sequence without its lock, so a lag sample or the catch-up target can read up to 32 high for a moment. They decide only when the harness stops waiting for catch-up, never what a gate checks, and changing them would change both sides' measuring method, migrations, and seed templates, so they wait for a later change. A run that fails or stalls on catch-up is checked for this before anything else. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the earlier round 2 passes; every run records them. Only comparisons within a back-to-back block are sound.",
     ],
+    "round2-followup": [
+        "Round 2's follow-up tests on the laptop, approved on 2026-11-16, in the window from 22:00 that day to 07:00 on 2026-11-17. The fix pass left two questions open. Its one block of driver settings suggested that forcing custom plans lowers the execution time of csharp-wax's event insert, and its runs moved abruptly between two rate regimes, about 2,700 events per second and about 2,000, for a cause it could not see. The measured tree is `{measured_commit}`: the published `main` (`436df6f`, tag `round-2-fix`) with diagnostics added and the command path unchanged. After its timer stops, the C# bench reads from pg_prepared_statements how often PostgreSQL chose a generic or a custom plan for each statement prepared on each of its own connections, and records it with the driver settings and the reset Npgsql gives a connection returned to the pool. The harness can run a side sampler, the runner can log the host's processor counters, and [plan_check.py](plan_check.py) times an insert like the event insert under each plan_cache_mode setting; all three are described below. The plan commit adds only the plan files, the test record, the generator's layout, and the script that will tabulate the results, [summarize_followup.py](summarize_followup.py), and no measured code changes after it.",
+        "",
+        "Before group 1, [plan_check.py](plan_check.py) runs on a throwaway copy of csharp-wax's template, with nothing else running. It prepares an insert with the event insert's columns, trigger, and foreign-key check, its values as parameters, settles its plan choice with eight uses, and then times it under EXPLAIN ANALYZE in each of plan_cache_mode's three settings, rotating their order, with the planning time, the BEFORE INSERT trigger, and the foreign-key check read apart. The insert's own plan is trivial, and the trigger runs no query with a parameter, so its plans do not change with the setting. The foreign-key check runs such a query for every event of the payment file, since each carries a reason code; each session caches that plan apart from the statement's, and plan_cache_mode governs it too. With custom plans forced, the check is planned again for every row, and that planning falls inside the check's time. Its output is kept with the pass as `round2-followup.plan-check.txt`.",
+        "",
+        "Every run of the pass has the side sampler: a connection of its own in the run's database, from the start of the bench to the end of the catch-up. Each second it counts, by wait event, the backends in pg_stat_activity that are not idle; a backend that reports no wait event may be on a core or waiting for one. Every 10 seconds it times a fixed CPU-bound statement, a fifth of the host probe's, and reads the WAL and commit counters, so each of the readers' 10-second intervals holds one probe. Its own cost is measured in every run, from the CPU time its backend and its psql use in the database container; in a smoke run at 20,000 accounts it used about 2 percent of one core, under 1 percent of the database container's CPU. The loop commits after every sample, so the snapshot it holds is never more than about a second old, and the run's database may keep up to a second more of dead row versions than without it. Every run tonight pays both costs alike, and no earlier pass ran the sampler, so tonight's figures are not like-for-like with earlier nights: settings are compared only within tonight, and any comparison with an earlier pass is marked as one across instrumentation.",
+        "",
+        "Through the whole pass, typeperf logs the Windows host's processor counters every 5 seconds: its speed against nominal, the share of it a power or thermal limit allows and the flags that name the limit, Windows' busy figures, the CPU of the virtual machine Docker runs in, the hypervisor's run time, and each logical processor's load and speed, since the laptop's processor has both performance and efficiency cores. Each C# run with the engine also prints its readers' passes and events every 10 seconds, as in the fix pass, which places each interval in a regime. Under load the probe's time mixes the speed of a core with waiting for one, so the probe alone cannot tell a slower machine from a busier one; the host's counters can. If the slow regime comes from the machine, the host's speed, limit, or spread of load across its two kinds of core should change when a run's rate drops, and the probe should slow with it. If it comes from the database, the host's counters should hold while the share of particular waits, such as WALWrite, WalSync, or a lock, grows; under load those waits are always present, so it is their share that would change.",
+        "",
+        "Group 1 repeats the custom-plans comparison: csharp-wax with its own settings, csharp-wax-custom-plans, and csharp-wax-autoprepare on the payment file at 8 workers with 16 rule workers, in three back-to-back blocks laid out as a Latin square, so that each goes first, second, and third once. The first block's order is drawn from the seed. The square is cyclic, so within a block each setting always follows the same other one; the database container restarts before every run, which should keep any carryover small. The measure is the event insert's execution time per row. Rates count only where a run stayed in the fast regime, and every rate and insert cost is printed beside the run's place in the run order and its share of slow intervals. A smoke run of csharp-wax-custom-plans showed no generic plan for any statement on any of its connections, so the setting reaches the bench's own sessions. The plan-choice read covers the statements Npgsql prepared, the event insert among them, and not the statements inside the event trigger or the foreign-key check, whose plans are cached apart. Npgsql replaces its least-used statement when Max Auto Prepare's 20 are full, and the replacement's counts start again, so a connection holding 20 may report partial counts.",
+        "",
+        "The reading is set before the results. A smoke run of csharp-wax-autoprepare already showed every connection's insert taking 5 custom plans and then generic ones. If csharp-wax shows the same, the two made the same plan choice for the insert itself, so that choice cannot explain a difference between them, though the lighter reset still can: the fix pass's reset check found that it adds about 0.06 ms to the next insert. The measure leaves out planning. With custom plans forced, the insert is planned again before every execution, outside the measure, while the foreign-key check's planning falls inside it; step 0's planning time is stated beside the result. A trial of step 0 on a copy of a 20,000-account template found forcing custom plans raised both the insert's planning time and its execution time over the default setting, in isolation. If csharp-wax-custom-plans' insert takes less execution time per row than csharp-wax's in all three blocks, the fix pass's indication is repeated; if forcing custom plans made no difference, that would still happen one time in eight. If it takes more in any block, the indication is not repeated, and the fix pass's lower figure stays a single sample. If the blocks repeat the indication while step 0 again finds custom plans dearer in isolation, the plan choice within a session is not shown to be the mechanism.",
+        "",
+        "Group 2 is 16 runs of csharp-wax-rw8 on the payment file at 8 workers, with Npgsql's defaults and 8 rule workers, the configuration with the most runs in both regimes. No number of runs can promise to catch the slow regime, which has come and gone in stretches of about half an hour to nearly two hours, so every run of the pass carries the sampler, and group 4 adds up to 12 more runs of the same configuration in whatever time is left at the end.",
+        "",
+        "Group 3 is the second one-worker pair, which the fix pass left for another evening: csharp-wax-prepared and python-direct on the payment file at 1 worker with the engine paused, in the reverse of the first pair's order in the diagnostic pass. Neither side's command path has changed since that pair, and the reader fix does not run with the engine paused, but that pair ran without the sampler, so the two sides are compared with each other first, and any comparison with the first pair is marked as one across instrumentation. Each run took over an hour then. The runner starts a run only if its estimate fits before the deadline, and it goes in plan order, so neither group 3 nor group 4 can cut groups 1 or 2 short.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. The runner starts no run whose estimate, the longest earlier run of its kind plus 15 percent, or the plan's rough estimate where none is on record, would end after 07:00, in group 4 as in every other, and stops any run still going at 07:00. The harness's own reads of the head of the stream still read the sequence without its lock, as in the fix pass, and a run that fails or stalls on catch-up is checked for this before anything else. Fourteen containers and several development services unrelated to the bake-off stay up through the pass, as they did in the earlier round 2 passes; every run records them. Only comparisons within a back-to-back block, or between the intervals of one run, are sound.",
+    ],
+    "round2-flush": [
+        "Round 2's flush-timing night on the laptop, approved on 2026-11-17, in the window from 22:00 that day to 07:00 on 2026-11-18. Every round 2 pass on the laptop since the code-shape pass has had runs at more than one level of the write-ahead log's sync rate, and a run's throughput has moved with it ([round2-sync-rates.md](round2-sync-rates.md)). The follow-up tests on the night of 2026-11-16, whose records are not yet published, ran the side sampler in every run, and its counts suggested that at the low sync rate each sync took about twice as long as in that night's first, faster run. That was inferred from the share of the sampler's looks at which a backend waited on a sync, not measured. Tonight measures it, with the storage, the host's disk, and the host's processes read beside every run. The measured tree is `{measured_commit}`: the published `main` (`08049a8`); the follow-up tests' three diagnostic commits, carried over unchanged (`bde034a`, `7e49b76`, and `c2b9ee4`: the bench's plan-choice read, [plan_check.py](plan_check.py), and the side sampler with its own cost measured); and tonight's two commits, which add the measures and the diagnostic side described below (`992399c`) and apply their reviews (`{measured_commit}`). The command path is unchanged. The plan commit adds only the plan files, the test record, the generator's layout, and the script that will tabulate the results, [summarize_flush.py](summarize_flush.py), and no measured code changes after it.",
+        "",
+        "Four measures are new tonight. First, the database runs with track_wal_io_timing on, given on its command line through the harness's shared settings ([compose.override.yml](../harness/compose.override.yml)), where it is off, PostgreSQL's default, unless a plan asks for it; the runner refuses to start unless the database reports it on. pg_stat_wal then times every WAL write and every sync, the WAL writer's as well as the backends'. Each run records the totals over its bench, and the side sampler adds them every 10 seconds, with the checkpointer's counters, so a run's mean time per sync, and each 10-second interval's, is measured rather than inferred. The setting adds two clock reads to every WAL write and sync, which against syncs of milliseconds is inferred to cost little; it changes the database's configuration, so tonight's runs are compared with each other, and any comparison with an earlier night is marked as one across instrumentation, as the side sampler's already are. Second, before every run and at the start of every idle gap, the runner starts the database alone and runs pg_test_fsync in it, on the data volume, while it is idle, then stops it again, so each run still starts its database fresh. The tool cannot be limited to one method, so the check stops it as soon as it has timed fdatasync, the method PostgreSQL uses here, with one 8 kB write for 2 seconds; before that it writes and syncs its test file once and times open_datasync for 2 seconds. Every check is therefore the same short burst of synced writes, about 5 seconds in a trial, and its start and end are recorded. Its fdatasync rate reads the storage path's state with no load. An idle gap's 25 minutes are counted from the end of its check, with the database stopped again, so the check is never part of the idle time, and the gaps stay comparable with the roughly 24 idle minutes before last night's first run. Third, typeperf adds disk 0's counters every 5 seconds: write latency, the latency of every transfer, writes and bytes written per second, the write queue, and idle time, for the physical disk and its volume, C:. Disk 0 is the 4 TB NVMe drive that holds C:, Docker's virtual disk, Windows, and every other program's files, so its counters include the host's own writes. Windows' disk counters count reads and writes and, as far as its documentation says, not the flush requests a sync becomes, so a flush's own time may not show in them. typeperf also logs the laptop's thermal zones; the drive's own temperature cannot be read without administrator rights and is not recorded. Fourth, every 30 seconds a snapshot records each Windows process's CPU, bytes written, and write operations over the interval, from [process_snapshot.ps1](process_snapshot.ps1). Its raw file names every process on the laptop and is never committed; the committed copy names only the bake-off's own processes, Docker's and WSL's, and Windows' kernel, and shows every other process as unrelated-process, with its process ID, so one process can be followed through the night unnamed. In a trial its query took about 0.9 seconds every 30 seconds and 0.5 to 0.6 seconds of CPU, about 2 percent of one core; most of that CPU falls in the Windows service that answers the query, which the committed copy cannot tell from the others and shows as unrelated-process. Every run also records the server settings that bear on writing and flushing WAL.",
+        "",
+        "Every run of the pass also has the side sampler, as last night, and each C# run with the engine prints its readers' passes and events every 10 seconds. Each run at 8 workers is marked by PostgreSQL's own mean time per sync over the harness's window, now that it is measured: slow at 4.3 ms or more, below every time the follow-up tests implied for their slow runs, about 5.0 ms and more at 8 workers and 4.3 ms and more at 1 worker, and high at 2.8 ms or less, around the 2.4 ms implied for the high level; a run between is not marked, since no run at the earlier nights' fast level has been timed yet. A run's sync rate depends on whether its configuration keeps the flush busy as well as on the time each sync takes: a smoke run of csharp-wax-rw8 at 20,000 accounts took 2.4 ms per sync at only 275 syncs per second, with the flush busy 65 percent of the time. The earlier nights' sync-rate bands, the high level at 340 or more, fast at 280 to 320, and slow at 200 or less, are therefore printed beside every run as a cross-check, never as its level. Every rate is printed beside its syncs per second, its time per sync, and its busy share: the share of its window in which a sync was in progress, the measured sync time over the window's length, since one process syncs at a time. A run whose database did not report track_wal_io_timing on is not marked, and its measured columns stay empty.",
+        "",
+        "Group 1 asks whether the high level, about 370 syncs per second, belongs to being first after an idle stretch or to custom plans: the first run of each of the last two nights reached it, and both were csharp-wax-custom-plans. Tonight csharp-wax-rw8 runs first, at 22:00 after the preparation's idle stretch, and csharp-wax-custom-plans second, with the 16 rule workers it ran with before. Group 2 is four cycles of an idle gap of 25 minutes, with every bake-off container stopped, each followed by one csharp-wax-rw8 run. Group 3 is the night's one diagnostic, between two csharp-wax-rw8 runs: csharp-wax-rw8-sync-off-diagnostic is csharp-wax-rw8 whose bench sessions run with synchronous_commit off, so the bench's commits return before their WAL reaches the disk, while the engine's sessions keep it on. It is a diagnostic only, never a configuration to compare or to run: it shows how much faster the bench goes without waiting for the flush, which the earlier nights could not show. Its bench records each of its connections' synchronous_commit, and a smoke run at 20,000 accounts showed off on every bench connection; it is never marked, since its commits do not wait for a sync. Group 4 runs csharp-wax-rw8 back to back until the window ends, to catch moves between levels with the sync time measured. Every group runs in its listed order. Python does not run tonight.",
+        "",
+        "The readings are set before the results, and [summarize_flush.py](summarize_flush.py) prints each one with its figures. Sync time: while the flush stays busy, the ratio of two levels' sync times follows from their sync rates, so it is not a separate test. This one reading takes its runs by the earlier nights' low band, 200 syncs a second or less, which is where the follow-up tests' slow runs fell, so that a low-rate run with short syncs, the case that would refute their inference, is not left out by the marking. Each run's busy share is taken over its bench's 10-second intervals without the first and last, so the ramps at either end of a bench do not dilute it. If the median time per sync of those runs is 4.3 ms or more and their median busy share 0.9 or more, the low sync rate comes from long syncs, measured, and their time per sync is stated. If the median busy share is below 0.7, the low rate is less demand, not a slower flush, and the follow-up tests' inference fails. Otherwise the night does not decide. Any low-rate run with a time per sync of 2.8 ms or less is named, since each one is a direct counterexample. That holds whether or not any run tonight is marked high; runs marked high are stated beside it with their own time per sync and busy share. In the smoke runs at 20,000 accounts, the ramps took a run's busy share over its whole window down to 0.75 while its steady intervals read 0.95 or more. If no timed run falls in the low band, the reading is not made. The follow-up's method: over each run's side sampler span, the measured time per sync is set against the time the sampler's share of looks in a WAL sync implies. If the two agree within 20 percent in at least 80 percent of the runs at 8 workers, the diagnostic aside, the follow-up's inferred figures stand as estimates; if not, its write-up withdraws them.",
+        "",
+        "Where the time goes: the median idle fdatasync rate in the checks before runs marked slow is set against the median before runs marked high, with at least two checks on each side. If it is at least 25 percent lower, the storage path is slower even with no load, which places the change below the database, in the virtual disk, the host's file system, or the drive. If it is within 10 percent, the storage path idles at the same speed, and the slowdown comes with load. Between the two, or with fewer than two checks on a side, the night does not decide. Every check is printed in run order, so a drift through the night shows either way. Disk 0's write latency is read beside them: if it rises with the sync time, the drive or the host's storage is implicated; if it holds, that does not clear them, since flush requests may not be counted. Competing load: a move to the slow level is a run marked slow whose predecessor among the timed runs at 8 workers, the diagnostic aside, took at least 25 percent less time per sync, marked or not, tested over the whole span from the end of one bench to the start of the next; or, within one of those runs, an interval marked slow after one that took at least 25 percent less. That catches a move from the earlier nights' fast level as well as from the high one. Each move is set against the 30-second snapshots that overlap it, in which every process not named counts, small ones included. If, for every move, processes unrelated to the bake-off used at least one core more, wrote at least 20 MB per second more, or issued at least 500 write operations per second more than their median for the night in one of those snapshots, competing load is the likelier cause. If that holds for no move, competing load is not shown. Otherwise the night does not decide, and if no move is seen, the reading is not made. As far as Windows' documentation says, it does not count the flush calls a sync makes among a process's write operations.",
+        "",
+        "The high level, read from the measured time per sync, since a configuration that cannot keep the flush busy syncs less often even when each sync is quick: if the first run, csharp-wax-rw8, is marked high, the high level comes with being first after an idle stretch, not with custom plans. If it is not and the second, csharp-wax-custom-plans, is, custom plans stay a candidate. If neither is, the night does not decide, which covers a high level that needs both. The idle gaps: a gap counts only after a run marked slow, since a gap cannot bring a faster level back when the level is already faster, and it brings a faster level back if the run after it takes at least 25 percent less time per sync than the run before it. If at least three gaps count and a faster level comes back after all of them but at most one, a return after 25 idle minutes is shown; if after none, it is not; if fewer than three count, or otherwise, the night does not decide. The diagnostic: its commands per second are set against those of the run on either side of it, as a percent change, beside each one's time per sync and level, and beside the diagnostic's own sync rate, sync time, catch-up, and largest lag. The engine still commits synchronously and its syncs now carry the bench's WAL too, so a faster bench can leave the engine further behind. The change shows what waiting for the flush costs the bench at that level, for this workload on this laptop; it is not sustained throughput, and it says nothing about any configuration.",
+        "",
+        "Every run uses 500,000 accounts and the standard caps. Every gate must pass in every run. The runner starts no run or idle gap whose estimate, for a run the longest earlier run of its kind plus 15 percent, would end after 07:00, and stops any run still going at 07:00. The harness's own reads of the head of the stream still read the sequence without its lock, as in the fix pass, and a run that fails or stalls on catch-up is checked for this before anything else. Sixteen containers and several development services unrelated to the bake-off were up when this plan was written and stay up through the pass, as in the earlier round 2 passes; every run records them. Only comparisons within the night, or between the intervals of one run, are sound.",
+    ],
 }
 
 
@@ -415,10 +511,14 @@ LAYOUTS = {
     "round2-shape": (round2_shape_runs, {}),
     "round2-diag": (round2_diag_runs, {}),
     "round2-fix": (round2_fix_runs, {}),
+    "round2-followup": (round2_followup_runs, {"side_sampler": True, "host_counters": True}),
+    "round2-flush": (round2_flush_runs, {"side_sampler": True, "host_counters": True, "host_disk": FLUSH_DISK,
+                                         "wal_io_timing": True, "fsync_check": True, "process_snapshot": True}),
 }
 
 # A layout's changes to the engine arguments each run would otherwise get.
-ENGINE_ARGS = {"round2-fix": round2_fix_engine_args}
+ENGINE_ARGS = {"round2-fix": round2_fix_engine_args, "round2-followup": round2_fix_engine_args,
+               "round2-flush": round2_fix_engine_args}
 
 
 def pc_runs():
@@ -447,6 +547,8 @@ def pc_runs():
 
 
 def label(name, entry):
+    if entry.get("kind") == "idle":
+        return f"{name}-idle-{entry['suffix']}"
     parts = [name, entry["side"], entry["workload"], f"w{entry['workers']}"]
     return "-".join(parts + [part for part in (entry["diagnostic"], entry.get("suffix")) if part])
 
@@ -456,13 +558,30 @@ def main():
     layout = sys.argv[3] if len(sys.argv) > 3 else "pc"
     rng = random.Random(seed)
     runs, settings = LAYOUTS[layout]
-    if layout in ("efcore", "round2-laptop", "round2-shape", "round2-diag", "round2-fix"):
+    if layout in ("efcore", "round2-laptop", "round2-shape", "round2-diag", "round2-fix", "round2-followup",
+                  "round2-flush"):
         settings = {**settings, "measured_commit": sys.argv[4]}
     planned = runs()
     tuned = SCALED_TUNED if settings.get("caps") == "scaled" else TUNED
     ordered = []
     for group in sorted({entry["group"] for entry in planned}):
         members = [entry for entry in planned if entry["group"] == group]
+        # A group whose runs carry a position runs in that order, unshuffled.
+        if all("position" in entry for entry in members):
+            ordered.extend(sorted(members, key=lambda entry: entry["position"]))
+            continue
+        # A Latin square: the first block's order is drawn from the seed, and
+        # each later block turns it by one more, so every side takes every place once.
+        if any(entry.get("latin") for entry in members):
+            blocks = {}
+            for entry in members:
+                blocks.setdefault(entry["block"], []).append(entry)
+            sides = list(dict.fromkeys(entry["side"] for entry in members))
+            rng.shuffle(sides)
+            for turn, block in enumerate(blocks.values()):
+                order = sides[turn % len(sides):] + sides[:turn % len(sides)]
+                ordered.extend(sorted(block, key=lambda entry: order.index(entry["side"])))
+            continue
         if not any("block" in entry for entry in members):
             rng.shuffle(members)
             ordered.extend(members)
@@ -485,6 +604,9 @@ def main():
     for index, entry in enumerate(ordered, start=1):
         entry["order"] = index
         entry["label"] = label(name, entry)
+        if entry.get("kind") == "idle":
+            entry["engine_args"] = ""
+            continue
         side = entry["side"] if entry["side"] in tuned else MODE_BASE[entry["side"]]
         entry["engine_args"] = UNTUNED if entry["diagnostic"] == "untuned" else tuned[side]
         if layout in ENGINE_ARGS:
@@ -493,7 +615,9 @@ def main():
         "name": name, "seed": seed, "layout": layout, "accounts": settings.get("accounts", ACCOUNTS),
         "placements": PLACEMENTS, "warmup_s": WARMUP_S, "duration_s": DURATION_S,
         "catchup_timeout_s": CATCHUP_TIMEOUT_S,
-        **{key: settings[key] for key in ("caps", "pool_size", "measured_commit") if key in settings},
+        **{key: settings[key] for key in ("caps", "pool_size", "measured_commit", "side_sampler", "host_counters",
+                                          "host_disk", "wal_io_timing", "fsync_check", "process_snapshot")
+           if key in settings},
         "engine_args": {"tuned": tuned, "untuned": UNTUNED}, "runs": ordered,
     }
     (HERE / f"{name}.plan.json").write_text(json.dumps(plan, indent=1) + "\n", encoding="utf-8", newline="\n")
@@ -509,6 +633,10 @@ def main():
         "| --- | --- | --- | --- | --- | --- | --- |" + (" --- |" if layout in NOTES else ""),
     ]
     for entry in ordered:
+        if entry.get("kind") == "idle":
+            lines.append(f"| {entry['order']} | {entry['group']} | idle gap, {entry['minutes']} minutes, every bake-off "
+                         f"container stopped | | | | |" + (f" {entry['suffix']} |" if layout in NOTES else ""))
+            continue
         lines.append(f"| {entry['order']} | {entry['group']} | {entry['side']} | {entry['workload']} | {entry['workers']} "
                      f"| {entry['diagnostic'] or ''} | `{entry['engine_args']}` |"
                      + (f" {entry.get('suffix', '')} |" if layout in NOTES else ""))

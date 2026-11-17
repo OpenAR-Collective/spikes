@@ -1,0 +1,267 @@
+The test suites on 6c775ce, 2026-11-17 09:55 CST, each against a throwaway database container from the bake-off's PostgreSQL image, before the pass's first run. Each csharp-wax section names the environment the suite ran with and the sides that run with it tonight.
+
+## DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0 (csharp-wax-rw8)
+  Passed Bakeoff.Tests.PlanChoicesTests.The_lighter_reset_keeps_what_auto_prepare_prepared [97 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Every_pooled_connection_is_read_once [190 ms]
+  Passed Bakeoff.Tests.PaymentTests.Rejected_command_writes_nothing [404 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Interest_accrues_once_per_day_on_the_principal [501 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Each_connection_reports_the_settings_its_session_runs_with [219 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hash_chain_verifies_and_detects_a_forged_link [538 ms]
+  Passed Bakeoff.Tests.PaymentTests.Waterfall_pays_buckets_in_priority_order [146 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "TRUNCATE core.event") [48 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "UPDATE core.event SET event_type = 'x'") [28 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_scheduled_event_fires_once_on_its_account [118 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "DELETE FROM core.event") [19 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Discard_all_leaves_nothing_to_read [120 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_override_smaller_than_the_payment_loses_no_money [130 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Status_and_queue_changes_are_idempotent [99 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Derived_keys_match_the_python_side [3 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Append_rejects_a_stale_expected_version [96 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hashes_match_the_python_side_byte_for_byte [50 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Without_options_a_session_runs_the_server_defaults [144 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Session_options_combine_and_refuse_what_they_do_not_know [1 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_task_is_created_once_per_key [85 ms]
+  Passed Bakeoff.Tests.PaymentTests.Oldest_first_and_even_split_allocation [157 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Placing_an_account_writes_event_and_state_together [53 ms]
+  Passed Bakeoff.Tests.EventStoreTests.The_store_assigns_the_global_sequence_and_the_recorded_time [29 ms]
+  Passed Bakeoff.Tests.EventStoreTests.State_cannot_be_written_outside_a_command [< 1 ms]
+  Passed Bakeoff.Tests.PaymentTests.Overpayment_is_held_as_unapplied_not_lost [36 ms]
+  Passed Bakeoff.Tests.PaymentTests.Reversal_unwinds_the_recorded_distribution [369 ms]
+  Passed Bakeoff.Tests.PaymentTests.Retrying_a_command_that_took_effect_is_answered_as_success [56 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_unknown_event_type_stops_the_projection_until_a_release_that_knows_it [1 s]
+  Passed Bakeoff.Tests.PaymentTests.Per_payment_bucket_override_beats_the_waterfall [57 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_state_equals_replay_of_the_event_stream [84 ms]
+  Passed Bakeoff.Tests.PaymentTests.Disputed_account_gets_nothing_the_consumer_did_not_direct [186 ms]
+  Passed Bakeoff.Tests.ConcurrencyTests.Payments_over_the_same_accounts_in_any_order_do_not_deadlock [1 s]
+  Passed Bakeoff.Tests.ReadModelTests.Read_models_agree_with_authoritative_state_once_caught_up [1 s]
+  Passed Bakeoff.Tests.ConcurrencyTests.Concurrent_payments_to_one_account_serialize_on_its_row_lock [337 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_uncommitted_lower_sequence_is_never_skipped [10 s]
+  Passed Bakeoff.Tests.RuleTests.Events_fire_rules_and_scheduled_events_fire_in_turn [11 s]
+  Passed Bakeoff.Tests.ReaderTests.A_failing_projection_stops_alone_and_resumes [671 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_mark_is_forgotten_when_the_database_goes_back_in_time [893 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_sequence_position_is_read_under_the_sequence_lock [< 1 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_ignored_event_type_is_passed_over_on_purpose [933 ms]
+  Passed Bakeoff.Tests.TwinTests.Ef_core_and_plain_sql_store_identical_events_and_state [2 s]
+  Passed Bakeoff.Tests.ReaderTests.A_burned_sequence_number_does_not_leave_the_projection_behind [500 ms]
+  Passed Bakeoff.Tests.BulkTests.Bulk_payments_and_placement_pass_their_gates_and_match_the_single_path [14 s]
+  Passed Bakeoff.Tests.ReaderTests.Two_readers_sharing_a_projection_apply_each_event_once [9 s]
+  Passed Bakeoff.Tests.ReaderTests.One_aggregate_is_delivered_in_its_own_order [9 s]
+  Passed Bakeoff.Tests.ReaderTests.A_claim_never_moves_the_checkpoint_back [456 ms]
+  Passed Bakeoff.Tests.TwinTests.Batched_and_plain_sql_store_identical_events_and_state [1 s]
+  Passed Bakeoff.Tests.TwinTests.Fair_batched_and_plain_sql_store_identical_events_and_state [684 ms]
+  Passed Bakeoff.Tests.SeedAndBatchTests.The_seed_then_both_batches_pass_their_gates [47 s]
+Test Run Successful.
+Total tests: 49
+     Passed: 49
+
+## DATABASE_PLAN_CACHE_MODE=force_custom_plan (csharp-wax-custom-plans)
+  Passed Bakeoff.Tests.PlanChoicesTests.The_lighter_reset_keeps_what_auto_prepare_prepared [91 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Every_pooled_connection_is_read_once [191 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Each_connection_reports_the_settings_its_session_runs_with [166 ms]
+  Passed Bakeoff.Tests.PaymentTests.Rejected_command_writes_nothing [483 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Interest_accrues_once_per_day_on_the_principal [499 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hash_chain_verifies_and_detects_a_forged_link [508 ms]
+  Passed Bakeoff.Tests.PaymentTests.Waterfall_pays_buckets_in_priority_order [46 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "TRUNCATE core.event") [41 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Discard_all_leaves_nothing_to_read [88 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "UPDATE core.event SET event_type = 'x'") [23 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_scheduled_event_fires_once_on_its_account [85 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "DELETE FROM core.event") [16 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Without_options_a_session_runs_the_server_defaults [71 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_override_smaller_than_the_payment_loses_no_money [108 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Session_options_combine_and_refuse_what_they_do_not_know [1 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Status_and_queue_changes_are_idempotent [54 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Derived_keys_match_the_python_side [1 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Append_rejects_a_stale_expected_version [70 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_task_is_created_once_per_key [30 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hashes_match_the_python_side_byte_for_byte [11 ms]
+  Passed Bakeoff.Tests.PaymentTests.Oldest_first_and_even_split_allocation [66 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Placing_an_account_writes_event_and_state_together [25 ms]
+  Passed Bakeoff.Tests.EventStoreTests.The_store_assigns_the_global_sequence_and_the_recorded_time [14 ms]
+  Passed Bakeoff.Tests.EventStoreTests.State_cannot_be_written_outside_a_command [1 ms]
+  Passed Bakeoff.Tests.PaymentTests.Overpayment_is_held_as_unapplied_not_lost [35 ms]
+  Passed Bakeoff.Tests.PaymentTests.Reversal_unwinds_the_recorded_distribution [80 ms]
+  Passed Bakeoff.Tests.PaymentTests.Retrying_a_command_that_took_effect_is_answered_as_success [33 ms]
+  Passed Bakeoff.Tests.PaymentTests.Per_payment_bucket_override_beats_the_waterfall [26 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_state_equals_replay_of_the_event_stream [44 ms]
+  Passed Bakeoff.Tests.PaymentTests.Disputed_account_gets_nothing_the_consumer_did_not_direct [70 ms]
+  Passed Bakeoff.Tests.ConcurrencyTests.Payments_over_the_same_accounts_in_any_order_do_not_deadlock [1 s]
+  Passed Bakeoff.Tests.ConcurrencyTests.Concurrent_payments_to_one_account_serialize_on_its_row_lock [258 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_unknown_event_type_stops_the_projection_until_a_release_that_knows_it [1 s]
+  Passed Bakeoff.Tests.ReadModelTests.Read_models_agree_with_authoritative_state_once_caught_up [1 s]
+  Passed Bakeoff.Tests.ReaderTests.An_uncommitted_lower_sequence_is_never_skipped [9 s]
+  Passed Bakeoff.Tests.RuleTests.Events_fire_rules_and_scheduled_events_fire_in_turn [11 s]
+  Passed Bakeoff.Tests.ReaderTests.A_failing_projection_stops_alone_and_resumes [456 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_mark_is_forgotten_when_the_database_goes_back_in_time [376 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_sequence_position_is_read_under_the_sequence_lock [< 1 ms]
+  Passed Bakeoff.Tests.BulkTests.Bulk_payments_and_placement_pass_their_gates_and_match_the_single_path [12 s]
+  Passed Bakeoff.Tests.ReaderTests.An_ignored_event_type_is_passed_over_on_purpose [427 ms]
+  Passed Bakeoff.Tests.TwinTests.Ef_core_and_plain_sql_store_identical_events_and_state [2 s]
+  Passed Bakeoff.Tests.ReaderTests.A_burned_sequence_number_does_not_leave_the_projection_behind [470 ms]
+  Passed Bakeoff.Tests.ReaderTests.Two_readers_sharing_a_projection_apply_each_event_once [525 ms]
+  Passed Bakeoff.Tests.ReaderTests.One_aggregate_is_delivered_in_its_own_order [115 ms]
+  Passed Bakeoff.Tests.ReaderTests.A_claim_never_moves_the_checkpoint_back [204 ms]
+  Passed Bakeoff.Tests.TwinTests.Batched_and_plain_sql_store_identical_events_and_state [476 ms]
+  Passed Bakeoff.Tests.SeedAndBatchTests.The_seed_then_both_batches_pass_their_gates [23 s]
+  Passed Bakeoff.Tests.TwinTests.Fair_batched_and_plain_sql_store_identical_events_and_state [226 ms]
+Test Run Successful.
+Total tests: 49
+     Passed: 49
+
+## DATABASE_NO_RESET_ON_CLOSE=false, DATABASE_MAX_AUTO_PREPARE=0, DATABASE_SYNCHRONOUS_COMMIT=off (the bench of csharp-wax-rw8-sync-off-diagnostic; its engine runs as csharp-wax-rw8)
+  Passed Bakeoff.Tests.PlanChoicesTests.The_lighter_reset_keeps_what_auto_prepare_prepared [98 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Every_pooled_connection_is_read_once [96 ms]
+  Passed Bakeoff.Tests.PaymentTests.Rejected_command_writes_nothing [323 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Interest_accrues_once_per_day_on_the_principal [334 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Each_connection_reports_the_settings_its_session_runs_with [126 ms]
+  Passed Bakeoff.Tests.PaymentTests.Waterfall_pays_buckets_in_priority_order [26 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hash_chain_verifies_and_detects_a_forged_link [356 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "TRUNCATE core.event") [18 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Discard_all_leaves_nothing_to_read [52 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_scheduled_event_fires_once_on_its_account [55 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "UPDATE core.event SET event_type = 'x'") [10 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Events_are_immutable_in_the_database(statement: "DELETE FROM core.event") [18 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_override_smaller_than_the_payment_loses_no_money [72 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Status_and_queue_changes_are_idempotent [40 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.Derived_keys_match_the_python_side [2 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Append_rejects_a_stale_expected_version [34 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Without_options_a_session_runs_the_server_defaults [62 ms]
+  Passed Bakeoff.Tests.PlanChoicesTests.Session_options_combine_and_refuse_what_they_do_not_know [< 1 ms]
+  Passed Bakeoff.Tests.WorkloadCommandTests.A_task_is_created_once_per_key [19 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Hashes_match_the_python_side_byte_for_byte [9 ms]
+  Passed Bakeoff.Tests.PaymentTests.Oldest_first_and_even_split_allocation [38 ms]
+  Passed Bakeoff.Tests.EventStoreTests.Placing_an_account_writes_event_and_state_together [18 ms]
+  Passed Bakeoff.Tests.PaymentTests.Overpayment_is_held_as_unapplied_not_lost [16 ms]
+  Passed Bakeoff.Tests.EventStoreTests.The_store_assigns_the_global_sequence_and_the_recorded_time [10 ms]
+  Passed Bakeoff.Tests.EventStoreTests.State_cannot_be_written_outside_a_command [< 1 ms]
+  Passed Bakeoff.Tests.PaymentTests.Reversal_unwinds_the_recorded_distribution [30 ms]
+  Passed Bakeoff.Tests.PaymentTests.Retrying_a_command_that_took_effect_is_answered_as_success [30 ms]
+  Passed Bakeoff.Tests.PaymentTests.Per_payment_bucket_override_beats_the_waterfall [16 ms]
+  Passed Bakeoff.Tests.PaymentTests.Bucket_state_equals_replay_of_the_event_stream [34 ms]
+  Passed Bakeoff.Tests.PaymentTests.Disputed_account_gets_nothing_the_consumer_did_not_direct [38 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_unknown_event_type_stops_the_projection_until_a_release_that_knows_it [768 ms]
+  Passed Bakeoff.Tests.ConcurrencyTests.Payments_over_the_same_accounts_in_any_order_do_not_deadlock [817 ms]
+  Passed Bakeoff.Tests.ReadModelTests.Read_models_agree_with_authoritative_state_once_caught_up [839 ms]
+  Passed Bakeoff.Tests.ConcurrencyTests.Concurrent_payments_to_one_account_serialize_on_its_row_lock [174 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_uncommitted_lower_sequence_is_never_skipped [5 s]
+  Passed Bakeoff.Tests.RuleTests.Events_fire_rules_and_scheduled_events_fire_in_turn [6 s]
+  Passed Bakeoff.Tests.ReaderTests.A_failing_projection_stops_alone_and_resumes [305 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_mark_is_forgotten_when_the_database_goes_back_in_time [322 ms]
+  Passed Bakeoff.Tests.ReaderTests.The_sequence_position_is_read_under_the_sequence_lock [< 1 ms]
+  Passed Bakeoff.Tests.ReaderTests.An_ignored_event_type_is_passed_over_on_purpose [69 ms]
+  Passed Bakeoff.Tests.ReaderTests.A_burned_sequence_number_does_not_leave_the_projection_behind [174 ms]
+  Passed Bakeoff.Tests.TwinTests.Ef_core_and_plain_sql_store_identical_events_and_state [1 s]
+  Passed Bakeoff.Tests.ReaderTests.Two_readers_sharing_a_projection_apply_each_event_once [286 ms]
+  Passed Bakeoff.Tests.ReaderTests.One_aggregate_is_delivered_in_its_own_order [123 ms]
+  Passed Bakeoff.Tests.ReaderTests.A_claim_never_moves_the_checkpoint_back [117 ms]
+  Passed Bakeoff.Tests.BulkTests.Bulk_payments_and_placement_pass_their_gates_and_match_the_single_path [7 s]
+  Passed Bakeoff.Tests.TwinTests.Batched_and_plain_sql_store_identical_events_and_state [187 ms]
+  Passed Bakeoff.Tests.SeedAndBatchTests.The_seed_then_both_batches_pass_their_gates [13 s]
+  Passed Bakeoff.Tests.TwinTests.Fair_batched_and_plain_sql_store_identical_events_and_state [180 ms]
+Test Run Successful.
+Total tests: 49
+     Passed: 49
+
+## The Python side (python-direct, which does not run tonight; recorded for completeness)
+PASSED tests/test_bakeoff_bulk.py::test_bulk_payment_stores_what_post_payment_stores
+PASSED tests/test_bakeoff_bulk.py::test_bulk_placement_stores_what_place_account_stores
+PASSED tests/test_bakeoff_bulk.py::test_bulk_payment_skips_paid_keys_and_refuses_what_post_payment_refuses
+PASSED tests/test_bakeoff_bulk.py::test_bulk_payment_writes_nothing_when_a_version_has_moved
+PASSED tests/test_bakeoff_bulk.py::test_a_failed_chunk_runs_again_one_command_at_a_time
+PASSED tests/test_bakeoff_bulk.py::test_hashing_off_stores_the_placeholder_and_still_catches_a_conflict
+PASSED tests/test_bakeoff_commands.py::test_placing_records_interest_accrued_through_defaulting_to_itemization
+PASSED tests/test_bakeoff_commands.py::test_accrual_adds_the_specified_amount_once
+PASSED tests/test_bakeoff_commands.py::test_accrual_of_zero_still_advances_the_date_and_adds_the_bucket
+PASSED tests/test_bakeoff_commands.py::test_accrual_on_an_inactive_account_writes_nothing
+PASSED tests/test_bakeoff_commands.py::test_status_and_queue_changes_are_idempotent
+PASSED tests/test_bakeoff_commands.py::test_an_unknown_reason_code_is_refused
+PASSED tests/test_bakeoff_commands.py::test_schedule_then_fire_writes_the_target_event_once
+PASSED tests/test_bakeoff_commands.py::test_firing_an_unknown_entry_is_refused
+PASSED tests/test_bakeoff_commands.py::test_a_task_is_created_once
+PASSED tests/test_event_store.py::test_placing_an_account_writes_event_and_state_together
+PASSED tests/test_event_store.py::test_state_cannot_be_written_outside_a_command
+PASSED tests/test_event_store.py::test_events_are_immutable_in_the_database[UPDATE core.event SET source = 'x']
+PASSED tests/test_event_store.py::test_events_are_immutable_in_the_database[DELETE FROM core.event]
+PASSED tests/test_event_store.py::test_append_rejects_a_stale_expected_version
+PASSED tests/test_event_store.py::test_hash_chain_verifies_and_detects_a_forged_link
+PASSED tests/test_payments.py::test_waterfall_pays_buckets_in_priority_order
+PASSED tests/test_payments.py::test_per_payment_bucket_override_beats_the_waterfall
+PASSED tests/test_payments.py::test_disputed_account_gets_nothing_the_consumer_did_not_direct
+PASSED tests/test_payments.py::test_oldest_first_and_even_split_allocation
+PASSED tests/test_payments.py::test_overpayment_is_held_as_unapplied_not_lost
+PASSED tests/test_payments.py::test_reversal_unwinds_the_recorded_distribution
+PASSED tests/test_payments.py::test_rejected_command_writes_nothing
+PASSED tests/test_payments.py::test_bucket_state_equals_replay_of_the_event_stream
+PASSED tests/test_payments.py::test_bucket_override_smaller_than_the_payment_loses_no_money
+PASSED tests/test_bakeoff_rules.py::test_a_new_account_gets_one_first_contact_task
+PASSED tests/test_bakeoff_rules.py::test_partitioned_runners_and_pollers_split_the_work_without_overlap
+PASSED tests/test_bakeoff_rules.py::test_a_dispute_is_queued_for_review_when_its_review_comes_due
+PASSED tests/test_bakeoff_rules.py::test_a_payoff_marks_the_account_paid_in_full
+PASSED tests/test_bakeoff_rules.py::test_a_partial_payment_leaves_the_account_active
+PASSED tests/test_bakeoff_rules.py::test_a_second_delivery_changes_nothing
+PASSED tests/test_bakeoff_rules.py::test_the_account_summary_follows_the_new_events
+PASSED tests/test_bakeoff_seed_and_batch.py::test_seed_writes_what_place_account_would_and_starts_readers_at_the_head
+PASSED tests/test_direct_reader.py::test_the_direct_reader_builds_what_andys_reader_builds
+PASSED tests/test_direct_rules.py::test_the_direct_runner_and_poller_leave_what_the_django_ones_leave
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[pipeline-2500]
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[pipeline-2000000]
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[pipeline-1]
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[sequential-2500]
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[sequential-2000000]
+PASSED tests/test_direct_twin.py::test_a_one_account_payment_matches[sequential-1]
+PASSED tests/test_direct_twin.py::test_a_multi_account_payment_with_directions_and_a_dispute_matches[pipeline]
+PASSED tests/test_direct_twin.py::test_a_multi_account_payment_with_directions_and_a_dispute_matches[sequential]
+PASSED tests/test_direct_twin.py::test_a_repeated_payment_is_answered_once_and_a_reused_key_is_refused[pipeline]
+PASSED tests/test_direct_twin.py::test_a_repeated_payment_is_answered_once_and_a_reused_key_is_refused[sequential]
+PASSED tests/test_direct_twin.py::test_refusals_match[pipeline]
+PASSED tests/test_direct_twin.py::test_refusals_match[sequential]
+PASSED tests/test_direct_twin.py::test_a_moved_version_is_a_conflict_and_writes_nothing[pipeline]
+PASSED tests/test_direct_twin.py::test_a_moved_version_is_a_conflict_and_writes_nothing[sequential]
+PASSED tests/test_direct_twin.py::test_accrual_matches[pipeline-accrual_date0-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[pipeline-accrual_date1-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[pipeline-accrual_date2-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[pipeline-accrual_date3-closed]
+PASSED tests/test_direct_twin.py::test_accrual_matches[sequential-accrual_date0-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[sequential-accrual_date1-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[sequential-accrual_date2-active]
+PASSED tests/test_direct_twin.py::test_accrual_matches[sequential-accrual_date3-closed]
+PASSED tests/test_direct_twin.py::test_accrual_creates_a_missing_interest_bucket_like_the_django_path[pipeline]
+PASSED tests/test_direct_twin.py::test_accrual_creates_a_missing_interest_bucket_like_the_django_path[sequential]
+PASSED tests/test_direct_twin.py::test_a_placement_matches_and_a_repeat_is_answered_once[pipeline]
+PASSED tests/test_direct_twin.py::test_a_placement_matches_and_a_repeat_is_answered_once[sequential]
+PASSED tests/test_direct_twin.py::test_a_dispute_matches_and_a_second_is_refused[pipeline]
+PASSED tests/test_direct_twin.py::test_a_dispute_matches_and_a_second_is_refused[sequential]
+PASSED tests/test_direct_twin.py::test_hashing_off_stores_the_placeholder_on_the_direct_path[pipeline]
+PASSED tests/test_direct_twin.py::test_hashing_off_stores_the_placeholder_on_the_direct_path[sequential]
+PASSED tests/test_direct_twin.py::test_with_hashing_off_a_stale_version_is_caught_by_the_unique_constraint[pipeline]
+PASSED tests/test_direct_twin.py::test_with_hashing_off_a_stale_version_is_caught_by_the_unique_constraint[sequential]
+PASSED tests/test_direct_twin.py::test_queue_and_status_changes_match_and_a_repeat_records_nothing[pipeline]
+PASSED tests/test_direct_twin.py::test_queue_and_status_changes_match_and_a_repeat_records_nothing[sequential]
+PASSED tests/test_direct_twin.py::test_scheduling_and_firing_match_and_repeats_are_answered_once[pipeline]
+PASSED tests/test_direct_twin.py::test_scheduling_and_firing_match_and_repeats_are_answered_once[sequential]
+PASSED tests/test_direct_twin.py::test_a_task_matches_and_a_repeat_is_answered_once[pipeline]
+PASSED tests/test_direct_twin.py::test_a_task_matches_and_a_repeat_is_answered_once[sequential]
+PASSED tests/test_projection_reader.py::test_an_uncommitted_lower_sequence_is_never_skipped
+PASSED tests/test_projection_reader.py::test_one_aggregate_is_delivered_in_its_own_order
+PASSED tests/test_projection_reader.py::test_a_burned_sequence_number_does_not_leave_the_projection_behind
+PASSED tests/test_projection_reader.py::test_a_failing_projection_stops_alone_and_resumes
+PASSED tests/test_projection_reader.py::test_an_unknown_event_type_stops_the_projection_until_a_release_that_knows_it
+PASSED tests/test_projection_reader.py::test_an_ignored_event_type_is_passed_over_on_purpose
+PASSED tests/test_projection_reader.py::test_the_mark_is_forgotten_when_the_database_goes_back_in_time
+PASSED tests/test_projection_reader.py::test_the_reader_refuses_to_run_inside_another_transaction
+PASSED tests/test_reader_mark_and_claim.py::test_the_marks_read_the_highest_event_number
+PASSED tests/test_reader_mark_and_claim.py::test_a_claim_never_moves_the_checkpoint_back_in_andys_reader
+PASSED tests/test_reader_mark_and_claim.py::test_a_claim_never_moves_the_checkpoint_back_in_the_direct_reader
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[bakeoff:account:0]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[bakeoff:account:1]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[bakeoff:account:499999]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[bakeoff:seeder]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[bakeoff:payment:3f2b8c1e-5d4a-4e6f-9a1b-2c3d4e5f6a7b:00000000-0000-4000-8000-000000000001]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[pending:9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a]
+PASSED tests/test_bakeoff_seed_and_batch.py::test_derived_uuid_matches_shared_vector[empty name]
+PASSED tests/test_hash_vectors.py::test_event_hash_matches_shared_vector[first event of an account]
+PASSED tests/test_hash_vectors.py::test_event_hash_matches_shared_vector[a later event, an offset time, and whole seconds]
+PASSED tests/test_hash_vectors.py::test_event_hash_matches_shared_vector[text that needs escaping]
+PASSED tests/test_hash_vectors.py::test_event_hash_matches_shared_vector[nesting, ordering, and the edges of numbers]
+PASSED tests/test_reader_mark_and_claim.py::test_both_marks_read_the_sequence_under_its_lock
+101 passed in 13.77s
