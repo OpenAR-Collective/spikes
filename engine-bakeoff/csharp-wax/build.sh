@@ -13,6 +13,6 @@ exec docker run --rm $network \
   -e DATABASE_HOST=db -e DATABASE_NAME=hivear -e DATABASE_USER=hivear \
   -e DATABASE_PASSWORD="${POSTGRES_PASSWORD:-local-evaluation-only}" -e WAX_HASH="${WAX_HASH:-}" -e WAX_STATE="${WAX_STATE:-}" \
   -e DATABASE_NO_RESET_ON_CLOSE="${DATABASE_NO_RESET_ON_CLOSE:-}" -e DATABASE_MAX_AUTO_PREPARE="${DATABASE_MAX_AUTO_PREPARE:-}" \
-  -e DATABASE_PLAN_CACHE_MODE="${DATABASE_PLAN_CACHE_MODE:-}" \
+  -e DATABASE_PLAN_CACHE_MODE="${DATABASE_PLAN_CACHE_MODE:-}" -e DATABASE_SYNCHRONOUS_COMMIT="${DATABASE_SYNCHRONOUS_COMMIT:-}" \
   -v "$here:/work" -v wax-bakeoff-nuget:/root/.nuget/packages -w /work/csharp-wax \
   mcr.microsoft.com/dotnet/sdk@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 "$@"

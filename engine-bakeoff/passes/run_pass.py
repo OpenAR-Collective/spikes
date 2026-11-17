@@ -14,7 +14,13 @@ stopped, and its partial output is moved out of results/. Progress goes to
 <name>.status.json and the harness's output to <name>.log, beside this file.
 A plan that asks for the side sampler gets it in every run; one that asks for
 the host counters gets the Windows host's processor counters every 5 seconds
-from the first run to the last, in <name>.host-counters.csv.
+from the first run to the last, in <name>.host-counters.csv, with the named
+disk's counters and the thermal zones' if the plan names a disk. A plan may
+also ask for these, each described where it is done: WAL I/O timing on the
+server (wal_io_timing), a storage check before every run and at the start of
+every idle gap (fsync_check), and a snapshot of the host's processes every 30
+seconds (process_snapshot). An entry whose kind is "idle" is an idle gap: every
+bake-off container is stopped for its minutes, and nothing runs.
 """
 
 import argparse
@@ -154,7 +160,24 @@ HOST_COUNTERS = [
 ]
 
 
-def start_host_counters(name, deadline):
+def disk_counters(disk):
+    """The named disk's counters: write latency, the latency of every transfer,
+    writes and bytes written per second, the write queue, and idle time, for
+    the physical disk and its logical volume; and every thermal zone's
+    temperature, the share of its speed a passive cooling limit allows, and
+    the reasons it gives for throttling. Windows counts reads and writes here,
+    not the flush requests a sync becomes, so a flush's own time may not show."""
+    if not disk:
+        return []
+    names = ["Avg. Disk sec/Write", "Avg. Disk sec/Transfer", "Disk Writes/sec", "Disk Write Bytes/sec",
+             "Avg. Disk Write Queue Length", "% Idle Time"]
+    return ([rf"\PhysicalDisk({disk['physical']})\{name}" for name in names]
+            + [rf"\LogicalDisk({disk['logical']})\{name}" for name in names]
+            + [r"\Thermal Zone Information(*)\Temperature", r"\Thermal Zone Information(*)\% Passive Limit",
+               r"\Thermal Zone Information(*)\Throttle Reasons"])
+
+
+def start_host_counters(name, deadline, disk=None):
     """Logs HOST_COUNTERS every 5 seconds with typeperf, on Windows only, for a
     sample count that ends it soon after the deadline even if this runner dies."""
     if os.name != "nt":
@@ -163,8 +186,8 @@ def start_host_counters(name, deadline):
     raw = HARNESS / "out" / f"{name}.host-counters.raw.csv"
     raw.parent.mkdir(parents=True, exist_ok=True)
     samples = max(1, int((deadline - datetime.now()).total_seconds() / 5)) + 60
-    process = subprocess.Popen(["typeperf", *HOST_COUNTERS, "-si", "5", "-sc", str(samples), "-f", "CSV",
-                                "-o", str(raw), "-y"],
+    process = subprocess.Popen(["typeperf", *HOST_COUNTERS, *disk_counters(disk), "-si", "5", "-sc", str(samples),
+                                "-f", "CSV", "-o", str(raw), "-y"],
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return process, raw
 
@@ -183,6 +206,55 @@ def stop_host_counters(started, name):
     (HERE / f"{name}.host-counters.csv").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
+def start_process_snapshot(name, deadline):
+    """Every 30 seconds, each Windows process's CPU and bytes written over the
+    interval, from process_snapshot.ps1, to a raw file that stays in the
+    harness's ignored out/ folder, since it names every process on the host.
+    It ends itself 5 minutes after the deadline even if this runner dies."""
+    if os.name != "nt":
+        print("process snapshot: not on Windows, so none is taken", flush=True)
+        return None
+    raw = HARNESS / "out" / f"{name}.processes.raw.csv"
+    raw.parent.mkdir(parents=True, exist_ok=True)
+    until = (deadline + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%S")
+    return subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-File", str(HERE / "process_snapshot.ps1"),
+                             "-Out", str(raw), "-Until", until, "-Runner", str(os.getpid())],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+# The processes a committed copy of the snapshot names: Docker's own, the
+# virtual machine it runs in and WSL's services for it, Windows' kernel, and
+# any process the snapshot marked as descended from this runner (the harness,
+# typeperf, the Docker command lines, and the snapshot itself). Every other
+# process becomes unrelated-process, with its process ID kept so that one
+# process can be followed through the night without being named.
+NAMED_PROCESSES = ("vmmemWSL", "System", "Docker Desktop.exe", "wsl.exe", "wslservice.exe", "wslhost.exe",
+                   "wslrelay.exe", "vmcompute.exe")
+
+
+def stop_process_snapshot(process, name):
+    """Stops the snapshot and writes its committed copy, <name>.processes.csv,
+    beside the plan."""
+    if not process:
+        return
+    process.terminate()
+    process.wait(timeout=30)
+    raw = HARNESS / "out" / f"{name}.processes.raw.csv"
+    if not raw.exists():
+        return
+    rows = raw.read_text(encoding="utf-8", errors="replace").splitlines()
+    kept = [rows[0]] if rows else []
+    for line in rows[1:]:
+        cells = line.split(",")
+        if len(cells) != 8:
+            continue
+        stamp, interval, pid, parent, process_name, cpu, written, mine = cells
+        if not (process_name.startswith(("_", "com.docker.")) or process_name in NAMED_PROCESSES or mine == "1"):
+            process_name = "unrelated-process"
+        kept.append(",".join((stamp, interval, pid, parent, process_name, cpu, written, mine)))
+    (HERE / f"{name}.processes.csv").write_text("\n".join(kept) + "\n", encoding="utf-8", newline="\n")
+
+
 def sh(args):
     return subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
@@ -192,6 +264,72 @@ def stop_databases():
     for name in names:
         sh(["docker", "stop", "-t", "30", name])
     return names
+
+
+# pg_test_fsync, from the database's own image, run in the side's database
+# container on the data volume while the database is up and idle. The tool
+# cannot be told to test one method only, and it first tests open_datasync,
+# then fdatasync, the method PostgreSQL uses here, each with one 8 kB write
+# for FSYNC_SECONDS; the check stops it as soon as fdatasync's rate is
+# printed, so every check is the same short burst of synced writes: the
+# tool's test file written and synced once, then the two timed tests. Its
+# test file goes in the volume's root, beside the data, and is removed after.
+FSYNC_SECONDS = 2
+FSYNC_SCRIPT = (
+    'F=/var/lib/postgresql/data/bakeoff_fsync_check.tmp; O=/tmp/bakeoff_fsync_check.out; rm -f "$F" "$O"; '
+    'pg_test_fsync -f "$F" -s {seconds} > "$O" 2>&1 & p=$!; i=0; '
+    'until grep -q "fdatasync .*ops/sec" "$O" || [ $i -ge 600 ]; do sleep 0.05; i=$((i + 1)); done; '
+    'kill $p 2>/dev/null; wait $p 2>/dev/null; cat "$O"; rm -f "$F" "$O"'
+).format(seconds=FSYNC_SECONDS)
+
+
+def parse_fsync(text):
+    """The ops per second of each method in the one-write section, keyed
+    one_8k, and in the two-write section, two_8k, if the tool reached it."""
+    found, section = {}, None
+    for line in text.splitlines():
+        if line.startswith("Compare file sync methods using one 8kB write"):
+            section = "one_8k"
+        elif line.startswith("Compare file sync methods using two 8kB writes"):
+            section = "two_8k"
+        elif line.startswith(("Compare", "Test", "Non-sync")):
+            section = None
+        match = re.match(r"\s+(\w+)\s+([\d.]+) ops/sec", line)
+        if section and match:
+            found.setdefault(section, {})[match.group(1)] = float(match.group(2))
+    return found
+
+
+def fsync_check(plan, name, tag):
+    """Stops every bake-off database, starts the first run's side's database
+    fresh, runs pg_test_fsync in it while it is idle, and stops it again, so
+    the next run still starts its database fresh. The output goes to
+    <name>.fsync.txt under a heading; the parsed rates are returned. A check
+    that fails or takes over 5 minutes is recorded as an error and the pass
+    goes on: it is a reading beside the runs, not one of them."""
+    started = datetime.now()
+    # The check's own start and end, from just before the tool starts to just
+    # after it stops, without the database's start and stop around it.
+    try:
+        harness = harness_module()
+        side = harness.Side(next(entry["side"] for entry in plan["runs"] if entry.get("kind") != "idle"))
+        stop_databases()
+        side.up_db()
+        db = side.container("db")
+        started = datetime.now()
+        result = subprocess.run(["docker", "exec", "-u", "postgres", db, "sh", "-c", FSYNC_SCRIPT],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+        output, code = result.stdout + result.stderr, result.returncode
+    except (RuntimeError, subprocess.TimeoutExpired, OSError) as error:
+        output, code, result = f"check failed: {error}", None, None
+    finished = datetime.now()
+    stop_databases()
+    with (HERE / f"{name}.fsync.txt").open("a", encoding="utf-8", newline="\n") as out:
+        out.write(f"===== {tag} {started:%Y-%m-%dT%H:%M:%S} to {finished:%Y-%m-%dT%H:%M:%S} exit {code}\n")
+        out.write(output + "\n")
+    rates = parse_fsync(result.stdout) if result else {}
+    return {"tag": tag, "started": f"{started:%Y-%m-%dT%H:%M:%S}", "finished": f"{finished:%Y-%m-%dT%H:%M:%S}",
+            "seconds": round((finished - started).total_seconds(), 1), "exit_code": code, **rates}
 
 
 def stop_run(process, entry):
@@ -235,7 +373,7 @@ def clean_databases(plan):
     this pass. Templates (bakeoff_seed_*) and the default databases stay."""
     harness = harness_module()
     projects = set()
-    for name in dict.fromkeys(entry["side"] for entry in plan["runs"]):
+    for name in dict.fromkeys(entry["side"] for entry in plan["runs"] if entry.get("kind") != "idle"):
         # Only a plan with non-default caps or PgBouncer passes them, so the
         # standard passes need nothing from the harness beyond Side(name).
         options = {}
@@ -253,6 +391,11 @@ def clean_databases(plan):
         for database in leftovers.split():
             side.psql("postgres", f'DROP DATABASE IF EXISTS "{database}" WITH (FORCE)')
         print(f"{side.project}: dropped {len(leftovers.split())} leftover run databases", flush=True)
+        # A plan that asks for WAL I/O timing gets it, or the pass does not start.
+        timing = side.psql("postgres", "SHOW track_wal_io_timing")
+        if plan.get("wal_io_timing") and timing != "on":
+            stop_databases()
+            raise SystemExit(f"{side.project}: track_wal_io_timing is {timing!r}, but the plan asks for on; refusing to start")
     stop_databases()
 
 
@@ -280,7 +423,7 @@ def prepare(plan):
     projects = {name: spec["project"] for name, spec in
                 json.loads((HARNESS / "sides.json").read_text(encoding="utf-8")).items()}
     seeded = set()
-    for side in dict.fromkeys(entry["side"] for entry in plan["runs"]):
+    for side in dict.fromkeys(entry["side"] for entry in plan["runs"] if entry.get("kind") != "idle"):
         if projects[side] in seeded:
             continue
         seeded.add(projects[side])
@@ -306,6 +449,10 @@ def main():
     parser.add_argument("--min-free-gb", type=float, default=50, help="with --docker-root, the free space required there")
     args = parser.parse_args()
     plan = json.loads((HERE / f"{args.name}.plan.json").read_text(encoding="utf-8"))
+    # WAL I/O timing is a server setting, given on the database's command line
+    # through Compose, so every Compose call this runner or the harness makes
+    # must agree on it, or the database container would be recreated.
+    os.environ["BAKEOFF_WAL_IO_TIMING"] = "on" if plan.get("wal_io_timing") else "off"
     if args.groups:
         groups = {int(group) for group in args.groups.split(",")}
         plan["runs"] = [entry for entry in plan["runs"] if entry["group"] in groups]
@@ -326,12 +473,47 @@ def main():
 
     if not args.dry_run:
         clean_databases(plan)
-    host_counters = start_host_counters(args.name, deadline) if plan.get("host_counters") and not args.dry_run else None
+    host_counters = (start_host_counters(args.name, deadline, plan.get("host_disk"))
+                     if plan.get("host_counters") and not args.dry_run else None)
+    snapshot = start_process_snapshot(args.name, deadline) if plan.get("process_snapshot") and not args.dry_run else None
     clock = datetime.now()
     opened = contextlib.nullcontext() if args.dry_run else log_path.open("a", encoding="utf-8", newline="\n")
     with opened as log, contextlib.ExitStack() as stack:
         stack.callback(stop_host_counters, host_counters, args.name)
+        stack.callback(stop_process_snapshot, snapshot, args.name)
         for entry in plan["runs"]:
+            if entry.get("kind") == "idle":
+                # An idle gap: the storage check first, if the plan asks for
+                # it, then every bake-off container stopped for its minutes.
+                record = {"order": entry["order"], "group": entry["group"], "label": entry["label"],
+                          "kind": "idle", "minutes": entry["minutes"]}
+                now = clock if args.dry_run else datetime.now()
+                if now + timedelta(minutes=entry["minutes"] + 2) > deadline:
+                    record["state"] = "skipped: would not finish before the deadline"
+                    status["runs"].append(record)
+                    print(f"[{now:%H:%M}] {entry['order']:>3} skip {entry['label']}", flush=True)
+                    continue
+                if args.dry_run:
+                    clock = now + timedelta(minutes=entry["minutes"] + 1)
+                    record["state"] = "would idle"
+                    status["runs"].append(record)
+                    print(f"[{now:%H:%M}] {entry['order']:>3} idle {entry['label']} ({entry['minutes']} min)", flush=True)
+                    continue
+                if plan.get("fsync_check"):
+                    record["fsync_check"] = fsync_check(plan, args.name, f"{entry['order']} {entry['label']} start")
+                record["stopped_databases"] = stop_databases()
+                record["started"] = f"{datetime.now():%Y-%m-%dT%H:%M:%S}"
+                print(f"[{datetime.now():%H:%M}] {entry['order']:>3} idle {entry['label']} ({entry['minutes']} min)", flush=True)
+                until = min(datetime.now() + timedelta(minutes=entry["minutes"]), deadline)
+                while datetime.now() < until:
+                    time.sleep(5)
+                record["finished"] = f"{datetime.now():%Y-%m-%dT%H:%M:%S}"
+                record["state"] = "idle done"
+                status["runs"].append(record)
+                save()
+                if datetime.now() >= deadline:
+                    break
+                continue
             expected = timedelta(seconds=estimate(plan, entry, seen))
             record = {"order": entry["order"], "group": entry["group"], "label": entry["label"],
                       "estimate_min": round(expected.total_seconds() / 60, 1)}
@@ -347,6 +529,8 @@ def main():
                 status["runs"].append(record)
                 print(f"[{now:%H:%M}] {entry['order']:>3} run  {entry['label']} ({record['estimate_min']} min)", flush=True)
                 continue
+            if plan.get("fsync_check"):
+                record["fsync_check"] = fsync_check(plan, args.name, f"{entry['order']} {entry['label']} before")
             record["stopped_databases"] = stop_databases()
             record["started"] = f"{datetime.now():%Y-%m-%dT%H:%M:%S}"
             print(f"[{datetime.now():%H:%M}] {entry['order']:>3} run  {entry['label']} ({record['estimate_min']} min)", flush=True)
@@ -374,10 +558,15 @@ def main():
         # Nothing a run started outlives the pass: a run stopped at the deadline
         # can leave work inside its database container, such as the side sampler.
         stop_databases()
+        if plan.get("fsync_check") and datetime.now() < deadline:
+            status["fsync_check_end"] = fsync_check(plan, args.name, "end")
         save()
-    states = [run["state"] for run in status["runs"]]
+    states = [run["state"] for run in status["runs"] if run.get("kind") != "idle"]
+    gaps = [run["state"] for run in status["runs"] if run.get("kind") == "idle"]
     print(f"{states.count('done') + states.count('would run')} run, {states.count('failed')} failed, "
-          f"{sum(state.startswith('skipped') for state in states)} skipped, of {len(plan['runs'])}")
+          f"{sum(state.startswith('skipped') for state in states)} skipped, of "
+          f"{sum(entry.get('kind') != 'idle' for entry in plan['runs'])}; "
+          f"{sum(not state.startswith('skipped') for state in gaps)} idle gaps of {len(gaps)}")
 
 
 if __name__ == "__main__":

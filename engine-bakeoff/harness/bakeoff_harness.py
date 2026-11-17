@@ -127,6 +127,9 @@ class Side:
         # directly. Both are recorded with every result.
         self.compose_env = spec.get("compose_env", {})
         self.container_env = spec.get("container_env", {})
+        # bench_env is set on the bench container alone, never on the engine's,
+        # for a diagnostic that must reach only the bench's own sessions.
+        self.bench_env = spec.get("bench_env", {})
         # Workloads this side does not run, such as the bulk workloads on the
         # Marten side, whose writer is the direct side's (WORKLOADS.md).
         self.workloads_excluded = spec.get("workloads_excluded", [])
@@ -175,8 +178,10 @@ class Side:
 
     def start(self, service, database, name, entrypoint, args):
         sh(["docker", "rm", "-f", name], check=False)
+        bench_flags = [flag for key, value in self.bench_env.items() for flag in ("-e", f"{key}={value}")]
         self.dc("run", "-d", "--name", name, "-e", f"DATABASE_NAME={database}", *self.env_flags(),
-                "--entrypoint", entrypoint, service, *args, database=database)
+                *(bench_flags if service == "bench" else []), "--entrypoint", entrypoint, service, *args,
+                database=database)
         return name
 
 
@@ -247,6 +252,14 @@ def running(container):
 def limits(container):
     out = sh(["docker", "inspect", "-f", "{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}", container], check=False).stdout.split()
     return {"cpus": int(out[0]) / 1e9, "mem_bytes": int(out[1])} if len(out) == 2 else None
+
+
+# The server settings each run records: those that decide when and how WAL is
+# written and flushed, and how checkpoints run.
+SERVER_SETTINGS = ("track_wal_io_timing", "synchronous_commit", "fsync", "wal_sync_method", "full_page_writes",
+                   "wal_compression", "wal_buffers", "wal_writer_delay", "wal_writer_flush_after", "commit_delay",
+                   "commit_siblings", "checkpoint_timeout", "max_wal_size", "checkpoint_completion_target",
+                   "shared_buffers", "wal_level")
 
 
 def template_name(accounts):
@@ -368,8 +381,11 @@ class LagSampler(threading.Thread):
 # where no wait event is reported, which includes a backend on a core and one
 # waiting for a core), leaving out background processes idle in their main
 # loops (the Activity waits). Every tenth second it times a fixed CPU-bound
-# statement, a fifth of the host probe's, and reads the cluster's WAL counters
-# and the database's commits. It is one DO block that commits after every
+# statement, a fifth of the host probe's, and reads the cluster's WAL counters,
+# the checkpointer's, and the database's commits. The WAL write and sync times
+# are whole microseconds, and stay zero unless the server runs with
+# track_wal_io_timing on; the checkpointer's times are whole milliseconds. It
+# is one DO block that commits after every
 # sample, so no snapshot it holds is more than about a second old, and prints
 # each sample as a notice with its UTC time. A sample that runs late skips the
 # ticks it missed, so a stall shows as a gap. The harness cancels it when the
@@ -386,6 +402,7 @@ DECLARE
   total bigint;
   waits text;
   wal record;
+  ckpt record;
   db record;
 BEGIN
   PERFORM set_config('jit', 'off', false);
@@ -404,10 +421,13 @@ BEGIN
       SELECT sum(x) INTO total FROM (SELECT generate_series(1, 4000000) AS x) s;
       RAISE NOTICE 'probe % %', stamp, round((extract(epoch FROM clock_timestamp() - started) * 1000)::numeric, 1);
       SELECT * INTO wal FROM pg_stat_wal;
+      SELECT * INTO ckpt FROM pg_stat_checkpointer;
       SELECT * INTO db FROM pg_stat_database WHERE datname = current_database();
-      RAISE NOTICE 'stats % commits=% rollbacks=% wal_records=% wal_fpi=% wal_bytes=% wal_buffers_full=% wal_write=% wal_sync=%',
+      RAISE NOTICE 'stats % commits=% rollbacks=% wal_records=% wal_fpi=% wal_bytes=% wal_buffers_full=% wal_write=% wal_sync=% wal_write_us=% wal_sync_us=% ckpt_timed=% ckpt_requested=% ckpt_buffers=% ckpt_write_ms=% ckpt_sync_ms=%',
         stamp, db.xact_commit, db.xact_rollback, wal.wal_records, wal.wal_fpi, wal.wal_bytes, wal.wal_buffers_full,
-        wal.wal_write, wal.wal_sync;
+        wal.wal_write, wal.wal_sync, round(wal.wal_write_time * 1000)::bigint, round(wal.wal_sync_time * 1000)::bigint,
+        ckpt.num_timed, ckpt.num_requested, ckpt.buffers_written, round(ckpt.write_time)::bigint,
+        round(ckpt.sync_time)::bigint;
     END IF;
     tick := greatest(tick + 1, ceil(extract(epoch FROM clock_timestamp() - began))::bigint);
     COMMIT;
@@ -760,6 +780,12 @@ def run_one(side, args, workers, index, raw_dir):
         if engine_ready_s is None:
             log(f"  the engine did not settle within {args.engine_ready_timeout} s"
                 f" (last {engine_idle_cores} cores); the run goes ahead, and the result says so")
+    # The server's settings that bear on writing and flushing WAL, as the
+    # harness's own session sees them; a session's own options, such as a
+    # diagnostic synchronous_commit, show in the bench's plan-choice read.
+    settings = {row["name"]: row["setting"] + (row["unit"] or "") for row in
+                _json_rows(side, database, "SELECT name, setting, unit FROM pg_settings WHERE name IN ("
+                           + ", ".join(f"'{name}'" for name in SERVER_SETTINGS) + ") ORDER BY name") or []}
     # Before the measured window, and before the statement statistics reset.
     probe_ms, probe_samples = host_probe(side, database)
     side.psql(database, "SELECT pg_stat_statements_reset()")
@@ -898,6 +924,7 @@ def run_one(side, args, workers, index, raw_dir):
         "db_activity": activity_delta(before, after),
         "host_probe_samples_ms": probe_samples,
         "side_sampler": side_sampled,
+        "server_settings": settings,
         "cpu_ms_per_command": {k: (round(v * 1000 / sent_total, 3) if v is not None and sent_total else None)
                                for k, v in cpu_window.items()},
         "engine_catchup_cpu_s": (round((catchup_cpu - engine_after) / 1e6, 3)
@@ -1235,6 +1262,7 @@ def cmd_run(args):
     env = environment(side)
     (out_dir / "environment.json").write_text(json.dumps(env, indent=1), encoding="utf-8")
     meta = {"label": label, "side": side.name, "side_env": {**side.compose_env, **side.container_env},
+            "bench_env": side.bench_env, "wal_io_timing": os.environ.get("BAKEOFF_WAL_IO_TIMING", "off"),
             "workload": args.workload, "accounts": args.accounts,
             "placements": args.placements if args.workload in PLACEMENTS else None,
             "engine_args": args.engine_args, "engine_paused": args.no_engine, "hashing": args.hash,

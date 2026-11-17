@@ -14,7 +14,7 @@ public sealed class PlanChoicesTests(DatabaseFixture db) : IClassFixture<Databas
 {
     const string Sql = "SELECT count(*) FROM core.event WHERE global_sequence_number > $1";
 
-    NpgsqlDataSource Source(bool noResetOnClose, int maxAutoPrepare) => NpgsqlDataSource.Create(
+    NpgsqlDataSource Source(bool noResetOnClose, int maxAutoPrepare, string? options = null) => NpgsqlDataSource.Create(
         new NpgsqlConnectionStringBuilder(db.ConnectionString)
         {
             // Its own application name, so the count of open connections sees
@@ -23,6 +23,7 @@ public sealed class PlanChoicesTests(DatabaseFixture db) : IClassFixture<Databas
             NoResetOnClose = noResetOnClose,
             MaxAutoPrepare = maxAutoPrepare,
             AutoPrepareMinUsages = 2,
+            Options = options,
         }.ConnectionString);
 
     static async Task Run(NpgsqlConnection connection, int times, bool prepare)
@@ -99,5 +100,56 @@ public sealed class PlanChoicesTests(DatabaseFixture db) : IClassFixture<Databas
         Assert.Equal(0, read.Prepared);
         Assert.Empty(read.Statements);
         Assert.NotEqual(0, read.Pid);
+    }
+
+    [Fact]
+    public async Task Each_connection_reports_the_settings_its_session_runs_with()
+    {
+        // The diagnostic options reach every pooled connection's session, and
+        // the read reports them, so a result shows what its bench ran with.
+        await using var source = Source(noResetOnClose: true, maxAutoPrepare: 0,
+            WaxSettings.SessionOptions("force_custom_plan", "off"));
+        await using (var first = await source.OpenConnectionAsync())
+        await using (var second = await source.OpenConnectionAsync())
+        {
+            await Run(first, 1, prepare: false);
+            await Run(second, 1, prepare: false);
+        }
+
+        var connections = await PlanChoices.ReadAsync(source);
+
+        Assert.Equal(2, connections.Count);
+        Assert.All(connections, connection =>
+        {
+            Assert.Equal("off", connection.SynchronousCommit);
+            Assert.Equal("force_custom_plan", connection.PlanCacheMode);
+        });
+    }
+
+    [Fact]
+    public async Task Without_options_a_session_runs_the_server_defaults()
+    {
+        await using var source = Source(noResetOnClose: true, maxAutoPrepare: 0);
+        await using (var connection = await source.OpenConnectionAsync())
+        {
+            await Run(connection, 1, prepare: false);
+        }
+
+        var read = Assert.Single(await PlanChoices.ReadAsync(source));
+
+        Assert.Equal("on", read.SynchronousCommit);
+        Assert.Equal("auto", read.PlanCacheMode);
+    }
+
+    [Fact]
+    public void Session_options_combine_and_refuse_what_they_do_not_know()
+    {
+        Assert.Null(WaxSettings.SessionOptions(null, null));
+        Assert.Equal("-c plan_cache_mode=auto", WaxSettings.SessionOptions("auto", null));
+        Assert.Equal("-c synchronous_commit=off", WaxSettings.SessionOptions(null, "off"));
+        Assert.Equal("-c plan_cache_mode=force_custom_plan -c synchronous_commit=on",
+            WaxSettings.SessionOptions("force_custom_plan", "on"));
+        Assert.Throws<InvalidOperationException>(() => WaxSettings.SessionOptions(null, "local"));
+        Assert.Throws<InvalidOperationException>(() => WaxSettings.SessionOptions("custom", null));
     }
 }

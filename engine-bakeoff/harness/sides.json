@@ -115,5 +115,14 @@
     "cli": ["dotnet", "Bakeoff.Host.dll"],
     "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
     "workloads_excluded": ["batch-payments-bulk", "placement-bulk"]
+  },
+  "csharp-wax-rw8-sync-off-diagnostic": {
+    "compose": "../csharp-wax/docker-compose.yml",
+    "project": "hivear-bakeoff-csharp-wax",
+    "profile": "bench",
+    "cli": ["dotnet", "Bakeoff.Host.dll"],
+    "container_env": {"DATABASE_NO_RESET_ON_CLOSE": "false", "DATABASE_MAX_AUTO_PREPARE": "0"},
+    "bench_env": {"DATABASE_SYNCHRONOUS_COMMIT": "off"},
+    "workloads_excluded": ["batch-payments-bulk", "placement-bulk", "placement", "realtime", "batch-accrual"]
   }
 }

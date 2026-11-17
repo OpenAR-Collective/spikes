@@ -213,6 +213,8 @@ static class Bench
             plan_choices = planChoices?.Select(connection => new
             {
                 pid = connection.Pid,
+                synchronous_commit = connection.SynchronousCommit,
+                plan_cache_mode = connection.PlanCacheMode,
                 prepared = connection.Prepared,
                 statements = connection.Statements.Select(statement => new
                 {

@@ -36,6 +36,11 @@ services:
       # reader, so the database ends it.
       - -c
       - idle_in_transaction_session_timeout=300000
+      # Off, PostgreSQL's own default, unless the runner sets BAKEOFF_WAL_IO_TIMING
+      # to on for a plan that asks pg_stat_wal to time every WAL write and
+      # sync. Off leaves the configuration as it was, so earlier results stand.
+      - -c
+      - track_wal_io_timing=${BAKEOFF_WAL_IO_TIMING:-off}
 
   engine:
     cpus: 2

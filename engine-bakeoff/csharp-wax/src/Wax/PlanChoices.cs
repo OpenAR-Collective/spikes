@@ -30,8 +30,11 @@ public static partial class PlanChoices
     /// holding that many may report partial counts.</summary>
     public sealed record Statement(string Text, string Hash, long GenericPlans, long CustomPlans);
 
-    /// <summary>One physical connection and its prepared statements, the most executed first.</summary>
-    public sealed record Connection(int Pid, int Prepared, IReadOnlyList<Statement> Statements);
+    /// <summary>One physical connection, the synchronous_commit and
+    /// plan_cache_mode its session runs with, and its prepared statements, the
+    /// most executed first.</summary>
+    public sealed record Connection(int Pid, string SynchronousCommit, string PlanCacheMode, int Prepared,
+        IReadOnlyList<Statement> Statements);
 
     const string CountSql =
         "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND backend_type = 'client backend' " +
@@ -40,6 +43,9 @@ public static partial class PlanChoices
     const string ReadSql =
         "SELECT pg_backend_pid(), statement, left(md5(statement), 8), generic_plans, custom_plans FROM pg_prepared_statements " +
         "UNION ALL SELECT pg_backend_pid(), NULL, NULL, NULL, NULL WHERE NOT EXISTS (SELECT FROM pg_prepared_statements)";
+
+    // Read after the statements, so this one-off query is not among them.
+    const string SettingsSql = "SELECT current_setting('synchronous_commit'), current_setting('plan_cache_mode')";
 
     /// <summary>Reads at most maxConnections connections, each with at most
     /// limit statements; a statement's text is shortened to 100 characters.</summary>
@@ -79,7 +85,15 @@ public static partial class PlanChoices
                         }
                     }
                 }
-                result.Add(new Connection(pid, statements.Count, statements
+                string synchronousCommit, planCacheMode;
+                await using (var settings = new NpgsqlCommand(SettingsSql, connection))
+                await using (var rows = await settings.ExecuteReaderAsync(cancellation))
+                {
+                    await rows.ReadAsync(cancellation);
+                    synchronousCommit = rows.GetString(0);
+                    planCacheMode = rows.GetString(1);
+                }
+                result.Add(new Connection(pid, synchronousCommit, planCacheMode, statements.Count, statements
                     .OrderByDescending(statement => statement.GenericPlans + statement.CustomPlans)
                     .ThenBy(statement => statement.Text, StringComparer.Ordinal)
                     .Take(limit)

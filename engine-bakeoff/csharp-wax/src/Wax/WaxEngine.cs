@@ -86,9 +86,10 @@ public static class WaxSettings
         // Each variable overrides its setting; DATABASE_NO_RESET_ON_CLOSE=false
         // with DATABASE_MAX_AUTO_PREPARE=0 runs Npgsql's defaults, as every
         // csharp-wax run before this change did. DATABASE_PLAN_CACHE_MODE sets
-        // PostgreSQL's plan_cache_mode for the session, for a diagnostic. A
-        // value that is set but not understood stops the process, so a typo
-        // cannot run the default under another name.
+        // PostgreSQL's plan_cache_mode for the session, and
+        // DATABASE_SYNCHRONOUS_COMMIT its synchronous_commit, each for a
+        // diagnostic. A value that is set but not understood stops the
+        // process, so a typo cannot run the default under another name.
         builder.NoResetOnClose = true;
         builder.MaxAutoPrepare = 20;
         var noReset = Setting("DATABASE_NO_RESET_ON_CLOSE");
@@ -109,17 +110,42 @@ public static class WaxSettings
                 ? count
                 : throw new InvalidOperationException($"DATABASE_MAX_AUTO_PREPARE must be a whole number, not '{maxAutoPrepare}'.");
         }
-        var planCacheMode = Setting("DATABASE_PLAN_CACHE_MODE");
+        var options = SessionOptions(Setting("DATABASE_PLAN_CACHE_MODE"), Setting("DATABASE_SYNCHRONOUS_COMMIT"));
+        if (options is not null)
+        {
+            builder.Options = options;
+        }
+        return builder.ConnectionString;
+    }
+
+    /// <summary>The PostgreSQL settings a session starts with, as Npgsql's
+    /// Options, or null for none. Both are for diagnostics only: planCacheMode
+    /// sets plan_cache_mode, and synchronousCommit sets synchronous_commit,
+    /// which with off lets a commit return before its WAL reaches the disk, so
+    /// it is never a setting a measured configuration runs with. A value that
+    /// is not understood stops the process.</summary>
+    public static string? SessionOptions(string? planCacheMode, string? synchronousCommit)
+    {
+        var options = new List<string>();
         if (planCacheMode is not null)
         {
-            builder.Options = planCacheMode switch
+            options.Add(planCacheMode switch
             {
                 "auto" or "force_custom_plan" or "force_generic_plan" => $"-c plan_cache_mode={planCacheMode}",
                 _ => throw new InvalidOperationException(
                     $"DATABASE_PLAN_CACHE_MODE must be auto, force_custom_plan, or force_generic_plan, not '{planCacheMode}'."),
-            };
+            });
         }
-        return builder.ConnectionString;
+        if (synchronousCommit is not null)
+        {
+            options.Add(synchronousCommit switch
+            {
+                "on" or "off" => $"-c synchronous_commit={synchronousCommit}",
+                _ => throw new InvalidOperationException(
+                    $"DATABASE_SYNCHRONOUS_COMMIT must be on or off, not '{synchronousCommit}'."),
+            });
+        }
+        return options.Count > 0 ? string.Join(' ', options) : null;
     }
 
     /// <summary>The driver settings a connection string carries, in the words a
