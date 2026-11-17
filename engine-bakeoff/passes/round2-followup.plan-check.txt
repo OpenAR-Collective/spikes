@@ -1,0 +1,8 @@
+template bakeoff_seed_500000, 3 rounds of 25 timed inserts per mode after 8 untimed; has_reason=t
+
+Median milliseconds per insert, with the count of inserts timed, and the prepared statement's plan choices in each session (generic, custom):
+| plan_cache_mode | Planning | Execution | BEFORE INSERT trigger | Foreign-key check | Plan choices per session |
+| --- | --- | --- | --- | --- | --- |
+| auto | 0.040 (75) | 0.195 (75) | 0.030 (75) | 0.019 (75) | 28 and 5, 28 and 5, 28 and 5 |
+| force_custom_plan | 0.104 (75) | 0.339 (75) | 0.040 (75) | 0.102 (75) | 0 and 33, 0 and 33, 0 and 33 |
+| force_generic_plan | 0.042 (75) | 0.189 (75) | 0.031 (75) | 0.019 (75) | 33 and 0, 33 and 0, 33 and 0 |

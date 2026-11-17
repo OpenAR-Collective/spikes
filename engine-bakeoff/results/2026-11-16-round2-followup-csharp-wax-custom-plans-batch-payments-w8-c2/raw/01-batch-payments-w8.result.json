@@ -1,0 +1,2586 @@
+{
+ "index": 1,
+ "side": "csharp-wax-custom-plans",
+ "workload": "batch-payments",
+ "workers": 8,
+ "accounts": 500000,
+ "placements": null,
+ "engine_args": "--projection-workers 3 --rule-workers 16 --pass-report-seconds 10",
+ "engine_paused": false,
+ "hashing": "on",
+ "caps": "standard",
+ "pgbouncer": false,
+ "pool_size": null,
+ "bench": {
+  "workload": "batch-payments",
+  "workers": 8,
+  "sent": 500000,
+  "sent_total": 500000,
+  "succeeded": 500000,
+  "rejected": 0,
+  "failed": 0,
+  "retried": 0,
+  "elapsed_s": 722.064,
+  "latency_ms": {
+   "p50": 10.365,
+   "p95": 17.766,
+   "p99": 23.961,
+   "max": 337.538
+  },
+  "run_pk": "95099c6b-859a-4c87-bb07-308437fd3dcd",
+  "transactions": 500000,
+  "fallback_chunks": 0,
+  "append": "wax",
+  "hashing": "on",
+  "state": "sql",
+  "driver_settings": "Npgsql No Reset On Close True, Max Auto Prepare 20, options '-c plan_cache_mode=force_custom_plan'",
+  "reset_on_return": "none",
+  "plan_choices": [
+   {
+    "pid": 323,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 124952
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 72912
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62474
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 58
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 57
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 56
+     }
+    ]
+   },
+   {
+    "pid": 320,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 125108
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 73020
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62552
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 69
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 67
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 64
+     }
+    ]
+   },
+   {
+    "pid": 325,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 125156
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 72890
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62576
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 59
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 58
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 55
+     }
+    ]
+   },
+   {
+    "pid": 321,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 125132
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 73050
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62564
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 64
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 64
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 58
+     }
+    ]
+   },
+   {
+    "pid": 312,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 124646
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 72503
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62321
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 61
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 61
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 58
+     }
+    ]
+   },
+   {
+    "pid": 324,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 124970
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 72866
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62483
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 62
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 61
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 60
+     }
+    ]
+   },
+   {
+    "pid": 326,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 124936
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 73079
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62466
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 55
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 55
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 54
+     }
+    ]
+   },
+   {
+    "pid": 322,
+    "prepared": 11,
+    "statements": [
+     {
+      "statement": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_p",
+      "hash": "234f48db",
+      "generic_plans": 0,
+      "custom_plans": 125068
+     },
+     {
+      "statement": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2",
+      "hash": "43fa6f46",
+      "generic_plans": 0,
+      "custom_plans": 72982
+     },
+     {
+      "statement": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, st",
+      "hash": "c6d83291",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "SELECT EXISTS (SELECT 1 FROM ar.payment WHERE payment_pk = $1)",
+      "hash": "4b26f4ee",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, curre",
+      "hash": "bf45dad0",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_unit",
+      "hash": "6d3a4e97",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN L",
+      "hash": "e75aea62",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrue",
+      "hash": "c50aae8a",
+      "generic_plans": 0,
+      "custom_plans": 62532
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = $2, completed_at = now(), error_detail = $3 WHERE batch_job",
+      "hash": "a6e2894c",
+      "generic_plans": 0,
+      "custom_plans": 56
+     },
+     {
+      "statement": "UPDATE core.batch_job_chunk SET status = 'claimed', claimed_by_instance = $2, claim_expires_at = now",
+      "hash": "162efcff",
+      "generic_plans": 0,
+      "custom_plans": 51
+     },
+     {
+      "statement": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk",
+      "hash": "2755fd86",
+      "generic_plans": 0,
+      "custom_plans": 49
+     }
+    ]
+   }
+  ],
+  "plan_choices_error": null,
+  "plan_choices_ms": 34.6
+ },
+ "bench_exit_code": 0,
+ "window_s": 731.096,
+ "sent_total": 500000,
+ "cpu_s": {
+  "db": 2018.255,
+  "bench": 549.42,
+  "engine": 452.308
+ },
+ "cpu_throttling": {
+  "db": {
+   "nr_periods": 7306,
+   "nr_throttled": 1,
+   "throttled_s": 0.37,
+   "throttled_pct": 0.0
+  },
+  "bench": {
+   "nr_periods": 7230,
+   "nr_throttled": 0,
+   "throttled_s": 0.0,
+   "throttled_pct": 0.0
+  },
+  "engine": {
+   "nr_periods": 7307,
+   "nr_throttled": 0,
+   "throttled_s": 0.0,
+   "throttled_pct": 0.0
+  }
+ },
+ "host_cpu": {
+  "steal_pct": 0.0,
+  "busy_pct": 27.8
+ },
+ "host_probe_ms": 746.8,
+ "engine_ready_s": 14.7,
+ "engine_idle_cores": 0.08,
+ "db_activity": {
+  "wal": {
+   "wal_records": 16075012,
+   "wal_fpi": 6,
+   "wal_bytes": 2085965831,
+   "wal_buffers_full": 0,
+   "wal_write": 132851,
+   "wal_sync": 132851,
+   "wal_write_time": 0,
+   "wal_sync_time": 0
+  },
+  "checkpointer": {
+   "num_timed": 0,
+   "num_requested": 0,
+   "restartpoints_timed": 0,
+   "restartpoints_req": 0,
+   "restartpoints_done": 0,
+   "write_time": 0,
+   "sync_time": 0,
+   "buffers_written": 0
+  },
+  "bgwriter": {
+   "buffers_clean": 0,
+   "maxwritten_clean": 0,
+   "buffers_alloc": 220135
+  },
+  "tables": {
+   "ar.account_balance_bucket": {
+    "n_tup_ins": 0,
+    "n_tup_upd": 583334,
+    "n_tup_hot_upd": 516132,
+    "n_tup_del": 0,
+    "n_dead_tup": 84391,
+    "autovacuum_count": 0,
+    "autoanalyze_count": 3
+   },
+   "ar.account": {
+    "n_tup_ins": 0,
+    "n_tup_upd": 500000,
+    "n_tup_hot_upd": 477250,
+    "n_tup_del": 0,
+    "n_dead_tup": 31217,
+    "autovacuum_count": 0,
+    "autoanalyze_count": 6
+   },
+   "ar.account_summary_read_model": {
+    "n_tup_ins": 0,
+    "n_tup_upd": 500000,
+    "n_tup_hot_upd": 466109,
+    "n_tup_del": 0,
+    "n_dead_tup": 48273,
+    "autovacuum_count": 0,
+    "autoanalyze_count": 6
+   },
+   "core.projection_checkpoint": {
+    "n_tup_ins": 0,
+    "n_tup_upd": 132188,
+    "n_tup_hot_upd": 132061,
+    "n_tup_del": 0,
+    "n_dead_tup": 408,
+    "autovacuum_count": 12,
+    "autoanalyze_count": 12
+   },
+   "core.batch_job_chunk": {
+    "n_tup_ins": 500,
+    "n_tup_upd": 1000,
+    "n_tup_hot_upd": 0,
+    "n_tup_del": 0,
+    "n_dead_tup": 112,
+    "autovacuum_count": 5,
+    "autoanalyze_count": 6
+   },
+   "core.batch_job_run": {
+    "n_tup_ins": 1,
+    "n_tup_upd": 1,
+    "n_tup_hot_upd": 1,
+    "n_tup_del": 0,
+    "n_dead_tup": 1,
+    "autovacuum_count": 0,
+    "autoanalyze_count": 0
+   },
+   "core.event": {
+    "n_tup_ins": 1000000,
+    "n_tup_upd": 0,
+    "n_tup_hot_upd": 0,
+    "n_tup_del": 0,
+    "n_dead_tup": 0,
+    "autovacuum_count": 4,
+    "autoanalyze_count": 7
+   },
+   "ar.account_payment_read_model_v2": {
+    "n_tup_ins": 500000,
+    "n_tup_upd": 0,
+    "n_tup_hot_upd": 0,
+    "n_tup_del": 0,
+    "n_dead_tup": 0,
+    "autovacuum_count": 9,
+    "autoanalyze_count": 11
+   },
+   "ar.payment": {
+    "n_tup_ins": 500000,
+    "n_tup_upd": 0,
+    "n_tup_hot_upd": 0,
+    "n_tup_del": 0,
+    "n_dead_tup": 0,
+    "autovacuum_count": 8,
+    "autoanalyze_count": 11
+   },
+   "ar.payment_read_model": {
+    "n_tup_ins": 500000,
+    "n_tup_upd": 0,
+    "n_tup_hot_upd": 0,
+    "n_tup_del": 0,
+    "n_dead_tup": 0,
+    "autovacuum_count": 8,
+    "autoanalyze_count": 11
+   }
+  },
+  "slru": {
+   "multixact_member": {
+    "blks_zeroed": 1850,
+    "blks_hit": 1355757,
+    "blks_read": 0,
+    "blks_written": 1819,
+    "blks_exists": 0,
+    "flushes": 0,
+    "truncates": 0
+   },
+   "multixact_offset": {
+    "blks_zeroed": 243,
+    "blks_hit": 1351525,
+    "blks_read": 0,
+    "blks_written": 228,
+    "blks_exists": 0,
+    "flushes": 0,
+    "truncates": 0
+   }
+  }
+ },
+ "host_probe_samples_ms": [
+  790.6,
+  726.0,
+  772.3,
+  731.0,
+  746.8
+ ],
+ "side_sampler": {
+  "file": "01-batch-payments-w8.sampler.txt",
+  "samples": {
+   "waits": 738,
+   "probe": 74,
+   "stats": 74
+  },
+  "probe_ms_median": 176.1,
+  "probe_ms_max": 266.9,
+  "backend_cpu_s": 13.97,
+  "client_cpu_s": 0.1,
+  "lifetime_s": 737.9,
+  "cores": 0.0191
+ },
+ "cpu_ms_per_command": {
+  "db": 4.037,
+  "bench": 1.099,
+  "engine": 0.905
+ },
+ "engine_catchup_cpu_s": 0.907,
+ "statements": 8531806,
+ "statements_per_command": 17.06,
+ "top_statements": [
+  {
+   "calls": 1000000,
+   "total_ms": 241027.6,
+   "mean_ms": 0.241,
+   "rows": 1000000,
+   "query": "INSERT INTO core.event (event_pk, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, event_hash) VALUES ($1, "
+  },
+  {
+   "calls": 43547,
+   "total_ms": 43594.2,
+   "mean_ms": 1.0011,
+   "rows": 1500000,
+   "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+  },
+  {
+   "calls": 583334,
+   "total_ms": 34198.8,
+   "mean_ms": 0.0586,
+   "rows": 583334,
+   "query": "UPDATE ar.account_balance_bucket SET balance_minor_units = $1 WHERE account_balance_bucket_pk = $2"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 33081.1,
+   "mean_ms": 0.0662,
+   "rows": 1500000,
+   "query": "SELECT b.account_balance_bucket_pk, b.account_fk, d.code, d.waterfall_priority, b.balance_minor_units FROM ar.account_balance_bucket b JOIN ar.balance_bucket_definition d ON d.balance_bucket_definition_pk = b.balance_bucket_definition_fk WHERE b.account_fk = ANY($1)"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 29095.7,
+   "mean_ms": 0.0582,
+   "rows": 500000,
+   "query": "UPDATE ar.account_summary_read_model SET balance_buckets = balance_buckets || $1::jsonb, balance_minor_units = (SELECT COALESCE(sum(value::bigint), $7) FROM jsonb_each_text(balance_buckets || $2::jsonb)), last_global_sequence_number = $3, last_payment_at = $4, last_payment_minor_units = $5 WHERE acc"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 27637.0,
+   "mean_ms": 0.0553,
+   "rows": 500000,
+   "query": "INSERT INTO ar.account_payment_read_model_v2 (account_payment_line_pk, payment_pk, account_pk, applied_minor_units, bucket_amounts, payment_amount_minor_units, payment_unapplied_minor_units, currency_code, received_at, status, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 26366.1,
+   "mean_ms": 0.0527,
+   "rows": 500000,
+   "query": "SELECT account_pk, aggregate_sequence_number, client_account_number, debt_type, contract_type, currency_code, status, is_disputed, list_date, itemization_date, interest_accrued_through, queue_code FROM ar.account WHERE account_pk = ANY($1) ORDER BY account_pk FOR UPDATE"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 24730.3,
+   "mean_ms": 0.0495,
+   "rows": 500000,
+   "query": "SELECT EXISTS (SELECT $2 FROM ar.payment WHERE payment_pk = $1)"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 24434.6,
+   "mean_ms": 0.0489,
+   "rows": 500000,
+   "query": "UPDATE ar.account SET aggregate_sequence_number = $1, status = $2, is_disputed = $3, interest_accrued_through = $4, queue_code = $5::text WHERE account_pk = $6"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 23495.4,
+   "mean_ms": 0.047,
+   "rows": 500000,
+   "query": "SELECT k.id, e.aggregate_sequence_number, e.event_hash FROM unnest($1::uuid[]) AS k(id) CROSS JOIN LATERAL (SELECT aggregate_sequence_number, event_hash FROM core.event WHERE aggregate_pk_ref = k.id ORDER BY aggregate_sequence_number DESC LIMIT $2) e"
+  },
+  {
+   "calls": 88641,
+   "total_ms": 20888.6,
+   "mean_ms": 0.2357,
+   "rows": 500000,
+   "query": "SELECT event_pk, global_sequence_number, aggregate_sequence_number, event_type, schema_version, aggregate_pk_ref, aggregate_type, occurred_at, recorded_at, actor_pk_ref, actor_type, prior_value, new_value, reason_code_fk, source, correlation_pk_ref, correlation_type, metadata, prior_event_hash, even"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 20099.3,
+   "mean_ms": 0.0402,
+   "rows": 500000,
+   "query": "INSERT INTO ar.payment_read_model (payment_read_model_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units, last_global_sequence_number) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) ON CONFLICT (payment_read_model_pk) DO UPDATE SET amount_minor_units = EX"
+  },
+  {
+   "calls": 500000,
+   "total_ms": 15003.1,
+   "mean_ms": 0.03,
+   "rows": 500000,
+   "query": "INSERT INTO ar.payment (aggregate_sequence_number, payment_pk, amount_minor_units, currency_code, status, received_at, distribution, unapplied_minor_units) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)"
+  },
+  {
+   "calls": 132188,
+   "total_ms": 10820.9,
+   "mean_ms": 0.0819,
+   "rows": 132188,
+   "query": "UPDATE core.projection_checkpoint SET last_global_sequence_number = $2, updated_at = now() WHERE projection_name = $1"
+  },
+  {
+   "calls": 105117,
+   "total_ms": 5227.2,
+   "mean_ms": 0.0497,
+   "rows": 105117,
+   "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+  },
+  {
+   "calls": 678722,
+   "total_ms": 4698.1,
+   "mean_ms": 0.0069,
+   "rows": 0,
+   "query": "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED"
+  },
+  {
+   "calls": 69279,
+   "total_ms": 3874.2,
+   "mean_ms": 0.0559,
+   "rows": 69279,
+   "query": "SELECT last_global_sequence_number, definition_digest, failed_at IS NOT NULL, failure_kind, failed_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1"
+  },
+  {
+   "calls": 128210,
+   "total_ms": 2927.8,
+   "mean_ms": 0.0228,
+   "rows": 128210,
+   "query": "SELECT COALESCE(pg_sequence_last_value('core.event_global_sequence_seq'::regclass), 0), pg_postmaster_start_time()::text || '/' || current_database()"
+  },
+  {
+   "calls": 52037,
+   "total_ms": 2874.1,
+   "mean_ms": 0.0552,
+   "rows": 43566,
+   "query": "SELECT last_global_sequence_number FROM core.projection_checkpoint WHERE projection_name = $1 AND failed_at IS NULL FOR UPDATE SKIP LOCKED"
+  },
+  {
+   "calls": 500,
+   "total_ms": 2271.3,
+   "mean_ms": 4.5427,
+   "rows": 500000,
+   "query": "SELECT account_pk FROM ar.account WHERE account_pk BETWEEN $1 AND $2 ORDER BY account_pk"
+  },
+  {
+   "calls": 126684,
+   "total_ms": 1505.0,
+   "mean_ms": 0.0119,
+   "rows": 126684,
+   "query": "SELECT COALESCE(pg_sequence_last_value($1::regclass), $2)"
+  },
+  {
+   "calls": 126684,
+   "total_ms": 1271.3,
+   "mean_ms": 0.01,
+   "rows": 126684,
+   "query": "SELECT pg_current_xact_id()::text::bigint"
+  },
+  {
+   "calls": 126767,
+   "total_ms": 975.9,
+   "mean_ms": 0.0077,
+   "rows": 126767,
+   "query": "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint"
+  },
+  {
+   "calls": 670232,
+   "total_ms": 553.8,
+   "mean_ms": 0.0008,
+   "rows": 0,
+   "query": "COMMIT"
+  },
+  {
+   "calls": 1,
+   "total_ms": 446.1,
+   "mean_ms": 446.0576,
+   "rows": 500,
+   "query": "INSERT INTO core.batch_job_chunk (batch_job_run_fk, chunk_sequence_number, range_start, range_end, status) SELECT $1, chunk, (array_agg(key ORDER BY key))[$3], (array_agg(key ORDER BY key DESC))[$4], $5 FROM (SELECT account_pk AS key, (row_number() OVER (ORDER BY account_pk) - $6) / $2 AS chunk FROM"
+  }
+ ],
+ "commits_per_command": 2.56,
+ "rollbacks": 8490,
+ "lag_samples": [
+  [
+   0.9,
+   0
+  ],
+  [
+   2.8,
+   538
+  ],
+  [
+   4.7,
+   513
+  ],
+  [
+   6.5,
+   894
+  ],
+  [
+   8.3,
+   782
+  ],
+  [
+   10.2,
+   678
+  ],
+  [
+   12.0,
+   725
+  ],
+  [
+   13.8,
+   840
+  ],
+  [
+   16.0,
+   594
+  ],
+  [
+   18.4,
+   728
+  ],
+  [
+   20.6,
+   840
+  ],
+  [
+   22.5,
+   790
+  ],
+  [
+   24.4,
+   720
+  ],
+  [
+   26.2,
+   554
+  ],
+  [
+   28.1,
+   692
+  ],
+  [
+   30.0,
+   832
+  ],
+  [
+   31.8,
+   806
+  ],
+  [
+   33.6,
+   728
+  ],
+  [
+   35.4,
+   664
+  ],
+  [
+   37.3,
+   752
+  ],
+  [
+   39.2,
+   844
+  ],
+  [
+   41.1,
+   754
+  ],
+  [
+   42.9,
+   672
+  ],
+  [
+   44.7,
+   752
+  ],
+  [
+   46.5,
+   724
+  ],
+  [
+   48.4,
+   474
+  ],
+  [
+   50.3,
+   698
+  ],
+  [
+   52.2,
+   562
+  ],
+  [
+   54.1,
+   512
+  ],
+  [
+   56.0,
+   688
+  ],
+  [
+   57.8,
+   890
+  ],
+  [
+   59.7,
+   682
+  ],
+  [
+   61.6,
+   745
+  ],
+  [
+   63.5,
+   748
+  ],
+  [
+   65.5,
+   584
+  ],
+  [
+   67.5,
+   750
+  ],
+  [
+   69.7,
+   772
+  ],
+  [
+   71.5,
+   706
+  ],
+  [
+   73.4,
+   724
+  ],
+  [
+   75.3,
+   780
+  ],
+  [
+   77.2,
+   740
+  ],
+  [
+   79.6,
+   625
+  ],
+  [
+   81.5,
+   742
+  ],
+  [
+   83.5,
+   668
+  ],
+  [
+   85.4,
+   836
+  ],
+  [
+   87.6,
+   694
+  ],
+  [
+   89.5,
+   796
+  ],
+  [
+   91.4,
+   735
+  ],
+  [
+   93.3,
+   760
+  ],
+  [
+   95.2,
+   690
+  ],
+  [
+   97.1,
+   624
+  ],
+  [
+   98.9,
+   823
+  ],
+  [
+   101.3,
+   438
+  ],
+  [
+   104.0,
+   430
+  ],
+  [
+   105.9,
+   732
+  ],
+  [
+   107.9,
+   711
+  ],
+  [
+   109.7,
+   770
+  ],
+  [
+   111.6,
+   668
+  ],
+  [
+   113.4,
+   693
+  ],
+  [
+   115.3,
+   618
+  ],
+  [
+   117.2,
+   834
+  ],
+  [
+   119.5,
+   534
+  ],
+  [
+   121.5,
+   909
+  ],
+  [
+   123.3,
+   786
+  ],
+  [
+   125.5,
+   664
+  ],
+  [
+   127.4,
+   574
+  ],
+  [
+   129.4,
+   496
+  ],
+  [
+   131.3,
+   448
+  ],
+  [
+   133.2,
+   688
+  ],
+  [
+   135.1,
+   814
+  ],
+  [
+   137.0,
+   752
+  ],
+  [
+   139.2,
+   440
+  ],
+  [
+   141.6,
+   516
+  ],
+  [
+   143.5,
+   746
+  ],
+  [
+   145.3,
+   798
+  ],
+  [
+   147.3,
+   720
+  ],
+  [
+   149.1,
+   766
+  ],
+  [
+   151.0,
+   662
+  ],
+  [
+   152.8,
+   620
+  ],
+  [
+   154.7,
+   790
+  ],
+  [
+   157.1,
+   796
+  ],
+  [
+   159.0,
+   510
+  ],
+  [
+   161.1,
+   648
+  ],
+  [
+   162.9,
+   875
+  ],
+  [
+   164.7,
+   878
+  ],
+  [
+   166.6,
+   832
+  ],
+  [
+   168.2,
+   896
+  ],
+  [
+   170.1,
+   784
+  ],
+  [
+   173.1,
+   770
+  ],
+  [
+   174.9,
+   648
+  ],
+  [
+   176.8,
+   838
+  ],
+  [
+   178.7,
+   776
+  ],
+  [
+   180.6,
+   670
+  ],
+  [
+   183.1,
+   513
+  ],
+  [
+   185.2,
+   662
+  ],
+  [
+   187.1,
+   776
+  ],
+  [
+   189.1,
+   766
+  ],
+  [
+   191.0,
+   729
+  ],
+  [
+   192.9,
+   690
+  ],
+  [
+   194.8,
+   742
+  ],
+  [
+   196.7,
+   594
+  ],
+  [
+   198.6,
+   672
+  ],
+  [
+   200.5,
+   544
+  ],
+  [
+   202.3,
+   516
+  ],
+  [
+   204.2,
+   770
+  ],
+  [
+   206.1,
+   578
+  ],
+  [
+   207.9,
+   764
+  ],
+  [
+   209.7,
+   832
+  ],
+  [
+   211.6,
+   800
+  ],
+  [
+   213.4,
+   769
+  ],
+  [
+   215.2,
+   732
+  ],
+  [
+   217.1,
+   774
+  ],
+  [
+   219.0,
+   842
+  ],
+  [
+   220.8,
+   758
+  ],
+  [
+   222.7,
+   572
+  ],
+  [
+   224.5,
+   804
+  ],
+  [
+   226.3,
+   644
+  ],
+  [
+   228.2,
+   546
+  ],
+  [
+   230.1,
+   808
+  ],
+  [
+   232.0,
+   636
+  ],
+  [
+   234.1,
+   665
+  ],
+  [
+   236.1,
+   734
+  ],
+  [
+   238.2,
+   746
+  ],
+  [
+   240.0,
+   880
+  ],
+  [
+   241.9,
+   646
+  ],
+  [
+   243.9,
+   572
+  ],
+  [
+   245.9,
+   748
+  ],
+  [
+   247.8,
+   606
+  ],
+  [
+   249.7,
+   612
+  ],
+  [
+   251.5,
+   747
+  ],
+  [
+   253.4,
+   720
+  ],
+  [
+   255.3,
+   738
+  ],
+  [
+   257.2,
+   814
+  ],
+  [
+   259.2,
+   763
+  ],
+  [
+   261.1,
+   648
+  ],
+  [
+   263.0,
+   824
+  ],
+  [
+   265.0,
+   739
+  ],
+  [
+   266.9,
+   720
+  ],
+  [
+   268.7,
+   802
+  ],
+  [
+   270.6,
+   838
+  ],
+  [
+   272.6,
+   570
+  ],
+  [
+   274.6,
+   624
+  ],
+  [
+   276.5,
+   592
+  ],
+  [
+   278.5,
+   694
+  ],
+  [
+   280.5,
+   691
+  ],
+  [
+   282.4,
+   672
+  ],
+  [
+   284.4,
+   632
+  ],
+  [
+   286.7,
+   538
+  ],
+  [
+   288.6,
+   588
+  ],
+  [
+   290.5,
+   748
+  ],
+  [
+   292.5,
+   969
+  ],
+  [
+   294.4,
+   744
+  ],
+  [
+   296.3,
+   694
+  ],
+  [
+   298.3,
+   680
+  ],
+  [
+   300.2,
+   740
+  ],
+  [
+   302.5,
+   458
+  ],
+  [
+   304.6,
+   674
+  ],
+  [
+   306.5,
+   712
+  ],
+  [
+   308.4,
+   614
+  ],
+  [
+   310.3,
+   732
+  ],
+  [
+   312.2,
+   658
+  ],
+  [
+   315.1,
+   646
+  ],
+  [
+   316.9,
+   686
+  ],
+  [
+   318.8,
+   780
+  ],
+  [
+   320.5,
+   490
+  ],
+  [
+   322.4,
+   675
+  ],
+  [
+   324.3,
+   764
+  ],
+  [
+   326.3,
+   676
+  ],
+  [
+   328.2,
+   640
+  ],
+  [
+   330.2,
+   668
+  ],
+  [
+   332.1,
+   690
+  ],
+  [
+   333.9,
+   756
+  ],
+  [
+   336.9,
+   822
+  ],
+  [
+   339.2,
+   794
+  ],
+  [
+   341.2,
+   666
+  ],
+  [
+   343.1,
+   613
+  ],
+  [
+   345.0,
+   724
+  ],
+  [
+   347.5,
+   621
+  ],
+  [
+   349.3,
+   772
+  ],
+  [
+   351.1,
+   784
+  ],
+  [
+   353.1,
+   636
+  ],
+  [
+   354.9,
+   774
+  ],
+  [
+   356.8,
+   622
+  ],
+  [
+   358.7,
+   604
+  ],
+  [
+   360.5,
+   858
+  ],
+  [
+   362.4,
+   626
+  ],
+  [
+   364.3,
+   738
+  ],
+  [
+   366.2,
+   826
+  ],
+  [
+   368.2,
+   742
+  ],
+  [
+   370.1,
+   740
+  ],
+  [
+   372.1,
+   676
+  ],
+  [
+   374.0,
+   741
+  ],
+  [
+   375.8,
+   700
+  ],
+  [
+   377.6,
+   692
+  ],
+  [
+   379.5,
+   542
+  ],
+  [
+   381.4,
+   840
+  ],
+  [
+   383.3,
+   704
+  ],
+  [
+   385.2,
+   584
+  ],
+  [
+   387.2,
+   634
+  ],
+  [
+   389.1,
+   728
+  ],
+  [
+   390.9,
+   799
+  ],
+  [
+   392.8,
+   778
+  ],
+  [
+   394.8,
+   754
+  ],
+  [
+   396.7,
+   714
+  ],
+  [
+   398.5,
+   798
+  ],
+  [
+   400.5,
+   676
+  ],
+  [
+   402.4,
+   632
+  ],
+  [
+   404.5,
+   678
+  ],
+  [
+   406.5,
+   689
+  ],
+  [
+   408.4,
+   785
+  ],
+  [
+   410.2,
+   782
+  ],
+  [
+   412.2,
+   695
+  ],
+  [
+   414.0,
+   770
+  ],
+  [
+   415.9,
+   729
+  ],
+  [
+   417.8,
+   804
+  ],
+  [
+   419.6,
+   764
+  ],
+  [
+   421.5,
+   686
+  ],
+  [
+   423.4,
+   654
+  ],
+  [
+   425.2,
+   530
+  ],
+  [
+   427.1,
+   476
+  ],
+  [
+   428.9,
+   668
+  ],
+  [
+   430.7,
+   812
+  ],
+  [
+   432.6,
+   756
+  ],
+  [
+   434.4,
+   648
+  ],
+  [
+   436.3,
+   764
+  ],
+  [
+   438.2,
+   846
+  ],
+  [
+   440.0,
+   812
+  ],
+  [
+   442.0,
+   726
+  ],
+  [
+   443.8,
+   729
+  ],
+  [
+   445.7,
+   866
+  ],
+  [
+   447.6,
+   748
+  ],
+  [
+   449.4,
+   780
+  ],
+  [
+   451.3,
+   795
+  ],
+  [
+   453.2,
+   794
+  ],
+  [
+   455.4,
+   432
+  ],
+  [
+   457.3,
+   566
+  ],
+  [
+   459.1,
+   683
+  ],
+  [
+   460.9,
+   662
+  ],
+  [
+   462.7,
+   904
+  ],
+  [
+   464.6,
+   818
+  ],
+  [
+   466.8,
+   650
+  ],
+  [
+   468.8,
+   670
+  ],
+  [
+   470.7,
+   698
+  ],
+  [
+   472.6,
+   638
+  ],
+  [
+   474.5,
+   726
+  ],
+  [
+   476.4,
+   770
+  ],
+  [
+   478.3,
+   699
+  ],
+  [
+   480.1,
+   574
+  ],
+  [
+   481.7,
+   834
+  ],
+  [
+   483.5,
+   700
+  ],
+  [
+   485.5,
+   666
+  ],
+  [
+   487.6,
+   745
+  ],
+  [
+   489.8,
+   802
+  ],
+  [
+   491.7,
+   548
+  ],
+  [
+   493.6,
+   710
+  ],
+  [
+   495.5,
+   630
+  ],
+  [
+   497.3,
+   804
+  ],
+  [
+   499.7,
+   732
+  ],
+  [
+   501.6,
+   756
+  ],
+  [
+   503.6,
+   654
+  ],
+  [
+   505.9,
+   727
+  ],
+  [
+   507.7,
+   722
+  ],
+  [
+   509.7,
+   704
+  ],
+  [
+   511.9,
+   502
+  ],
+  [
+   513.8,
+   632
+  ],
+  [
+   515.7,
+   770
+  ],
+  [
+   517.7,
+   736
+  ],
+  [
+   519.6,
+   703
+  ],
+  [
+   521.7,
+   430
+  ],
+  [
+   523.6,
+   656
+  ],
+  [
+   525.4,
+   828
+  ],
+  [
+   527.2,
+   796
+  ],
+  [
+   529.2,
+   778
+  ],
+  [
+   531.2,
+   739
+  ],
+  [
+   533.1,
+   752
+  ],
+  [
+   535.0,
+   732
+  ],
+  [
+   536.9,
+   614
+  ],
+  [
+   538.7,
+   744
+  ],
+  [
+   540.5,
+   762
+  ],
+  [
+   542.8,
+   442
+  ],
+  [
+   544.7,
+   402
+  ],
+  [
+   546.7,
+   296
+  ],
+  [
+   548.6,
+   406
+  ],
+  [
+   550.5,
+   534
+  ],
+  [
+   552.6,
+   422
+  ],
+  [
+   554.6,
+   500
+  ],
+  [
+   556.5,
+   524
+  ],
+  [
+   558.4,
+   696
+  ],
+  [
+   560.4,
+   534
+  ],
+  [
+   562.4,
+   530
+  ],
+  [
+   564.4,
+   822
+  ],
+  [
+   566.3,
+   694
+  ],
+  [
+   568.2,
+   837
+  ],
+  [
+   570.0,
+   742
+  ],
+  [
+   572.2,
+   568
+  ],
+  [
+   574.1,
+   528
+  ],
+  [
+   576.0,
+   418
+  ],
+  [
+   577.9,
+   594
+  ],
+  [
+   579.7,
+   816
+  ],
+  [
+   581.7,
+   716
+  ],
+  [
+   583.6,
+   628
+  ],
+  [
+   585.7,
+   724
+  ],
+  [
+   587.6,
+   779
+  ],
+  [
+   589.6,
+   388
+  ],
+  [
+   591.5,
+   548
+  ],
+  [
+   593.4,
+   764
+  ],
+  [
+   595.4,
+   640
+  ],
+  [
+   597.3,
+   790
+  ],
+  [
+   599.2,
+   716
+  ],
+  [
+   601.2,
+   769
+  ],
+  [
+   603.1,
+   654
+  ],
+  [
+   605.0,
+   802
+  ],
+  [
+   606.8,
+   682
+  ],
+  [
+   608.7,
+   890
+  ],
+  [
+   610.6,
+   662
+  ],
+  [
+   612.5,
+   640
+  ],
+  [
+   614.3,
+   772
+  ],
+  [
+   616.2,
+   506
+  ],
+  [
+   618.1,
+   647
+  ],
+  [
+   619.9,
+   856
+  ],
+  [
+   621.8,
+   664
+  ],
+  [
+   623.7,
+   828
+  ],
+  [
+   625.6,
+   788
+  ],
+  [
+   627.6,
+   708
+  ],
+  [
+   629.4,
+   580
+  ],
+  [
+   631.2,
+   783
+  ],
+  [
+   633.3,
+   620
+  ],
+  [
+   635.1,
+   724
+  ],
+  [
+   637.0,
+   656
+  ],
+  [
+   638.9,
+   792
+  ],
+  [
+   640.8,
+   766
+  ],
+  [
+   642.7,
+   791
+  ],
+  [
+   644.6,
+   770
+  ],
+  [
+   646.5,
+   710
+  ],
+  [
+   648.6,
+   746
+  ],
+  [
+   650.5,
+   691
+  ],
+  [
+   652.5,
+   630
+  ],
+  [
+   654.5,
+   516
+  ],
+  [
+   656.4,
+   544
+  ],
+  [
+   658.4,
+   617
+  ],
+  [
+   660.3,
+   545
+  ],
+  [
+   662.2,
+   482
+  ],
+  [
+   664.0,
+   676
+  ],
+  [
+   665.9,
+   586
+  ],
+  [
+   668.0,
+   454
+  ],
+  [
+   669.9,
+   786
+  ],
+  [
+   671.8,
+   747
+  ],
+  [
+   673.6,
+   624
+  ],
+  [
+   675.5,
+   767
+  ],
+  [
+   677.4,
+   698
+  ],
+  [
+   679.3,
+   608
+  ],
+  [
+   681.2,
+   725
+  ],
+  [
+   683.5,
+   750
+  ],
+  [
+   685.4,
+   796
+  ],
+  [
+   687.3,
+   586
+  ],
+  [
+   689.2,
+   731
+  ],
+  [
+   691.0,
+   765
+  ],
+  [
+   693.0,
+   725
+  ],
+  [
+   694.9,
+   590
+  ],
+  [
+   696.8,
+   730
+  ],
+  [
+   698.8,
+   678
+  ],
+  [
+   700.6,
+   710
+  ],
+  [
+   702.5,
+   564
+  ],
+  [
+   704.5,
+   612
+  ],
+  [
+   706.3,
+   920
+  ],
+  [
+   708.2,
+   686
+  ],
+  [
+   710.1,
+   762
+  ],
+  [
+   712.1,
+   222
+  ],
+  [
+   714.0,
+   398
+  ],
+  [
+   716.2,
+   275
+  ],
+  [
+   718.0,
+   422
+  ],
+  [
+   720.0,
+   322
+  ],
+  [
+   722.0,
+   292
+  ],
+  [
+   723.9,
+   0
+  ],
+  [
+   725.8,
+   0
+  ],
+  [
+   727.6,
+   0
+  ],
+  [
+   729.5,
+   0
+  ],
+  [
+   731.3,
+   0
+  ],
+  [
+   733.2,
+   0
+  ],
+  [
+   735.1,
+   0
+  ]
+ ],
+ "max_lag_events": 969,
+ "end_head": 1500000,
+ "catchup_s": 3.5,
+ "settle_s": 3.8,
+ "verify": {
+  "workload": "verify-chain",
+  "aggregates": 1000000,
+  "events": 1500000,
+  "problems": 0,
+  "ok": true,
+  "first_problems": [],
+  "elapsed_s": 18.227
+ },
+ "gates": {
+  "one payment per account, keyed for this run": true,
+  "balances fell by exactly 2,500 x N": true,
+  "every hash chain verifies": true,
+  "every account summary matches the account and its buckets": true,
+  "every payment read model row matches its payment": true,
+  "every payment line's applied amount matches the payment's distribution": true
+ },
+ "gates_skipped": [],
+ "gates_pass": true,
+ "rule_latency_ms": {
+  "all": {
+   "count": 0,
+   "p50": null,
+   "p95": null,
+   "p99": null,
+   "max": null
+  }
+ },
+ "register_lateness_ms": {
+  "count": 0,
+  "p50": null,
+  "p95": null,
+  "p99": null,
+  "max": null
+ },
+ "events_written": 1000000,
+ "images": {
+  "db": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+  "bench": "sha256:6ef2f04d8cfb5e001a2302aec434f8f1b0f813771a2e5ce617905cb6e55282c9",
+  "engine": "sha256:6ef2f04d8cfb5e001a2302aec434f8f1b0f813771a2e5ce617905cb6e55282c9"
+ },
+ "limits": {
+  "db": {
+   "cpus": 6.0,
+   "mem_bytes": 12884901888
+  },
+  "bench": {
+   "cpus": 4.0,
+   "mem_bytes": 4294967296
+  },
+  "engine": {
+   "cpus": 2.0,
+   "mem_bytes": 2147483648
+  }
+ },
+ "clock": {
+  "start": "2026-11-17 05:14:22.99048+00",
+  "end": "2026-11-17 05:26:34.086392+00"
+ }
+}
