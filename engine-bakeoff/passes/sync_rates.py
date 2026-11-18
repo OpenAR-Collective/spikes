@@ -26,6 +26,8 @@ PASSES = [
     ("round2-shape", "Round 2's code-shape pass"),
     ("round2-diag", "Round 2's diagnostic pass, with its follow-up repeats"),
     ("round2-fix", "Round 2's fix pass"),
+    ("round2-followup", "Round 2's follow-up tests"),
+    ("round2-flush", "Round 2's flush-timing night"),
 ]
 
 
