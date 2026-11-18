@@ -120,3 +120,20 @@ The pass's results and its log cite the original ID of its plan commit, and its 
 | `a29d435c0350` | [`cea683378bb0`](https://github.com/OpenAR-Collective/spikes/commit/cea683378bb0b45ff90fefb885fe7909958320e2) | 2026-11-16 | Record the pass that tests the reader fix |
 | `59e95f3034bd` | [`93dec172ae0d`](https://github.com/OpenAR-Collective/spikes/commit/93dec172ae0d248b0ff07e4b0ef060ca02b155d2) | 2026-11-16 | Add the script that tabulates the pass that tests the reader fix |
 | `735ef0b34a19` | [`8f8be1742c2e`](https://github.com/OpenAR-Collective/spikes/commit/8f8be1742c2e7a40923f5024d9a5b4a1df344d2b) | 2026-11-16 | Tell the rate regime apart from the readers' cadence in the fix tables |
+
+## The fifth rewrite
+
+The commits of round 2's follow-up tests were replayed before they were published. The flush-timing night's branch, built after the follow-up tests, had already carried the follow-up's three code commits onto the published `main` unchanged, so the published history holds those three once, as the flush-timing night's copies, and the follow-up's plan, records, and table fix were replayed after the flush-timing night's records. Replaying the plan commit left `make_plan.py` as the flush-timing night's plan had made it, already holding the follow-up's layout, so that commit's message now says so. Apart from that sentence, the replay changed no result, code, or method text. It kept every author, author date, and commit subject, and the commit dates are those of the replay. The flush-timing night's commits kept their IDs.
+
+The follow-up tests' results and log cite the original ID of their plan commit, and their plan and test record cite the original ID of the commit they call the measured tree. The three code commits' published counterparts are their copies on the flush-timing night's branch, which make the same changes. Between the follow-up's original base, 436df6f, and 08049a8, on which the copies sit, only the engine bake-off's README, `passes/round2-sync-rates.md`, and `passes/sync_rates.py` differ, so the measured code is the same. This table maps each original commit to its published counterpart, oldest first.
+
+*Each row maps one original commit of the fifth rewrite to its published counterpart, with its author date and subject.*
+
+| Original | Published | Date | Subject |
+| --- | --- | --- | --- |
+| `2d2cbc7c869b` | [`bde034a6c7ac`](https://github.com/OpenAR-Collective/spikes/commit/bde034a6c7ac3e8363f42f7b3b96a00ea92f27da) | 2026-11-16 | Add diagnostics for the follow-up tests after the fix pass |
+| `8273f375460f` | [`7e49b76f1924`](https://github.com/OpenAR-Collective/spikes/commit/7e49b76f19247d24cc7e5ac8ad368effd41f13c1) | 2026-11-16 | Apply the reviews of the follow-up diagnostics |
+| `3dbbb269991f` | [`c2b9ee4adc79`](https://github.com/OpenAR-Collective/spikes/commit/c2b9ee4adc79084a39451d909fae8aa7dee6e395) | 2026-11-16 | Measure the side sampler's own CPU, and time planning in the plan check |
+| `f38afcefe3cf` | [`f6f0dba533e7`](https://github.com/OpenAR-Collective/spikes/commit/f6f0dba533e7fdbc6a7d5d59ffa071a5b4f5f6df) | 2026-11-16 | Plan round 2's follow-up tests after the fix pass |
+| `86941fc3eb24` | [`a0b9b6bcf276`](https://github.com/OpenAR-Collective/spikes/commit/a0b9b6bcf2768e13d5e83d7dacea3b031ef40dbd) | 2026-11-17 | Record round 2's follow-up tests after the fix pass |
+| `a34b27c2dd12` | [`dd7dd6965710`](https://github.com/OpenAR-Collective/spikes/commit/dd7dd69657106d6dc2411be061ef3923251ef17a) | 2026-11-17 | Bound each run's processor performance to its bench in the follow-up tables |
