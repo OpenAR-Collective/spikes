@@ -1,0 +1,220 @@
+# Round 2's follow-up tests: figures added after the results
+
+Times are local, UTC less 6 hours, from the host counters' heading. Where syncs were not timed, a run at 8 workers is high at 340 WAL syncs per second or more, fast at 280 to 320, slow at 200 or less, and not marked otherwise. The implied time per sync is the share of the side sampler's once-a-second looks at which a backend waited in a WAL sync, over WAL syncs per second, both over the sampler's life; one process syncs at a time.
+
+## Every run: WAL syncs, the implied time per sync, and the queue
+
+Order, run, local start, commands per second, WAL syncs per second over the harness's window and its band, events written per WAL sync over the sampler's life, KB of WAL per sync, the share of looks in a WAL sync and the time per sync it implies, and backends per look queued for the WAL write lock and on a core.
+
+- 1 csharp-wax-custom-plans-w8-c1 22:01:33: 1112.57 commands/s; 370.37 syncs/s, high; 5.890 events per sync; 11.929 KB per sync; share 0.8957, implied 2.427 ms; lock queue 3.983, on a core 2.804
+- 2 csharp-wax-autoprepare-w8-c1 22:10:56: 662.80 commands/s; 182.64 syncs/s, slow; 7.170 events per sync; 14.650 KB per sync; share 0.9684, implied 5.277 ms; lock queue 6.057, on a core 2.247
+- 3 csharp-wax-w8-c1 22:25:29: 590.94 commands/s; 154.00 syncs/s, slow; 7.594 events per sync; 15.529 KB per sync; share 0.9593, implied 6.265 ms; lock queue 7.026, on a core 1.526
+- 4 csharp-wax-autoprepare-w8-c2 22:42:53: 539.17 commands/s; 139.34 syncs/s, slow; 7.620 events per sync; 19.199 KB per sync; share 0.9479, implied 6.789 ms; lock queue 7.639, on a core 1.462
+- 5 csharp-wax-w8-c2 23:00:25: 698.96 commands/s; 183.10 syncs/s, slow; 7.544 events per sync; 15.425 KB per sync; share 0.9639, implied 5.236 ms; lock queue 6.312, on a core 1.781
+- 6 csharp-wax-custom-plans-w8-c2 23:14:22: 692.46 commands/s; 181.71 syncs/s, slow; 7.527 events per sync; 15.334 KB per sync; share 0.9685, implied 5.322 ms; lock queue 5.848, on a core 2.056
+- 7 csharp-wax-w8-c3 23:28:29: 604.80 commands/s; 159.23 syncs/s, slow; 7.504 events per sync; 15.349 KB per sync; share 0.9524, implied 6.003 ms; lock queue 7.206, on a core 1.711
+- 8 csharp-wax-custom-plans-w8-c3 23:44:23: 635.22 commands/s; 175.16 syncs/s, slow; 7.163 events per sync; 14.605 KB per sync; share 0.9487, implied 5.436 ms; lock queue 5.786, on a core 2.201
+- 9 csharp-wax-autoprepare-w8-c3 23:59:32: 635.33 commands/s; 167.05 syncs/s, slow; 7.513 events per sync; 15.345 KB per sync; share 0.9600, implied 5.770 ms; lock queue 6.503, on a core 1.709
+- 10 csharp-wax-rw8-w8-s2 00:14:46: 640.81 commands/s; 182.17 syncs/s, slow; 6.948 events per sync; 14.149 KB per sync; share 0.9595, implied 5.267 ms; lock queue 5.328, on a core 2.673
+- 11 csharp-wax-rw8-w8-s7 00:29:49: 636.55 commands/s; 180.39 syncs/s, slow; 6.978 events per sync; 14.202 KB per sync; share 0.9544, implied 5.262 ms; lock queue 5.209, on a core 2.835
+- 12 csharp-wax-rw8-w8-s8 00:44:54: 621.18 commands/s; 182.72 syncs/s, slow; 6.725 events per sync; 13.685 KB per sync; share 0.9321, implied 5.077 ms; lock queue 4.910, on a core 2.949
+- 13 csharp-wax-rw8-w8-s3 01:00:16: 641.71 commands/s; 186.50 syncs/s, slow; 6.800 events per sync; 13.845 KB per sync; share 0.9392, implied 5.046 ms; lock queue 5.048, on a core 2.842
+- 14 csharp-wax-rw8-w8-s5 01:15:12: 641.61 commands/s; 186.18 syncs/s, slow; 6.812 events per sync; 13.868 KB per sync; share 0.9532, implied 5.130 ms; lock queue 5.125, on a core 2.785
+- 15 csharp-wax-rw8-w8-s16 01:30:03: 644.96 commands/s; 186.80 syncs/s, slow; 6.822 events per sync; 13.881 KB per sync; share 0.9418, implied 5.076 ms; lock queue 4.791, on a core 2.870
+- 16 csharp-wax-rw8-w8-s12 01:44:53: 634.61 commands/s; 184.88 syncs/s, slow; 6.787 events per sync; 13.817 KB per sync; share 0.9487, implied 5.151 ms; lock queue 4.806, on a core 2.979
+- 17 csharp-wax-rw8-w8-s4 01:59:54: 640.52 commands/s; 185.64 syncs/s, slow; 6.821 events per sync; 13.889 KB per sync; share 0.9456, implied 5.095 ms; lock queue 5.051, on a core 2.841
+- 18 csharp-wax-rw8-w8-s1 02:14:57: 641.01 commands/s; 182.59 syncs/s, slow; 6.938 events per sync; 14.120 KB per sync; share 0.9430, implied 5.169 ms; lock queue 5.048, on a core 2.895
+- 19 csharp-wax-rw8-w8-s10 02:29:52: 640.68 commands/s; 185.83 syncs/s, slow; 6.816 events per sync; 13.874 KB per sync; share 0.9405, implied 5.065 ms; lock queue 5.108, on a core 2.875
+- 20 csharp-wax-rw8-w8-s15 02:44:48: 640.96 commands/s; 185.47 syncs/s, slow; 6.835 events per sync; 13.916 KB per sync; share 0.9544, implied 5.153 ms; lock queue 5.003, on a core 2.835
+- 21 csharp-wax-rw8-w8-s11 02:59:46: 637.23 commands/s; 185.02 syncs/s, slow; 6.811 events per sync; 13.862 KB per sync; share 0.9481, implied 5.101 ms; lock queue 5.041, on a core 2.787
+- 22 csharp-wax-rw8-w8-s9 03:14:49: 634.14 commands/s; 184.77 syncs/s, slow; 6.786 events per sync; 13.811 KB per sync; share 0.9463, implied 5.137 ms; lock queue 5.104, on a core 2.819
+- 23 csharp-wax-rw8-w8-s6 03:29:50: 633.21 commands/s; 184.54 syncs/s, slow; 6.789 events per sync; 13.809 KB per sync; share 0.9525, implied 5.173 ms; lock queue 4.996, on a core 2.748
+- 24 csharp-wax-rw8-w8-s14 03:44:54: 634.15 commands/s; 184.76 syncs/s, slow; 6.788 events per sync; 13.811 KB per sync; share 0.9563, implied 5.193 ms; lock queue 5.072, on a core 2.754
+- 25 csharp-wax-rw8-w8-s13 03:59:57: 636.64 commands/s; 185.74 syncs/s, slow; 6.779 events per sync; 13.797 KB per sync; share 0.9513, implied 5.159 ms; lock queue 5.061, on a core 2.760
+- 26 csharp-wax-prepared-w1-no-engine-r2 04:14:50: 112.58 commands/s; 113.03 syncs/s, not marked at 1 worker; 1.988 events per sync; 5.216 KB per sync; share 0.5265, implied 4.659 ms; lock queue 0.002, on a core 0.248
+- 27 python-direct-w1-no-engine-r2 05:30:29: 100.61 commands/s; 101.14 syncs/s, not marked at 1 worker; 1.985 events per sync; 5.760 KB per sync; share 0.4620, implied 4.568 ms; lock queue 0.001, on a core 0.257
+- every run at 8 workers, 25 runs, 22:01:33 to 03:59:57: commands/s 539.17 to 1112.57; syncs/s 139.34 to 370.37; share 0.8957 to 0.9685; implied 2.427 to 6.789 ms; events per sync 5.890 to 7.620; lock queue 3.983 to 7.639; on a core 1.462 to 2.979; processor performance 78.14 to 98.10 percent
+- group 2, 16 runs, 00:14:46 to 03:59:57: commands/s 621.18 to 644.96; syncs/s 180.39 to 186.80; share 0.9321 to 0.9595; implied 5.046 to 5.267 ms; events per sync 6.725 to 6.978; lock queue 4.791 to 5.328; on a core 2.673 to 2.979; processor performance 80.23 to 91.50 percent
+
+## Bursts of load on the Windows side
+
+A burst is 3 or more consecutive host samples at 80 percent busy or more (Processor(_Total) % Processor Time) while Docker's virtual machine used under 5 cores, so that most of the load was Windows' own; bursts less than 90 seconds apart count as one. For each: its span from the first such sample to the last; Windows busy, the virtual machine's cores, and processor performance over its samples, as range and median; the side sampler's CPU probes in it; and the time per WAL sync implied over the stats lines inside it, in all and the most in one 10-second pair.
+
+- 22:29:03 to 22:33:26 (39 samples; near runs [3]): busy 80.00 to 100.00 percent, median 96.27; VM 1.48 to 3.80 cores, median 3.17; processor performance 102.81 to 106.54 percent, median 105.57; probes 26, most 713.4 ms; implied time per sync over the span 9.28 ms, most in one 10-second pair 22.78 ms
+- 22:40:35 to 22:44:09 (43 samples; near runs [3, 4]): busy 82.99 to 100.00 percent, median 98.21; VM 0.23 to 4.85 cores, median 0.74; processor performance 102.09 to 106.76 percent, median 105.36; probes 7, most 740.5 ms; implied time per sync over the span 14.18 ms, most in one 10-second pair 25.92 ms
+- 22:52:43 to 22:56:50 (44 samples; near runs [4, 5]): busy 85.49 to 100.00 percent, median 98.81; VM 1.63 to 4.09 cores, median 2.81; processor performance 103.54 to 109.31 percent, median 105.56; probes 25, most 621.4 ms; implied time per sync over the span 12.43 ms, most in one 10-second pair 28.99 ms
+- 23:27:42 to 23:31:05 (41 samples; near runs [6, 7]): busy 88.76 to 100.00 percent, median 98.21; VM 0.24 to 3.69 cores, median 1.98; processor performance 104.21 to 108.41 percent, median 105.49; probes 16, most 767.9 ms; implied time per sync over the span 15.12 ms, most in one 10-second pair 27.11 ms
+- bursts: 4
+
+## The one-worker pair
+
+- csharp-wax-prepared-w1-no-engine-r2: 112.579 commands/s; implied 4.659 ms per sync, by 10-minute window 5.321, 4.628, 4.438, 4.492, 4.697, 4.543, 4.475; 5.216 KB per sync; per command, ms in a WAL sync 4.677, idle in a transaction 1.315, on a core 2.204; WAL syncs per command 1.0058; insert plans generic 191559 custom 5
+- python-direct-w1-no-engine-r2: 100.606 commands/s; implied 4.568 ms per sync, by 10-minute window 4.778, 4.434, 4.655, 4.826, 4.489, 4.322, 4.335, 4.478; 5.760 KB per sync; per command, ms in a WAL sync 4.593, idle in a transaction 2.024, on a core 2.553; WAL syncs per command 1.0073; insert plans 
+- idle in a transaction: python-direct-w1-no-engine-r2 less csharp-wax-prepared-w1-no-engine-r2: +0.708 ms per command
+- on a core: python-direct-w1-no-engine-r2 less csharp-wax-prepared-w1-no-engine-r2: +0.349 ms per command
+- in a WAL sync: python-direct-w1-no-engine-r2 less csharp-wax-prepared-w1-no-engine-r2: -0.084 ms per command
+- time per command: csharp-wax-prepared-w1-no-engine-r2 8.883 ms, python-direct-w1-no-engine-r2 9.940 ms, difference +1.057 ms
+- the night's first run, csharp-wax-custom-plans-w8-c1: 11.929 KB per sync, implied 2.427 ms
+
+The diagnostic pass's pair, if each side's time outside the WAL sync per command was as in this pass: the implied time per sync is its time per command less that outside time, over its WAL syncs per command.
+- csharp-wax-prepared: outside the sync here 4.206 ms per command; diagnostic pass round2-diag-csharp-wax-prepared-batch-payments-w1-no-engine-r1 at 02:42:23, 108.347 commands/s, 1.0061 syncs per command, implied 4.993 ms per sync
+- python-direct: outside the sync here 5.347 ms per command; diagnostic pass round2-diag-python-direct-batch-payments-w1-no-engine-r1 at 01:33:09, 124.420 commands/s, 1.0065 syncs per command, implied 2.673 ms per sync
+
+## The diagnostic night before its one-worker pair
+
+Every run of plan round2-diag that started from 23:50 local time until its one-worker pair began, in run order: local start, WAL syncs per second over the harness's window, and the percent of scheduler periods in which each container was throttled at its CPU limit. A run held at a CPU limit cannot show the flush level, so the last run whose containers were all throttled in under 20 percent of periods bounds the switch from below; the pair's span follows.
+
+- started 2026-11-14 23:52:00 (bench 23:52:37) csharp-wax-prepared-batch-payments-w16-r2: 285.42 syncs/s; throttled db 4.2, bench 0.0, engine 0.0
+- started 2026-11-14 23:58:31 (bench 23:59:08) csharp-wax-batch-payments-w16-r2: 182.32 syncs/s; throttled db 93.1, bench 0.0, engine 0.0
+- started 2026-11-15 00:09:33 (bench 00:10:28) python-direct-batch-payments-w16-r2: 239.91 syncs/s; throttled db 6.6, bench 10.5, engine 14.4
+- started 2026-11-15 00:18:24 (bench 00:18:59) csharp-wax-prepared-realtime-w16-r2: 249.91 syncs/s; throttled db 70.1, bench 0.0, engine 0.6
+- started 2026-11-15 00:24:59 (bench 00:25:36) csharp-wax-realtime-w16-r2: 156.94 syncs/s; throttled db 95.0, bench 0.0, engine 0.2
+- started 2026-11-15 00:31:31 (bench 00:32:23) python-direct-realtime-w16-r2: 242.43 syncs/s; throttled db 13.8, bench 4.2, engine 93.5
+- started 2026-11-15 00:40:27 (bench 00:41:04) csharp-wax-prepared-realtime-w32-r2: 153.52 syncs/s; throttled db 96.7, bench 0.0, engine 0.1
+- started 2026-11-15 00:47:04 (bench 00:47:53) python-direct-realtime-w32-r2: 170.55 syncs/s; throttled db 76.2, bench 83.0, engine 84.2
+- started 2026-11-15 00:56:34 (bench 00:57:11) csharp-wax-realtime-w32-r2: 84.19 syncs/s; throttled db 96.7, bench 0.0, engine 0.0
+- started 2026-11-15 01:03:06 (bench 01:03:58) python-direct-batch-payments-w32-r2: 166.38 syncs/s; throttled db 12.1, bench 98.1, engine 6.4
+- started 2026-11-15 01:12:22 (bench 01:12:58) csharp-wax-prepared-batch-payments-w32-r2: 147.87 syncs/s; throttled db 96.4, bench 0.0, engine 0.0
+- started 2026-11-15 01:19:58 (bench 01:20:34) csharp-wax-batch-payments-w32-r2: 94.53 syncs/s; throttled db 98.6, bench 0.0, engine 0.0
+- last run with every container under 20 percent: python-direct-batch-payments-w16-r2, started 2026-11-15 00:09:33 (bench 00:10:28), db 6.6, bench 10.5, engine 14.4
+- the one-worker pair: started 2026-11-15 01:32:39; benches 11-15 01:33:09 to 11-15 03:59:26
+
+## The diagnostic night after its one-worker pair
+
+The runs recorded under the pass prefix round2-diag-followup, which has no plan file of its own, found by that prefix: local start and end, commands per second, WAL syncs per second over the harness's window, and band.
+
+- 11-15 04:01 to 04:14 csharp-wax-rw8-batch-payments-w8-k1: 631.57 commands/s, 175.07 syncs/s, slow
+- 11-15 04:16 to 04:30 csharp-wax-rw8-batch-payments-w8-k2: 614.23 commands/s, 182.81 syncs/s, slow
+- 11-15 04:31 to 04:45 csharp-wax-rw8-batch-payments-w8-k3: 616.20 commands/s, 182.98 syncs/s, slow
+- 11-15 04:47 to 05:00 csharp-wax-rw8-batch-payments-w8-k4: 612.36 commands/s, 181.44 syncs/s, slow
+- 11-15 05:02 to 05:16 csharp-wax-rw8-batch-payments-w8-k5: 609.42 commands/s, 180.73 syncs/s, slow
+- 11-15 05:17 to 05:31 csharp-wax-rw8-batch-payments-w8-k6: 600.86 commands/s, 176.05 syncs/s, slow
+- 11-15 05:33 to 05:46 csharp-wax-rw8-batch-payments-w8-k7: 649.87 commands/s, 196.38 syncs/s, slow
+- 11-15 05:48 to 05:58 csharp-wax-rw8-batch-payments-w8-k8: 815.51 commands/s, 262.80 syncs/s, not marked
+- 11-15 05:59 to 06:09 csharp-wax-rw8-batch-payments-w8-k9: 880.93 commands/s, 290.96 syncs/s, fast
+- 11-15 06:11 to 06:20 csharp-wax-rw8-batch-payments-w8-k10: 878.87 commands/s, 290.70 syncs/s, fast
+- 11-15 06:22 to 06:31 csharp-wax-rw8-batch-payments-w8-k11: 884.78 commands/s, 289.49 syncs/s, fast
+- 11-15 06:33 to 06:43 csharp-wax-rw8-batch-payments-w8-k12: 821.41 commands/s, 265.45 syncs/s, not marked
+- 11-15 06:45 to 06:58 csharp-wax-rw8-batch-payments-w8-k13: 620.17 commands/s, 184.06 syncs/s, slow
+- 11-15 07:00 to 07:11 csharp-wax-rw8-batch-payments-w8-k14: 792.39 commands/s, 254.84 syncs/s, not marked
+- 11-15 07:12 to 07:22 csharp-wax-rw8-batch-payments-w8-k15: 839.50 commands/s, 274.15 syncs/s, not marked
+- 11-15 07:24 to 07:33 csharp-wax-rw8-batch-payments-w8-k16: 886.76 commands/s, 293.24 syncs/s, fast
+- 11-15 07:35 to 07:44 csharp-wax-rw8-batch-payments-w8-k17: 889.54 commands/s, 294.52 syncs/s, fast
+
+## Earlier passes on the payment file at 8 workers with the engine
+
+From each plan's labels: every run's local start and end, commands per second, WAL syncs per second over the harness's window, and its band; then, per pass, the runs in each band and the span of its slow runs. For the fix pass's csharp-wax run, the share of its readers' 10-second intervals under 2,300 events per second, the cut that pass used.
+
+### round2-shape
+
+- 11-13 19:43 to 19:56 csharp-wax-batch-payments-w8-r1: 646.58 commands/s, 188.55 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- 11-13 19:58 to 20:10 python-direct-batch-payments-w8-r1: 709.82 commands/s, 193.30 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- 11-13 20:12 to 20:26 csharp-wax-batched-batch-payments-w8-r1: 600.80 commands/s, 181.39 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- 11-13 22:01 to 22:13 python-direct-batch-payments-w8-r2: 717.50 commands/s, 196.17 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- 11-13 22:15 to 22:28 csharp-wax-batch-payments-w8-r2: 652.91 commands/s, 190.67 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- 11-13 22:30 to 22:43 csharp-wax-batched-batch-payments-w8-r2: 630.09 commands/s, 188.93 syncs/s, slow; readers' intervals under 2,300 events/s: none
+- runs by band: {'high': 0, 'fast': 0, 'not marked': 0, 'slow': 6}; slow runs from 11-13 19:43 to 11-13 22:43
+
+### round2-diag
+
+- 11-14 17:31 to 17:40 python-direct-batch-payments-w8-r1: 938.45 commands/s, 314.88 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 17:42 to 17:52 csharp-wax-rw8-batch-payments-w8-r1: 865.92 commands/s, 283.61 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 17:54 to 18:04 csharp-wax-prepared-batch-payments-w8-r1: 865.22 commands/s, 275.52 syncs/s, not marked; readers' intervals under 2,300 events/s: none
+- 11-14 18:05 to 18:15 csharp-wax-noreset-batch-payments-w8-r1: 871.40 commands/s, 282.96 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 18:17 to 18:26 csharp-wax-batch-payments-w8-r1: 891.02 commands/s, 292.39 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 18:28 to 18:37 csharp-wax-batch-payments-w8-r2: 895.39 commands/s, 293.68 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 18:39 to 18:48 csharp-wax-noreset-batch-payments-w8-r2: 902.05 commands/s, 292.03 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 18:50 to 19:00 csharp-wax-prepared-batch-payments-w8-r2: 887.93 commands/s, 283.24 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:01 to 19:11 csharp-wax-rw8-batch-payments-w8-r2: 885.28 commands/s, 289.60 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:13 to 19:23 python-direct-batch-payments-w8-r2: 882.20 commands/s, 281.35 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:25 to 19:34 csharp-wax-fair-prepared-batch-payments-w8-f2: 902.80 commands/s, 286.26 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:36 to 19:45 csharp-wax-prepared-batch-payments-w8-f2: 908.88 commands/s, 283.83 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:47 to 19:56 csharp-wax-prepared-batch-payments-w8-f1: 887.51 commands/s, 281.79 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 19:58 to 20:08 csharp-wax-fair-prepared-batch-payments-w8-f1: 886.10 commands/s, 279.16 syncs/s, not marked; readers' intervals under 2,300 events/s: none
+- 11-14 22:56 to 23:06 python-direct-batch-payments-w8-r3: 916.22 commands/s, 293.58 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 23:08 to 23:17 csharp-wax-rw8-batch-payments-w8-r3: 897.60 commands/s, 294.41 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 23:19 to 23:28 csharp-wax-prepared-batch-payments-w8-r3: 899.68 commands/s, 287.86 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 23:30 to 23:39 csharp-wax-noreset-batch-payments-w8-r3: 907.84 commands/s, 294.92 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- 11-14 23:41 to 23:50 csharp-wax-batch-payments-w8-r3: 899.65 commands/s, 295.03 syncs/s, fast; readers' intervals under 2,300 events/s: none
+- runs by band: {'high': 0, 'fast': 17, 'not marked': 2, 'slow': 0}
+
+### round2-fix
+
+- 11-15 22:01 to 22:08 csharp-wax-custom-plans-batch-payments-w8-d1: 1143.55 commands/s, 366.05 syncs/s, high; readers' intervals under 2,300 events/s: 0.0 percent of 42
+- 11-15 22:10 to 22:19 csharp-wax-autoprepare-batch-payments-w8-d1: 911.76 commands/s, 286.52 syncs/s, fast; readers' intervals under 2,300 events/s: 3.8 percent of 53
+- 11-15 22:21 to 22:32 csharp-wax-npgsql-defaults-batch-payments-w8-d1: 780.09 commands/s, 246.68 syncs/s, not marked; readers' intervals under 2,300 events/s: 41.9 percent of 62
+- 11-15 22:33 to 22:46 csharp-wax-batch-payments-w8-d1: 695.26 commands/s, 204.28 syncs/s, not marked; readers' intervals under 2,300 events/s: 80.0 percent of 70
+- 11-15 22:47 to 23:00 csharp-wax-noreset-batch-payments-w8-d1: 655.96 commands/s, 185.87 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 74
+- 11-15 23:02 to 23:12 csharp-wax-rw8-batch-payments-w8-b5-2: 810.50 commands/s, 257.52 syncs/s, not marked; readers' intervals under 2,300 events/s: 33.3 percent of 60
+- 11-15 23:14 to 23:23 csharp-wax-rw8-batch-payments-w8-b5-3: 884.92 commands/s, 289.42 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-15 23:25 to 23:35 csharp-wax-rw8-batch-payments-w8-b5-4: 884.48 commands/s, 289.63 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-15 23:36 to 23:46 csharp-wax-rw8-batch-payments-w8-b5-5: 885.58 commands/s, 289.60 syncs/s, fast; readers' intervals under 2,300 events/s: 1.8 percent of 55
+- 11-15 23:48 to 23:57 csharp-wax-rw8-batch-payments-w8-b5-1: 882.65 commands/s, 288.52 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-15 23:59 to 00:08 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b5: 883.55 commands/s, 289.51 syncs/s, fast; readers' intervals under 2,300 events/s: 0.0 percent of 55
+- 11-16 00:10 to 00:20 csharp-wax-rw8-batch-payments-w8-b1-3: 884.62 commands/s, 288.92 syncs/s, fast; readers' intervals under 2,300 events/s: 1.8 percent of 55
+- 11-16 00:21 to 00:31 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b1: 883.41 commands/s, 288.51 syncs/s, fast; readers' intervals under 2,300 events/s: 5.5 percent of 55
+- 11-16 00:33 to 00:42 csharp-wax-rw8-batch-payments-w8-b1-5: 881.54 commands/s, 288.06 syncs/s, fast; readers' intervals under 2,300 events/s: 1.8 percent of 55
+- 11-16 00:44 to 00:54 csharp-wax-rw8-batch-payments-w8-b1-4: 875.75 commands/s, 287.22 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 00:55 to 01:05 csharp-wax-rw8-batch-payments-w8-b1-1: 877.69 commands/s, 287.68 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 01:06 to 01:16 csharp-wax-rw8-batch-payments-w8-b1-2: 880.25 commands/s, 288.81 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 01:18 to 01:27 csharp-wax-rw8-batch-payments-w8-b6-1: 889.80 commands/s, 286.12 syncs/s, fast; readers' intervals under 2,300 events/s: 1.9 percent of 54
+- 11-16 01:29 to 01:39 csharp-wax-rw8-batch-payments-w8-b6-4: 886.25 commands/s, 289.70 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 01:40 to 01:50 csharp-wax-rw8-batch-payments-w8-b6-5: 877.02 commands/s, 286.97 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 01:51 to 02:01 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b6: 873.15 commands/s, 286.10 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 02:03 to 02:12 csharp-wax-rw8-batch-payments-w8-b6-2: 873.17 commands/s, 286.01 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 02:14 to 02:24 csharp-wax-rw8-batch-payments-w8-b6-3: 870.95 commands/s, 284.64 syncs/s, fast; readers' intervals under 2,300 events/s: 7.1 percent of 56
+- 11-16 02:25 to 02:35 csharp-wax-rw8-batch-payments-w8-b4-4: 868.84 commands/s, 284.95 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 56
+- 11-16 02:37 to 02:47 csharp-wax-rw8-batch-payments-w8-b4-5: 875.32 commands/s, 286.25 syncs/s, fast; readers' intervals under 2,300 events/s: 7.3 percent of 55
+- 11-16 02:48 to 02:58 csharp-wax-rw8-batch-payments-w8-b4-3: 873.98 commands/s, 287.05 syncs/s, fast; readers' intervals under 2,300 events/s: 7.3 percent of 55
+- 11-16 03:00 to 03:09 csharp-wax-rw8-batch-payments-w8-b4-1: 871.63 commands/s, 285.39 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 03:11 to 03:21 csharp-wax-rw8-batch-payments-w8-b4-2: 870.48 commands/s, 285.43 syncs/s, fast; readers' intervals under 2,300 events/s: 1.8 percent of 56
+- 11-16 03:22 to 03:32 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b4: 871.22 commands/s, 285.05 syncs/s, fast; readers' intervals under 2,300 events/s: 5.4 percent of 56
+- 11-16 03:34 to 03:43 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b2: 872.04 commands/s, 285.16 syncs/s, fast; readers' intervals under 2,300 events/s: 7.3 percent of 55
+- 11-16 03:45 to 03:55 csharp-wax-rw8-batch-payments-w8-b2-4: 872.02 commands/s, 284.25 syncs/s, fast; readers' intervals under 2,300 events/s: 5.5 percent of 55
+- 11-16 03:56 to 04:06 csharp-wax-rw8-batch-payments-w8-b2-2: 877.51 commands/s, 287.22 syncs/s, fast; readers' intervals under 2,300 events/s: 5.5 percent of 55
+- 11-16 04:08 to 04:17 csharp-wax-rw8-batch-payments-w8-b2-5: 877.77 commands/s, 287.14 syncs/s, fast; readers' intervals under 2,300 events/s: 7.3 percent of 55
+- 11-16 04:19 to 04:28 csharp-wax-rw8-batch-payments-w8-b2-3: 884.13 commands/s, 288.98 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 04:30 to 04:40 csharp-wax-rw8-batch-payments-w8-b2-1: 880.54 commands/s, 287.63 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 04:41 to 04:51 csharp-wax-rw8-batch-payments-w8-b3-2: 880.61 commands/s, 287.04 syncs/s, fast; readers' intervals under 2,300 events/s: 1.8 percent of 55
+- 11-16 04:53 to 05:02 csharp-wax-rw8-batch-payments-w8-small-pass-sleep-b3: 874.15 commands/s, 286.42 syncs/s, fast; readers' intervals under 2,300 events/s: 5.5 percent of 55
+- 11-16 05:04 to 05:14 csharp-wax-rw8-batch-payments-w8-b3-5: 881.70 commands/s, 288.23 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 05:15 to 05:25 csharp-wax-rw8-batch-payments-w8-b3-1: 881.28 commands/s, 286.68 syncs/s, fast; readers' intervals under 2,300 events/s: 5.5 percent of 55
+- 11-16 05:27 to 05:36 csharp-wax-rw8-batch-payments-w8-b3-3: 881.48 commands/s, 287.80 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- 11-16 05:38 to 05:47 csharp-wax-rw8-batch-payments-w8-b3-4: 881.30 commands/s, 287.25 syncs/s, fast; readers' intervals under 2,300 events/s: 3.6 percent of 55
+- runs by band: {'high': 1, 'fast': 36, 'not marked': 3, 'slow': 1}; slow runs from 11-15 22:47 to 11-15 23:00
+
+### round2-followup
+
+- 11-16 22:01 to 22:09 csharp-wax-custom-plans-batch-payments-w8-c1: 1112.57 commands/s, 370.37 syncs/s, high; readers' intervals under 2,300 events/s: 0.0 percent of 43
+- 11-16 22:10 to 22:23 csharp-wax-autoprepare-batch-payments-w8-c1: 662.80 commands/s, 182.64 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 74
+- 11-16 22:25 to 22:39 csharp-wax-batch-payments-w8-c1: 590.94 commands/s, 154.00 syncs/s, slow; readers' intervals under 2,300 events/s: 98.8 percent of 83
+- 11-16 22:42 to 22:58 csharp-wax-autoprepare-batch-payments-w8-c2: 539.17 commands/s, 139.34 syncs/s, slow; readers' intervals under 2,300 events/s: 98.9 percent of 91
+- 11-16 23:00 to 23:12 csharp-wax-batch-payments-w8-c2: 698.96 commands/s, 183.10 syncs/s, slow; readers' intervals under 2,300 events/s: 85.7 percent of 70
+- 11-16 23:14 to 23:26 csharp-wax-custom-plans-batch-payments-w8-c2: 692.46 commands/s, 181.71 syncs/s, slow; readers' intervals under 2,300 events/s: 94.4 percent of 71
+- 11-16 23:28 to 23:42 csharp-wax-batch-payments-w8-c3: 604.80 commands/s, 159.23 syncs/s, slow; readers' intervals under 2,300 events/s: 95.1 percent of 81
+- 11-16 23:44 to 23:57 csharp-wax-custom-plans-batch-payments-w8-c3: 635.22 commands/s, 175.16 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-16 23:59 to 00:12 csharp-wax-autoprepare-batch-payments-w8-c3: 635.33 commands/s, 167.05 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 00:14 to 00:27 csharp-wax-rw8-batch-payments-w8-s2: 640.81 commands/s, 182.17 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 75
+- 11-17 00:29 to 00:43 csharp-wax-rw8-batch-payments-w8-s7: 636.55 commands/s, 180.39 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 00:44 to 00:58 csharp-wax-rw8-batch-payments-w8-s8: 621.18 commands/s, 182.72 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 79
+- 11-17 01:00 to 01:13 csharp-wax-rw8-batch-payments-w8-s3: 641.71 commands/s, 186.50 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 01:15 to 01:28 csharp-wax-rw8-batch-payments-w8-s5: 641.61 commands/s, 186.18 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 01:30 to 01:43 csharp-wax-rw8-batch-payments-w8-s16: 644.96 commands/s, 186.80 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 01:44 to 01:58 csharp-wax-rw8-batch-payments-w8-s12: 634.61 commands/s, 184.88 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 01:59 to 02:13 csharp-wax-rw8-batch-payments-w8-s4: 640.52 commands/s, 185.64 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 02:14 to 02:28 csharp-wax-rw8-batch-payments-w8-s1: 641.01 commands/s, 182.59 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 75
+- 11-17 02:29 to 02:43 csharp-wax-rw8-batch-payments-w8-s10: 640.68 commands/s, 185.83 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 02:44 to 02:57 csharp-wax-rw8-batch-payments-w8-s15: 640.96 commands/s, 185.47 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 76
+- 11-17 02:59 to 03:13 csharp-wax-rw8-batch-payments-w8-s11: 637.23 commands/s, 185.02 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 03:14 to 03:28 csharp-wax-rw8-batch-payments-w8-s9: 634.14 commands/s, 184.77 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 03:29 to 03:43 csharp-wax-rw8-batch-payments-w8-s6: 633.21 commands/s, 184.54 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 03:44 to 03:58 csharp-wax-rw8-batch-payments-w8-s14: 634.15 commands/s, 184.76 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- 11-17 03:59 to 04:13 csharp-wax-rw8-batch-payments-w8-s13: 636.64 commands/s, 185.74 syncs/s, slow; readers' intervals under 2,300 events/s: 100.0 percent of 77
+- runs by band: {'high': 1, 'fast': 0, 'not marked': 0, 'slow': 24}; slow runs from 11-16 22:10 to 11-17 04:13
+
+- csharp-wax-rw8, fix pass's fast runs (35): median 287.22 syncs/s, 880.25 commands/s; follow-up's slow runs (16): median 184.95 syncs/s, 638.88 commands/s; ratio of commands per second 1.378
+- fix pass csharp-wax-batch-payments-w8-d1: 204.28 syncs/s; readers' intervals under 2,300 events/s: 80.0 percent
+- round2-shape's first run at 8 workers on the payment file: csharp-wax-batch-payments-w8-r1, 188.55 syncs/s
+- round2-diag's first run at 8 workers on the payment file: python-direct-batch-payments-w8-r1, 314.88 syncs/s
+- round2-fix's first run at 8 workers on the payment file: csharp-wax-custom-plans-batch-payments-w8-d1, 366.05 syncs/s
+- round2-followup's first run at 8 workers on the payment file: csharp-wax-custom-plans-batch-payments-w8-c1, 370.37 syncs/s

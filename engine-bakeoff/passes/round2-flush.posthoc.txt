@@ -1,0 +1,683 @@
+# Round 2's flush-timing night: figures added after the results
+
+Times are local, UTC less 6 hours, from the host counters' heading. An interval is high at 2.8 ms per WAL sync or less, fast above that and under 3.6, between from 3.6 to under 4.3, and slow at 4.3 or more. Steady intervals are a bench's 10-second intervals without its first and last.
+
+## Each run's steady intervals by class, and its course
+
+Run, commands per second, WAL syncs per second, mean ms per sync over the harness's window, then steady intervals in all and by class, and the course: each block of same-class intervals (counting the first and last) with its count and local start. The diagnostic's syncs carry several times the WAL of the others', so it is not classed.
+
+- a1: 961.7 commands/s, 330.1 syncs/s, 2.735 ms; steady 50: high 36, fast 1, between 0, slow 13. Course: high 37 from 22:01:24; fast 1 from 22:07:34; slow 14 from 22:07:44
+- a2: 898.2 commands/s, 288.4 syncs/s, 3.139 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 39 from 22:12:17; between 1 from 22:18:47; fast 16 from 22:18:57
+- b1: 1121.5 commands/s, 400.9 syncs/s, 2.230 ms; steady 43: high 43, fast 0, between 0, slow 0. Course: high 45 from 22:48:59
+- b2: 699.4 commands/s, 209.0 syncs/s, 4.520 ms; steady 70: high 0, fast 1, between 20, slow 49. Course: high 1 from 23:23:46; fast 1 from 23:23:56; between 2 from 23:24:06; slow 2 from 23:24:26; between 12 from 23:24:46; slow 8 from 23:26:46; between 4 from 23:28:06; slow 2 from 23:28:46; between 1 from 23:29:06; slow 3 from 23:29:16; between 1 from 23:29:46; slow 35 from 23:29:56
+- b3: 1119.4 commands/s, 398.6 syncs/s, 2.247 ms; steady 43: high 41, fast 1, between 1, slow 0. Course: high 36 from 00:03:03; fast 1 from 00:09:03; between 1 from 00:09:13; high 7 from 00:09:23
+- b4: 1111.9 commands/s, 399.2 syncs/s, 2.249 ms; steady 43: high 42, fast 1, between 0, slow 0. Course: high 24 from 00:37:51; fast 1 from 00:41:51; high 19 from 00:42:01; slow 1 from 00:45:11
+- d1: 631.0 commands/s, 185.6 syncs/s, 5.113 ms; steady 78: high 0, fast 0, between 0, slow 78. Course: slow 80 from 00:47:30
+- d2 (diagnostic, not classed): 1021.5 commands/s, 49.3 syncs/s, 4.428 ms; steady 47: high 0, fast 1, between 14, slow 32. Course: slow 1 from 01:02:54; between 1 from 01:03:04; slow 3 from 01:03:14; between 1 from 01:03:44; slow 7 from 01:03:54; between 1 from 01:05:04; slow 4 from 01:05:14; between 1 from 01:05:54; slow 3 from 01:06:04; between 1 from 01:06:34; slow 2 from 01:06:44; between 1 from 01:07:04; slow 3 from 01:07:14; between 1 from 01:07:44; fast 1 from 01:07:54; between 2 from 01:08:04; slow 2 from 01:08:24; between 1 from 01:08:44; slow 2 from 01:08:54; between 1 from 01:09:14; slow 1 from 01:09:24; between 1 from 01:09:34; slow 2 from 01:09:44; between 2 from 01:10:04; slow 3 from 01:10:24; between 1 from 01:10:54
+- d3: 979.2 commands/s, 332.3 syncs/s, 2.688 ms; steady 49: high 23, fast 25, between 1, slow 0. Course: high 24 from 01:13:13; fast 9 from 01:17:13; between 1 from 01:18:43; fast 16 from 01:18:53; between 1 from 01:21:33
+- c1: 883.6 commands/s, 288.7 syncs/s, 3.106 ms; steady 55: high 0, fast 52, between 3, slow 0. Course: fast 2 from 01:23:52; between 1 from 01:24:12; fast 6 from 01:24:22; between 1 from 01:25:22; fast 39 from 01:25:32; between 1 from 01:32:02; fast 7 from 01:32:12
+- c2: 800.9 commands/s, 255.2 syncs/s, 3.577 ms; steady 61: high 0, fast 39, between 3, slow 19. Course: slow 20 from 01:35:30; fast 4 from 01:38:50; between 1 from 01:39:30; fast 17 from 01:39:40; between 1 from 01:42:30; fast 10 from 01:42:40; between 1 from 01:44:20; fast 9 from 01:44:30
+- c3: 890.6 commands/s, 290.8 syncs/s, 3.085 ms; steady 54: high 0, fast 52, between 2, slow 0. Course: fast 12 from 01:48:06; between 1 from 01:50:06; fast 16 from 01:50:16; between 1 from 01:52:56; fast 26 from 01:53:06
+- c4: 885.5 commands/s, 288.4 syncs/s, 3.113 ms; steady 55: high 0, fast 50, between 4, slow 1. Course: fast 23 from 01:59:40; between 1 from 02:03:30; fast 20 from 02:03:40; between 1 from 02:07:00; fast 4 from 02:07:10; between 1 from 02:07:50; fast 2 from 02:08:00; slow 1 from 02:08:20; fast 1 from 02:08:30; between 1 from 02:08:40; fast 2 from 02:08:50
+- c5: 677.5 commands/s, 203.0 syncs/s, 4.627 ms; steady 72: high 0, fast 11, between 0, slow 61. Course: fast 12 from 02:11:20; slow 62 from 02:13:20
+- c6: 895.9 commands/s, 292.7 syncs/s, 3.058 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 34 from 02:25:49; between 1 from 02:31:29; fast 21 from 02:31:39
+- c7: 890.4 commands/s, 289.5 syncs/s, 3.067 ms; steady 55: high 0, fast 53, between 2, slow 0. Course: fast 13 from 02:37:15; between 1 from 02:39:25; fast 13 from 02:39:35; between 1 from 02:41:45; fast 29 from 02:41:55
+- c8: 741.1 commands/s, 225.4 syncs/s, 4.095 ms; steady 66: high 0, fast 24, between 2, slow 40. Course: fast 3 from 02:48:59; between 1 from 02:49:29; fast 13 from 02:49:39; between 1 from 02:51:49; fast 9 from 02:51:59; slow 41 from 02:53:29
+- c9: 889.9 commands/s, 292.3 syncs/s, 3.066 ms; steady 55: high 0, fast 54, between 1, slow 0. Course: fast 41 from 03:02:28; between 1 from 03:09:18; fast 15 from 03:09:28
+- c10: 890.8 commands/s, 291.3 syncs/s, 3.079 ms; steady 55: high 0, fast 53, between 2, slow 0. Course: fast 33 from 03:13:57; between 1 from 03:19:27; fast 2 from 03:19:37; between 1 from 03:19:57; fast 20 from 03:20:07
+- c11: 764.0 commands/s, 239.2 syncs/s, 3.859 ms; steady 64: high 0, fast 31, between 2, slow 31. Course: fast 26 from 03:25:29; between 1 from 03:29:49; fast 6 from 03:29:59; between 1 from 03:30:59; slow 32 from 03:31:09
+- c12: 873.8 commands/s, 284.4 syncs/s, 3.164 ms; steady 55: high 0, fast 49, between 2, slow 4. Course: slow 5 from 03:38:40; fast 3 from 03:39:30; between 1 from 03:40:00; fast 15 from 03:40:10; between 1 from 03:42:40; fast 32 from 03:42:50
+- c13: 896.3 commands/s, 293.5 syncs/s, 3.062 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 1 from 03:50:18; between 1 from 03:50:28; fast 54 from 03:50:38
+- c14: 809.5 commands/s, 257.1 syncs/s, 3.565 ms; steady 60: high 0, fast 38, between 2, slow 20. Course: fast 7 from 04:01:48; between 1 from 04:02:58; fast 32 from 04:03:08; between 1 from 04:08:28; slow 21 from 04:08:38
+- c15: 894.4 commands/s, 292.7 syncs/s, 3.071 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 54 from 04:14:18; between 1 from 04:23:18; fast 1 from 04:23:28
+- c16: 893.3 commands/s, 292.9 syncs/s, 3.067 ms; steady 54: high 0, fast 52, between 2, slow 0. Course: fast 30 from 04:25:44; between 1 from 04:30:44; fast 2 from 04:30:54; between 1 from 04:31:14; fast 22 from 04:31:24
+- c17: 797.4 commands/s, 254.1 syncs/s, 3.607 ms; steady 61: high 0, fast 35, between 6, slow 20. Course: fast 10 from 04:37:12; between 2 from 04:38:52; fast 11 from 04:39:12; between 1 from 04:41:02; fast 2 from 04:41:12; between 1 from 04:41:32; fast 13 from 04:41:42; between 2 from 04:43:52; slow 21 from 04:44:12
+- c18: 899.5 commands/s, 294.8 syncs/s, 3.046 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 24 from 04:49:52; between 1 from 04:53:52; fast 31 from 04:54:02
+- c19: 893.5 commands/s, 293.3 syncs/s, 3.062 ms; steady 54: high 0, fast 52, between 2, slow 0. Course: fast 16 from 05:01:15; between 1 from 05:03:55; fast 23 from 05:04:05; between 1 from 05:07:55; fast 15 from 05:08:05
+- c20: 814.1 commands/s, 259.4 syncs/s, 3.527 ms; steady 60: high 0, fast 40, between 0, slow 20. Course: fast 41 from 05:12:42; slow 21 from 05:19:32
+- c21: 895.8 commands/s, 293.7 syncs/s, 3.060 ms; steady 54: high 0, fast 54, between 0, slow 0. Course: fast 55 from 05:25:07; between 1 from 05:34:17
+- c22: 896.1 commands/s, 293.0 syncs/s, 3.067 ms; steady 54: high 0, fast 53, between 1, slow 0. Course: fast 47 from 05:36:35; between 1 from 05:44:25; fast 8 from 05:44:35
+- c23: 747.6 commands/s, 232.7 syncs/s, 3.976 ms; steady 65: high 0, fast 30, between 0, slow 35. Course: fast 31 from 05:48:06; slow 36 from 05:53:16
+- c24: 894.0 commands/s, 291.8 syncs/s, 3.090 ms; steady 54: high 0, fast 51, between 3, slow 0. Course: slow 1 from 06:01:25; between 1 from 06:01:35; fast 4 from 06:01:45; between 1 from 06:02:25; fast 13 from 06:02:35; between 1 from 06:04:45; fast 35 from 06:04:55
+- c25: 902.4 commands/s, 295.2 syncs/s, 3.044 ms; steady 54: high 0, fast 54, between 0, slow 0. Course: fast 56 from 06:12:54
+- c26: 794.4 commands/s, 252.3 syncs/s, 3.633 ms; steady 61: high 0, fast 37, between 1, slow 23. Course: fast 4 from 06:24:18; between 1 from 06:24:58; fast 34 from 06:25:08; slow 24 from 06:30:48
+- c27: 838.7 commands/s, 269.4 syncs/s, 3.379 ms; steady 58: high 0, fast 43, between 2, slow 13. Course: slow 14 from 06:36:59; between 1 from 06:39:19; fast 21 from 06:39:29; between 1 from 06:42:59; fast 23 from 06:43:09
+
+## The steady intervals' clusters
+
+Steady intervals, the diagnostic aside: 1982. From 3.6 to under 4.4 ms: 75, of them in b2: 24 (32.0 percent).
+
+Steady intervals by 0.2 ms band of time per sync (lower edge, count):
+  2.0: 64, 2.2: 86, 2.4: 31, 2.6: 4, 2.8: 564, 3.0: 527, 3.2: 159, 3.4: 51, 3.6: 40, 3.8: 10, 4.0: 10, 4.2: 15, 4.4: 15, 4.6: 52, 4.8: 105, 5.0: 106, 5.2: 84, 5.4: 34, 5.6: 18, 5.8: 2, 6.0: 4, 7.0: 1
+- high: 185 intervals, 5th to 95th percentile 2.040 to 2.525 ms
+- fast: 1301 intervals, 5th to 95th percentile 2.905 to 3.367 ms
+- slow: 427 intervals, 5th to 95th percentile 4.609 to 5.633 ms
+
+## Medians by interval level
+
+- high: 185 intervals, median 2.277 ms per sync, median busy share 0.913, median processor performance 101.04 percent
+- between the cuts, whole night: 1370 intervals, median 3.023 ms per sync, median busy share 0.915, median processor performance 92.18 percent
+- between the cuts, group 4: 1265 intervals, median 3.019 ms per sync, median busy share 0.915, median processor performance 92.27 percent
+- between the cuts, group 4, fast class only: 1219 intervals, median 3.015 ms per sync, median busy share 0.915, median processor performance 92.34 percent
+- slow: 427 intervals, median 5.077 ms per sync, median busy share 0.962, median processor performance 81.83 percent
+- correlation of processor performance (mean of the interval's samples) with ms per sync over 1981 intervals: -0.867
+
+Events written per WAL sync over the sampler's life, runs grouped by the plan's mark on their mean:
+- high: a1 5.719, b1 5.477, b3 5.496, b4 5.462, d3 5.786; median 5.496
+- slow: b2 6.606, d1 6.724, c5 6.592; median 6.606
+
+## The slow stretches
+
+Start rule: the first of three or more consecutive slow intervals, counting each bench's first and last, or a slow block that runs to a bench's end and is followed by a check at 4.3 ms or more; a slow block at a bench's start after such a check continues the stretch before it. The diagnostic's intervals are left out.
+
+1. starts 22:07:44 in a1 (group 1), runs a1; last slow interval ends 22:10:04; under load from start to that end 2.33 min, of it slow 2.33 min
+2. starts 23:26:46 in b2 (group 2), runs b2; last slow interval ends 23:35:46; under load from start to that end 9.00 min, of it slow 8.00 min
+3. starts 00:45:11 in b4 (group 2), runs b4, d1; last slow interval ends 01:00:50; under load from start to that end 13.50 min, of it slow 13.50 min
+4. starts 01:35:30 in c2 (group 4), runs c2; last slow interval ends 01:38:50; under load from start to that end 3.33 min, of it slow 3.33 min
+5. starts 02:13:20 in c5 (group 4), runs c5; last slow interval ends 02:23:40; under load from start to that end 10.33 min, of it slow 10.33 min
+6. starts 02:53:29 in c8 (group 4), runs c8; last slow interval ends 03:00:19; under load from start to that end 6.83 min, of it slow 6.83 min
+7. starts 03:31:09 in c11 (group 4), runs c11, c12; last slow interval ends 03:39:30; under load from start to that end 6.17 min, of it slow 6.17 min
+8. starts 04:08:38 in c14 (group 4), runs c14; last slow interval ends 04:12:08; under load from start to that end 3.50 min, of it slow 3.50 min
+9. starts 04:44:12 in c17 (group 4), runs c17; last slow interval ends 04:47:42; under load from start to that end 3.50 min, of it slow 3.50 min
+10. starts 05:19:32 in c20 (group 4), runs c20; last slow interval ends 05:23:02; under load from start to that end 3.50 min, of it slow 3.50 min
+11. starts 05:53:16 in c23 (group 4), runs c23, c24; last slow interval ends 06:01:35; under load from start to that end 6.17 min, of it slow 6.17 min
+12. starts 06:30:48 in c26 (group 4), runs c26, c27; last slow interval ends 06:39:19; under load from start to that end 6.33 min, of it slow 6.33 min
+- isolated slow blocks: b2 2 at 23:24:26; c4 1 at 02:08:20
+- group 4 starts: 9; spacing 33.7250 to 40.1503 min
+- spacing of the starts before group 4: 79.03, 78.42, 50.31 min
+- under load, whole night: 2.33 to 13.50 min; group 4: 3.33 to 10.33 min
+
+## Cycles between stretch starts
+
+b2's last interval at the high level ended 23:23:56; its stretch starts 23:26:46.
+
+### Starts: each start at its stretch's start
+
+Starts: 22:07:44, 23:26:46, 00:45:11, 01:35:30, 02:13:20, 02:53:29, 03:31:09, 04:08:38, 04:44:12, 05:19:32, 05:53:16, 06:30:48
+- minutes: before group 4 79.033 (2.141), 78.420 (2.124), 50.310 (1.363); group 4 33.725 to 40.150, mean 36.915, coefficient of variation 5.33 percent; inside group 4's range: 0 of 3
+- disk 0 GiB: before group 4 18.354 (0.9438), 18.432 (0.9479), 25.716 (1.3224); group 4 17.782 to 21.528 (0.9144 to 1.1070), mean 19.446, coefficient of variation 5.54 percent; inside group 4's range: 2 of 3
+  from 22:07:44: group 4's range puts the next start at 23:25:25 to 23:35:01; it came at 23:26:46, inside
+  from 23:26:46: group 4's range puts the next start at 00:44:05 to 00:51:04; it came at 00:45:11, inside
+  from 00:45:11: group 4's range puts the next start at 01:23:14 to 01:28:15; it came at 01:35:30, outside
+- disk 0 write operations, millions: before group 4 1.072208 (0.9271), 1.232298 (1.0655), 1.233543 (1.0665); group 4 1.057136 to 1.232393 (0.9140 to 1.0656), mean 1.156574, coefficient of variation 4.80 percent; inside group 4's range: 2 of 3
+  exact write operations: before group 4 [1072208, 1232298, 1233543]; group 4 smallest 1057136, largest 1232393
+  from 22:07:44: group 4's range puts the next start at 23:26:16 to 23:31:03; it came at 23:26:46, inside
+  from 23:26:46: group 4's range puts the next start at 00:41:37 to 00:45:11; it came at 00:45:11, inside
+  from 00:45:11: group 4's range puts the next start at 01:29:09 to 01:35:09; it came at 01:35:30, outside
+- WAL syncs, thousands: before group 4 416.509 (0.8225), 470.592 (0.9293), 514.991 (1.0170); group 4 462.543 to 530.331 (0.9134 to 1.0473), mean 506.380, coefficient of variation 4.31 percent; inside group 4's range: 2 of 3
+  from 22:07:44: group 4's range puts the next start at 23:30:20 to 00:03:19; it came at 23:26:46, outside
+  from 23:26:46: group 4's range puts the next start at 00:44:50 to 00:52:39; it came at 00:45:11, inside
+  from 00:45:11: group 4's range puts the next start at 01:30:21 to 01:36:55; it came at 01:35:30, inside
+
+### Starts: b2's from the end of its last high interval
+
+Starts: 22:07:44, 23:23:56, 00:45:11, 01:35:30, 02:13:20, 02:53:29, 03:31:09, 04:08:38, 04:44:12, 05:19:32, 05:53:16, 06:30:48
+- minutes: before group 4 76.200 (2.064), 81.253 (2.201), 50.310 (1.363); group 4 33.725 to 40.150, mean 36.915, coefficient of variation 5.33 percent; inside group 4's range: 0 of 3
+- disk 0 GiB: before group 4 17.179 (0.8834), 19.607 (1.0083), 25.716 (1.3224); group 4 17.782 to 21.528 (0.9144 to 1.1070), mean 19.446, coefficient of variation 5.54 percent; inside group 4's range: 1 of 3
+  from 22:07:44: group 4's range puts the next start at 23:25:25 to 23:35:01; it came at 23:23:56, outside
+  from 23:23:56: group 4's range puts the next start at 00:42:06 to 00:47:40; it came at 00:45:11, inside
+  from 00:45:11: group 4's range puts the next start at 01:23:14 to 01:28:15; it came at 01:35:30, outside
+- disk 0 write operations, millions: before group 4 0.981319 (0.8485), 1.323187 (1.1441), 1.233543 (1.0665); group 4 1.057136 to 1.232393 (0.9140 to 1.0656), mean 1.156574, coefficient of variation 4.80 percent; inside group 4's range: 0 of 3
+  exact write operations: before group 4 [981319, 1323187, 1233543]; group 4 smallest 1057136, largest 1232393
+  from 22:07:44: group 4's range puts the next start at 23:26:16 to 23:31:03; it came at 23:23:56, outside
+  from 23:23:56: group 4's range puts the next start at 00:40:05 to 00:43:20; it came at 00:45:11, outside
+  from 00:45:11: group 4's range puts the next start at 01:29:09 to 01:35:09; it came at 01:35:30, outside
+- WAL syncs, thousands: before group 4 376.120 (0.7428), 510.981 (1.0091), 514.991 (1.0170); group 4 462.543 to 530.331 (0.9134 to 1.0473), mean 506.380, coefficient of variation 4.31 percent; inside group 4's range: 2 of 3
+  from 22:07:44: group 4's range puts the next start at 23:30:20 to 00:03:19; it came at 23:23:56, outside
+  from 23:23:56: group 4's range puts the next start at 00:43:05 to 00:49:00; it came at 00:45:11, inside
+  from 00:45:11: group 4's range puts the next start at 01:30:21 to 01:36:55; it came at 01:35:30, inside
+
+## A clock with group 4's spacing
+
+For each cycle before group 4, the window in which one more start would have to fall for every spacing to lie within group 4's shortest and longest, and the same with a minute of slack at each end; then the benches the window meets.
+
+### Starts: each start at its stretch's start (group 4's spacing 33.725 to 40.150 min)
+
+- cycle 22:07:44 to 23:26:46 (79.033 min; twice the longest spacing is 80.301), slack 0 min: 22:46:37 to 22:47:53, meeting benches none
+- cycle 22:07:44 to 23:26:46 (79.033 min; twice the longest spacing is 80.301), slack 1 min: 22:45:37 to 22:48:53, meeting benches none
+- cycle 23:26:46 to 00:45:11 (78.420 min; twice the longest spacing is 80.301), slack 0 min: 00:05:02 to 00:06:55, meeting benches ['b3']
+- cycle 23:26:46 to 00:45:11 (78.420 min; twice the longest spacing is 80.301), slack 1 min: 00:04:02 to 00:07:55, meeting benches ['b3']
+- cycle 00:45:11 to 01:35:30 (50.310 min; twice the longest spacing is 80.301), slack 0 min: empty
+- cycle 00:45:11 to 01:35:30 (50.310 min; twice the longest spacing is 80.301), slack 1 min: empty
+
+### Starts: b2's from the end of its last high interval (group 4's spacing 33.725 to 40.150 min)
+
+- cycle 22:07:44 to 23:23:56 (76.200 min; twice the longest spacing is 80.301), slack 0 min: 22:43:47 to 22:47:53, meeting benches none
+- cycle 22:07:44 to 23:23:56 (76.200 min; twice the longest spacing is 80.301), slack 1 min: 22:42:47 to 22:48:53, meeting benches none
+- cycle 23:23:56 to 00:45:11 (81.253 min; twice the longest spacing is 80.301), slack 0 min: empty
+- cycle 23:23:56 to 00:45:11 (81.253 min; twice the longest spacing is 80.301), slack 1 min: 00:04:02 to 00:05:05, meeting benches ['b3']
+- cycle 00:45:11 to 01:35:30 (50.310 min; twice the longest spacing is 80.301), slack 0 min: empty
+- cycle 00:45:11 to 01:35:30 (50.310 min; twice the longest spacing is 80.301), slack 1 min: empty
+
+## Bytes and write operations between benches, and over the gaps
+
+- group 4, 01:35:30 to 06:30:48: share of disk 0's bytes between benches 30.35 percent
+- group 4, 01:35:30 to 06:30:48: share of disk 0's write operations between benches 4.58 percent
+- gap g1, 22:22:51 to 22:47:51: 0.546 GiB, 55,892 write operations
+- gap g2, 22:57:43 to 23:22:43: 0.570 GiB, 54,889 write operations
+- gap g3, 23:36:57 to 00:01:57: 1.070 GiB, 60,282 write operations
+- gap g4, 00:11:42 to 00:36:42: 0.586 GiB, 58,873 write operations
+
+## The storage checks
+
+Each check: local start, what it preceded, fdatasync operations per second, and 1000 over that rate in ms; for a check at 4.3 ms or more, the last bench interval at 4.3 ms or more before it (counting each bench's first and last), and the minutes between that interval's end and the check.
+
+- 22:00:23 before a1: 424.946 ops/s, 2.353 ms
+- 22:11:17 before a2: 192.320 ops/s, 5.200 ms; last slow interval ended 22:10:04, 1.21 min before
+- 22:22:45 before g1: 308.884 ops/s, 3.237 ms
+- 22:47:58 before b1: 402.375 ops/s, 2.485 ms
+- 22:57:37 before g2: 410.198 ops/s, 2.438 ms
+- 23:22:48 before b2: 460.744 ops/s, 2.170 ms
+- 23:36:51 before g3: 186.936 ops/s, 5.349 ms; last slow interval ended 23:35:46, 1.08 min before
+- 00:02:04 before b3: 435.346 ops/s, 2.297 ms
+- 00:11:37 before g4: 397.033 ops/s, 2.519 ms
+- 00:36:49 before b4: 455.234 ops/s, 2.197 ms
+- 00:46:32 before d1: 218.270 ops/s, 4.581 ms; last slow interval ended 00:45:21, 1.18 min before
+- 01:01:56 before d2: 184.136 ops/s, 5.431 ms; last slow interval ended 01:00:50, 1.09 min before
+- 01:12:14 before d3: 396.859 ops/s, 2.520 ms
+- 01:22:52 before c1: 332.757 ops/s, 3.005 ms
+- 01:34:30 before c2: 325.444 ops/s, 3.073 ms
+- 01:47:03 before c3: 305.410 ops/s, 3.274 ms
+- 01:58:42 before c4: 300.445 ops/s, 3.328 ms
+- 02:10:20 before c5: 292.827 ops/s, 3.415 ms
+- 02:24:48 before c6: 187.911 ops/s, 5.322 ms; last slow interval ended 02:23:40, 1.13 min before
+- 02:36:17 before c7: 266.986 ops/s, 3.746 ms
+- 02:47:56 before c8: 316.430 ops/s, 3.160 ms
+- 03:01:25 before c9: 191.770 ops/s, 5.215 ms; last slow interval ended 03:00:19, 1.10 min before
+- 03:12:59 before c10: 321.961 ops/s, 3.106 ms
+- 03:24:28 before c11: 268.373 ops/s, 3.726 ms
+- 03:37:37 before c12: 198.415 ops/s, 5.040 ms; last slow interval ended 03:36:29, 1.13 min before
+- 03:49:20 before c13: 307.396 ops/s, 3.253 ms
+- 04:00:49 before c14: 324.942 ops/s, 3.077 ms
+- 04:13:17 before c15: 185.936 ops/s, 5.378 ms; last slow interval ended 04:12:08, 1.15 min before
+- 04:24:45 before c16: 316.791 ops/s, 3.157 ms
+- 04:36:13 before c17: 316.835 ops/s, 3.156 ms
+- 04:48:52 before c18: 316.924 ops/s, 3.155 ms
+- 05:00:15 before c19: 322.954 ops/s, 3.096 ms
+- 05:11:43 before c20: 321.629 ops/s, 3.109 ms
+- 05:24:07 before c21: 182.888 ops/s, 5.468 ms; last slow interval ended 05:23:02, 1.07 min before
+- 05:35:35 before c22: 293.866 ops/s, 3.403 ms
+- 05:47:04 before c23: 319.788 ops/s, 3.127 ms
+- 06:00:27 before c24: 188.094 ops/s, 5.316 ms; last slow interval ended 05:59:16, 1.18 min before
+- 06:11:55 before c25: 328.430 ops/s, 3.045 ms
+- 06:23:19 before c26: 339.354 ops/s, 2.947 ms
+- 06:35:57 before c27: 185.878 ops/s, 5.380 ms; last slow interval ended 06:34:48, 1.13 min before
+- 06:48:05 before end: 313.826 ops/s, 3.186 ms
+- checks at 4.3 ms or more: 11, 182.888 to 218.270 ops/s
+
+Bench ends during a stretch: runs whose last bench interval is slow, and the check that followed.
+- a1: last interval 5.241 ms at 22:09:54; next check 22:11:17, 5.200 ms
+- b2: last interval 4.982 ms at 23:35:36; next check 23:36:51, 5.349 ms
+- b4: last interval 4.903 ms at 00:45:11; next check 00:46:32, 4.581 ms
+- d1: last interval 4.751 ms at 01:00:40; next check 01:01:56, 5.431 ms
+- c5: last interval 5.172 ms at 02:23:30; next check 02:24:48, 5.322 ms
+- c8: last interval 5.478 ms at 03:00:09; next check 03:01:25, 5.215 ms
+- c11: last interval 4.760 ms at 03:36:19; next check 03:37:37, 5.040 ms
+- c14: last interval 5.287 ms at 04:11:58; next check 04:13:17, 5.378 ms
+- c17: last interval 5.470 ms at 04:47:32; next check 04:48:52, 3.155 ms
+- c20: last interval 4.936 ms at 05:22:52; next check 05:24:07, 5.468 ms
+- c23: last interval 5.172 ms at 05:59:06; next check 06:00:27, 5.316 ms
+- c26: last interval 5.405 ms at 06:34:38; next check 06:35:57, 5.380 ms
+- 12 bench ends; followed by a check under 4.3 ms: ['c17']
+
+The stretch on by 00:45:11: the check before the diagnostic, 01:01:56, read 5.431 ms, 16.74 min after the start; the check after it, 01:12:14, read 2.520 ms, 27.04 min after.
+
+Checks by level: the median of 1000 over each check's rate against the median loaded time per sync.
+- high: 8 checks from the start to d3's, outside the stretches, gap 1's start left out (3.237 ms): median 2.396 ms, against 2.277 loaded
+- fast: 20 group 4 checks outside the stretches, the end check left out (3.186 ms): median 3.156 ms, against 3.019 loaded (group 4 between the cuts)
+- slow: 11 checks: median 5.322 ms, against 5.077 loaded
+
+## Docker's virtual machine and disk 0 by interval level
+
+Medians over the steady intervals of the mean of the host's samples in each: the virtual machine's cores, and disk 0's writes in MiB per second and in millions of bytes per second.
+
+- high: 185 intervals; VM 6.413 cores; disk 0 10.664 MiB/s, 11.183 million bytes/s
+- between the cuts: 1370 intervals; VM 5.899 cores; disk 0 8.061 MiB/s, 8.452 million bytes/s
+- slow: 427 intervals; VM 5.791 cores; disk 0 5.545 MiB/s, 5.814 million bytes/s
+
+## The host's counters at each stretch onset
+
+Rule for a clean onset: the three bench intervals before the stretch's first slow interval are all under 4.3 ms, the earliest of them is under 3.6, and the bench runs at least 40 seconds past the slow interval's start, so that its winding down is not read as a move. For each clean onset, each counter's level before is its median over the samples from 60 to 10 seconds before the slow interval's start, and its level after its median over the samples from that start to 40 seconds after it, ending no later than 5 seconds after the bench; the counter moves at the first sample, from 30 seconds before the slow interval's start, that is past halfway between the two levels together with the two samples after it. Moves are given in samples from the first sample at or after the slow interval's start. Below that, each onset's samples: local time, processor performance, disk 0's write latency in ms, and its writes per second.
+
+### 22:07:44 in a1: clean
+- clock: before 99.4, after 84.71; moves at sample 0
+- latency: before 7.604e-05, after 0.0002369; moves at sample 0
+- write rate: before 860.9, after 433; moves at sample 0
+- clock against write rate: same sample; latency against clock: +0 samples
+    22:06:45 perf   98.57 latency  0.080 writes    876.6
+    22:06:50 perf  102.01 latency  0.075 writes    878.7
+    22:06:55 perf   99.16 latency  0.077 writes    923.2
+    22:07:00 perf  101.17 latency  0.070 writes    839.3
+    22:07:05 perf   99.65 latency  0.063 writes    858.6
+    22:07:10 perf   99.81 latency  0.077 writes    863.2
+    22:07:15 perf   93.52 latency  0.101 writes    746.1
+    22:07:21 perf  100.76 latency  0.067 writes    868.2
+    22:07:26 perf   96.16 latency  0.084 writes    821.1
+    22:07:31 perf   98.28 latency  0.062 writes    840.0
+    22:07:36 perf  100.52 latency  0.072 writes    872.4
+    22:07:41 perf   93.27 latency  0.087 writes    733.9
+    22:07:46 perf   86.93 latency  0.322 writes    460.1 <
+    22:07:51 perf   81.65 latency  0.199 writes    402.0
+    22:07:56 perf   91.16 latency  0.326 writes    555.3
+    22:08:01 perf   96.70 latency  0.194 writes    481.5
+    22:08:06 perf   82.50 latency  0.295 writes    415.9
+    22:08:11 perf   87.56 latency  0.214 writes    429.4
+    22:08:16 perf   80.16 latency  0.210 writes    436.6
+    22:08:21 perf   80.46 latency  0.260 writes    412.9
+
+### 23:26:46 in b2: not clean
+    23:25:49 perf   86.93 latency  0.317 writes    696.8
+    23:25:54 perf   83.90 latency  0.124 writes    505.6
+    23:25:59 perf   85.28 latency  0.188 writes    517.7
+    23:26:04 perf   87.91 latency  0.369 writes    684.6
+    23:26:09 perf   86.35 latency  0.136 writes    523.0
+    23:26:14 perf   87.75 latency  0.113 writes    526.4
+    23:26:19 perf   86.43 latency  0.292 writes    543.5
+    23:26:24 perf   88.54 latency  0.147 writes    487.9
+    23:26:29 perf   90.00 latency  0.125 writes    520.0
+    23:26:34 perf   85.80 latency  0.226 writes    527.8
+    23:26:39 perf   89.33 latency  0.211 writes    501.5
+    23:26:44 perf   86.17 latency  0.131 writes    486.3
+    23:26:49 perf   86.40 latency  0.205 writes    475.0 <
+    23:26:54 perf   79.35 latency  0.173 writes    400.1
+    23:26:59 perf   80.83 latency  0.371 writes    377.7
+    23:27:04 perf   85.21 latency  0.210 writes    541.9
+    23:27:09 perf   82.31 latency  0.207 writes    457.3
+    23:27:14 perf   83.99 latency  0.162 writes    462.5
+    23:27:19 perf   88.58 latency  0.234 writes    532.0
+    23:27:24 perf   87.67 latency  0.200 writes    485.9
+
+### 00:45:11 in b4: not clean
+    00:44:16 perf  102.06 latency  0.075 writes    879.0
+    00:44:21 perf   97.77 latency  0.065 writes    772.4
+    00:44:26 perf  100.84 latency  0.076 writes    786.4
+    00:44:31 perf   99.87 latency  0.062 writes    836.7
+    00:44:36 perf  100.18 latency  0.069 writes    860.8
+    00:44:41 perf   95.53 latency  0.076 writes    710.6
+    00:44:46 perf  100.58 latency  0.081 writes    860.9
+    00:44:51 perf  102.63 latency  0.190 writes    843.8
+    00:44:56 perf  102.10 latency  0.078 writes    859.3
+    00:45:01 perf  101.41 latency  0.057 writes    834.7
+    00:45:06 perf  100.23 latency  0.145 writes    834.2
+    00:45:11 perf   85.88 latency  0.122 writes    653.0 <
+    00:45:16 perf   68.48 latency  0.309 writes    423.2
+    00:45:21 perf   70.57 latency  0.167 writes    409.9
+    00:45:26 perf   77.38 latency  0.097 writes     58.7
+    00:45:31 perf   76.33 latency  0.351 writes     39.1
+
+### 01:35:30 in c2: not clean
+    01:34:32 perf   74.69 latency  0.238 writes    273.0
+    01:34:37 perf   71.67 latency  0.079 writes    415.4
+    01:34:43 perf   71.09 latency  0.050 writes     55.0
+    01:34:48 perf   76.99 latency  0.363 writes     61.5
+    01:34:53 perf   77.72 latency  0.827 writes     65.5
+    01:34:58 perf   75.23 latency  2.445 writes    688.9
+    01:35:03 perf   79.49 latency 23.275 writes    751.7
+    01:35:08 perf   65.07 latency  0.128 writes     41.5
+    01:35:13 perf   64.96 latency  0.171 writes     33.4
+    01:35:18 perf   75.11 latency  0.559 writes     61.4
+    01:35:23 perf   76.79 latency  0.055 writes     31.1
+    01:35:28 perf   68.05 latency  0.092 writes     41.1
+    01:35:33 perf   83.05 latency  0.148 writes    202.9 <
+    01:35:38 perf   82.49 latency  0.213 writes    370.6
+    01:35:43 perf   80.61 latency  0.216 writes    408.5
+    01:35:48 perf   81.94 latency  0.211 writes    402.1
+    01:35:53 perf   71.45 latency  0.348 writes    303.8
+    01:35:58 perf   78.37 latency  0.274 writes    397.6
+    01:36:03 perf   88.84 latency  0.185 writes    397.3
+    01:36:08 perf   78.75 latency  0.234 writes    394.8
+
+### 02:13:20 in c5: clean
+- clock: before 94, after 81.84; moves at sample 0
+- latency: before 8.438e-05, after 0.0002125; moves at sample -1
+- write rate: before 659.5, after 408.1; moves at sample 0
+- clock against write rate: same sample; latency against clock: -1 samples
+    02:12:23 perf   96.76 latency  0.078 writes    651.3
+    02:12:28 perf   95.05 latency  0.081 writes    660.1
+    02:12:33 perf   93.13 latency  0.111 writes    651.6
+    02:12:38 perf   99.57 latency  0.123 writes    676.0
+    02:12:43 perf   96.55 latency  0.120 writes    667.7
+    02:12:48 perf   92.53 latency  0.087 writes    670.1
+    02:12:53 perf   93.28 latency  0.082 writes    646.2
+    02:12:58 perf   93.17 latency  0.092 writes    657.7
+    02:13:03 perf   92.77 latency  0.082 writes    659.0
+    02:13:08 perf   94.72 latency  0.078 writes    666.4
+    02:13:13 perf   88.57 latency  0.098 writes    599.1
+    02:13:18 perf   94.24 latency  0.201 writes    650.7
+    02:13:23 perf   82.11 latency  0.213 writes    405.7 <
+    02:13:28 perf   77.52 latency  0.225 writes    399.2
+    02:13:33 perf   82.67 latency  0.212 writes    408.9
+    02:13:38 perf   84.73 latency  0.255 writes    420.1
+    02:13:44 perf   80.29 latency  0.201 writes    410.5
+    02:13:49 perf   81.57 latency  0.179 writes    418.8
+    02:13:54 perf   84.30 latency  0.194 writes    407.3
+    02:13:59 perf   76.53 latency  0.297 writes    349.2
+
+### 02:53:29 in c8: clean
+- clock: before 94.75, after 82.16; moves at sample 1
+- latency: before 0.0002143, after 0.000238; moves at sample None
+- write rate: before 758, after 417.3; moves at sample 1
+- clock against write rate: same sample; latency against clock: none
+    02:52:30 perf   97.48 latency  0.188 writes    747.8
+    02:52:35 perf   94.25 latency  0.124 writes    768.1
+    02:52:40 perf   94.13 latency  0.240 writes    637.0
+    02:52:45 perf   98.78 latency  0.374 writes    862.8
+    02:52:50 perf   97.35 latency  0.278 writes   1194.1
+    02:52:55 perf   95.79 latency  0.241 writes    726.4
+    02:53:00 perf   95.26 latency  0.334 writes    917.1
+    02:53:05 perf   90.07 latency  0.156 writes    772.4
+    02:53:10 perf   90.66 latency  0.093 writes    637.3
+    02:53:15 perf   92.28 latency  0.094 writes    664.7
+    02:53:20 perf   92.68 latency  0.129 writes    665.2
+    02:53:25 perf   91.17 latency  0.086 writes    669.9
+    02:53:30 perf   90.51 latency  0.083 writes    605.9 <
+    02:53:35 perf   79.68 latency  0.237 writes    383.8
+    02:53:40 perf   85.73 latency  0.279 writes    419.1
+    02:53:46 perf   78.77 latency  0.217 writes    410.0
+    02:53:51 perf   90.69 latency  0.305 writes    429.8
+    02:53:56 perf   82.28 latency  0.293 writes    426.5
+    02:54:01 perf   82.03 latency  0.163 writes    415.5
+    02:54:06 perf   80.60 latency  0.239 writes    385.0
+
+### 03:31:09 in c11: clean
+- clock: before 92.92, after 79.44; moves at sample -1
+- latency: before 9.691e-05, after 0.000206; moves at sample -1
+- write rate: before 652.7, after 405.9; moves at sample -1
+- clock against write rate: same sample; latency against clock: +0 samples
+    03:30:12 perf   92.82 latency  0.105 writes    623.2
+    03:30:17 perf   92.03 latency  0.117 writes    611.3
+    03:30:22 perf   91.45 latency  0.135 writes    502.4
+    03:30:27 perf   93.02 latency  0.078 writes    659.7
+    03:30:32 perf   93.25 latency  0.072 writes    654.6
+    03:30:37 perf   89.65 latency  0.097 writes    652.5
+    03:30:42 perf   95.41 latency  0.094 writes    676.2
+    03:30:48 perf   93.74 latency  0.077 writes    656.0
+    03:30:53 perf   93.39 latency  0.121 writes    645.5
+    03:30:58 perf   91.91 latency  0.097 writes    652.9
+    03:31:03 perf   94.41 latency  0.081 writes    642.1
+    03:31:08 perf   76.82 latency  0.271 writes    352.7
+    03:31:13 perf   78.48 latency  0.191 writes    379.9 <
+    03:31:18 perf   81.20 latency  0.216 writes    405.0
+    03:31:23 perf   78.50 latency  0.230 writes    375.5
+    03:31:28 perf   81.43 latency  0.196 writes    407.9
+    03:31:33 perf   78.40 latency  0.188 writes    405.7
+    03:31:38 perf   76.50 latency  0.242 writes    406.0
+    03:31:43 perf   80.38 latency  0.194 writes    411.4
+    03:31:48 perf   81.96 latency  0.234 writes    420.5
+
+### 04:08:38 in c14: clean
+- clock: before 94.84, after 79.87; moves at sample 0
+- latency: before 0.0001054, after 0.0002421; moves at sample 2
+- write rate: before 643.6, after 399.9; moves at sample 0
+- clock against write rate: same sample; latency against clock: +2 samples
+    04:07:38 perf   88.37 latency  0.135 writes    641.7
+    04:07:43 perf   87.05 latency  0.102 writes    614.3
+    04:07:48 perf   95.39 latency  0.117 writes    630.1
+    04:07:53 perf   94.29 latency  0.081 writes    656.0
+    04:07:58 perf   97.27 latency  0.130 writes    645.4
+    04:08:03 perf   97.11 latency  0.133 writes    656.2
+    04:08:08 perf  101.39 latency  0.077 writes    706.7
+    04:08:13 perf   97.17 latency  0.073 writes    663.3
+    04:08:18 perf   91.24 latency  0.109 writes    636.0
+    04:08:23 perf   88.05 latency  0.094 writes    540.2
+    04:08:29 perf   89.72 latency  0.134 writes    547.1
+    04:08:34 perf   96.78 latency  0.103 writes    674.6
+    04:08:39 perf   77.53 latency  0.255 writes    410.9 <
+    04:08:44 perf   77.07 latency  0.164 writes    381.1
+    04:08:49 perf   83.80 latency  0.193 writes    412.0
+    04:08:54 perf   86.99 latency  0.227 writes    388.8
+    04:08:59 perf   80.41 latency  0.296 writes    388.7
+    04:09:04 perf   83.61 latency  0.241 writes    427.8
+    04:09:09 perf   79.34 latency  0.300 writes    412.5
+    04:09:14 perf   73.88 latency  0.243 writes    363.5
+
+### 04:44:12 in c17: clean
+- clock: before 92.02, after 81.46; moves at sample 0
+- latency: before 0.0001043, after 0.0002243; moves at sample 0
+- write rate: before 656.3, after 412.1; moves at sample 0
+- clock against write rate: same sample; latency against clock: +0 samples
+    04:43:13 perf   93.86 latency  0.088 writes    663.7
+    04:43:18 perf   91.36 latency  0.132 writes    657.8
+    04:43:23 perf   90.45 latency  0.084 writes    637.5
+    04:43:28 perf   91.38 latency  0.105 writes    654.9
+    04:43:33 perf   93.92 latency  0.113 writes    675.7
+    04:43:38 perf   92.31 latency  0.106 writes    663.9
+    04:43:43 perf   93.42 latency  0.103 writes    672.5
+    04:43:48 perf   93.50 latency  0.083 writes    649.9
+    04:43:53 perf   91.73 latency  0.076 writes    634.2
+    04:43:58 perf   82.65 latency  0.247 writes    473.5
+    04:44:03 perf   98.55 latency  0.107 writes    704.0
+    04:44:08 perf   89.86 latency  0.133 writes    571.9
+    04:44:13 perf   84.21 latency  0.238 writes    424.9 <
+    04:44:18 perf   81.46 latency  0.230 writes    408.7
+    04:44:23 perf   79.62 latency  0.175 writes    412.3
+    04:44:28 perf   81.55 latency  0.224 writes    411.4
+    04:44:33 perf   80.57 latency  0.224 writes    424.1
+    04:44:38 perf   86.20 latency  0.208 writes    411.8
+    04:44:43 perf   80.53 latency  0.190 writes    409.5
+    04:44:48 perf     nan latency  0.280 writes    441.4
+
+### 05:19:32 in c20: clean
+- clock: before 92.92, after 80.85; moves at sample 1
+- latency: before 9.002e-05, after 0.0002601; moves at sample 2
+- write rate: before 650.6, after 413.8; moves at sample 2
+- clock against write rate: clock first; latency against clock: +1 samples
+    05:18:33 perf   93.13 latency  0.091 writes    649.2
+    05:18:38 perf   90.12 latency  0.114 writes    637.1
+    05:18:43 perf   92.48 latency  0.083 writes    677.8
+    05:18:48 perf   92.70 latency  0.082 writes    642.5
+    05:18:53 perf   93.39 latency  0.076 writes    652.0
+    05:18:58 perf   87.30 latency  0.103 writes    593.2
+    05:19:03 perf   98.67 latency  0.136 writes    666.7
+    05:19:08 perf   99.57 latency  0.167 writes    789.3
+    05:19:13 perf   91.56 latency  0.086 writes    636.9
+    05:19:18 perf   94.76 latency  0.089 writes    677.8
+    05:19:23 perf   92.62 latency  0.087 writes    664.1
+    05:19:28 perf   92.75 latency  0.097 writes    696.0
+    05:19:33 perf   88.61 latency  0.108 writes    568.3 <
+    05:19:38 perf   85.39 latency  0.169 writes    549.3
+    05:19:43 perf   78.31 latency  0.308 writes    412.8
+    05:19:48 perf   83.38 latency  0.253 writes    399.9
+    05:19:53 perf   86.42 latency  0.268 writes    414.7
+    05:19:58 perf   77.28 latency  0.298 writes    415.5
+    05:20:04 perf   75.32 latency  0.215 writes    352.8
+    05:20:09 perf   76.71 latency  0.298 writes    410.8
+
+### 05:53:16 in c23: clean
+- clock: before 92.32, after 79.15; moves at sample 0
+- latency: before 9.766e-05, after 0.0002177; moves at sample 0
+- write rate: before 655, after 401.3; moves at sample 0
+- clock against write rate: same sample; latency against clock: +0 samples
+    05:52:18 perf   94.20 latency  0.163 writes    670.8
+    05:52:23 perf   91.81 latency  0.082 writes    638.7
+    05:52:28 perf   84.19 latency  0.132 writes    499.6
+    05:52:33 perf   87.86 latency  0.097 writes    593.3
+    05:52:38 perf   96.64 latency  0.095 writes    660.6
+    05:52:43 perf   91.88 latency  0.085 writes    644.3
+    05:52:48 perf   95.42 latency  0.116 writes    702.9
+    05:52:53 perf   93.04 latency  0.068 writes    664.6
+    05:52:58 perf   92.76 latency  0.114 writes    730.9
+    05:53:03 perf   91.45 latency  0.098 writes    649.3
+    05:53:08 perf   94.18 latency  0.104 writes    698.2
+    05:53:13 perf   91.16 latency  0.086 writes    628.8
+    05:53:18 perf   76.61 latency  0.308 writes    380.5 <
+    05:53:23 perf   78.32 latency  0.212 writes    394.9
+    05:53:28 perf   77.16 latency  0.240 writes    388.5
+    05:53:33 perf   77.93 latency  0.204 writes    377.5
+    05:53:38 perf   81.93 latency  0.224 writes    415.0
+    05:53:43 perf   79.98 latency  0.246 writes    407.8
+    05:53:48 perf   80.31 latency  0.180 writes    414.0
+    05:53:53 perf   89.10 latency  0.189 writes    418.1
+
+### 06:30:48 in c26: clean
+- clock: before 91.86, after 80.82; moves at sample 1
+- latency: before 0.0001035, after 0.0001829; moves at sample 0
+- write rate: before 658.2, after 400.4; moves at sample 0
+- clock against write rate: write rate first; latency against clock: -1 samples
+    06:29:53 perf   97.74 latency  0.123 writes    632.9
+    06:29:58 perf   92.12 latency  0.111 writes    663.5
+    06:30:03 perf   91.31 latency  0.069 writes    652.9
+    06:30:08 perf   91.60 latency  0.098 writes    672.8
+    06:30:13 perf   93.17 latency  0.090 writes    678.7
+    06:30:18 perf   90.40 latency  0.108 writes    671.8
+    06:30:23 perf   97.09 latency  0.097 writes    626.1
+    06:30:28 perf   85.87 latency  0.123 writes    537.8
+    06:30:33 perf   84.44 latency  0.099 writes    530.9
+    06:30:38 perf   92.24 latency  0.120 writes    680.0
+    06:30:43 perf   90.55 latency  0.090 writes    606.7
+    06:30:48 perf   88.38 latency  0.102 writes    640.2
+    06:30:53 perf   86.67 latency  0.158 writes    437.7 <
+    06:30:58 perf   72.84 latency  0.268 writes    361.5
+    06:31:04 perf   81.30 latency  0.183 writes    378.7
+    06:31:09 perf   77.54 latency  0.186 writes    400.4
+    06:31:14 perf   80.82 latency  0.150 writes    400.5
+    06:31:19 perf   74.86 latency  0.440 writes    365.3
+    06:31:24 perf   83.65 latency  0.164 writes    415.4
+
+Clean onsets: 9 of 12. The clock against disk 0's write rate, in samples (negative when the clock moved first):
+- 22:07:44: clock 0, write rate 0, latency 0 (None: no step by the rule); widest spread 0 samples
+- 02:13:20: clock 0, write rate 0, latency -1 (None: no step by the rule); widest spread 1 samples
+- 02:53:29: clock 1, write rate 1, latency None (None: no step by the rule); widest spread 0 samples
+- 03:31:09: clock -1, write rate -1, latency -1 (None: no step by the rule); widest spread 0 samples
+- 04:08:38: clock 0, write rate 0, latency 2 (None: no step by the rule); widest spread 2 samples
+- 04:44:12: clock 0, write rate 0, latency 0 (None: no step by the rule); widest spread 0 samples
+- 05:19:32: clock 1, write rate 2, latency 2 (None: no step by the rule); widest spread 1 samples
+- 05:53:16: clock 0, write rate 0, latency 0 (None: no step by the rule); widest spread 0 samples
+- 06:30:48: clock 1, write rate 0, latency 0 (None: no step by the rule); widest spread 1 samples
+- every move found falls from sample -1 to sample 2
+- clock and write rate in the same sample: 7; write rate first: 1; clock first: 1
+- latency in the clock's sample: 4; before it: 2; after it: 2; no step: 1
+
+## Limits and the clock at the checks
+
+- samples with % Performance Limit under 100: 0; with Performance Limit Flags not 0: 0; with a thermal zone's passive limit under 100: 0; with throttle reasons not 0: 0; of 6289 samples
+- check 22:00:23 (2.353 ms): processor performance 64.45
+- check 22:11:17 (5.200 ms): processor performance 67.21
+- check 22:22:45 (3.237 ms): processor performance 68.64
+- check 22:47:58 (2.485 ms): processor performance 74.08
+- check 22:57:37 (2.438 ms): processor performance 66.81
+- check 23:22:48 (2.170 ms): processor performance 67.17
+- check 23:36:51 (5.349 ms): processor performance 66.76
+- check 00:02:04 (2.297 ms): processor performance 66.82
+- check 00:11:37 (2.519 ms): processor performance 66.5
+- check 00:36:49 (2.197 ms): processor performance 64.73
+- check 00:46:32 (4.581 ms): processor performance 71.85
+- check 01:01:56 (5.431 ms): processor performance 74.26
+- check 01:12:14 (2.520 ms): processor performance 70.39
+- check 01:22:52 (3.005 ms): processor performance 73.68
+- check 01:34:30 (3.073 ms): processor performance 74.69
+- check 01:47:03 (3.274 ms): processor performance 70.76
+- check 01:58:42 (3.328 ms): processor performance 70.81
+- check 02:10:20 (3.415 ms): processor performance 84.59
+- check 02:24:48 (5.322 ms): processor performance 74.44
+- check 02:36:17 (3.746 ms): processor performance 68.52
+- check 02:47:56 (3.160 ms): processor performance 75.89
+- check 03:01:25 (5.215 ms): processor performance 71.55
+- check 03:12:59 (3.106 ms): processor performance 71.9
+- check 03:24:28 (3.726 ms): processor performance 73.5
+- check 03:37:37 (5.040 ms): processor performance 68.49
+- check 03:49:20 (3.253 ms): processor performance 75.44
+- check 04:00:49 (3.077 ms): processor performance 70.5
+- check 04:13:17 (5.378 ms): processor performance 70.69
+- check 04:24:45 (3.157 ms): processor performance 69.96
+- check 04:36:13 (3.156 ms): processor performance 69.9
+- check 04:48:52 (3.155 ms): processor performance 68.25
+- check 05:00:15 (3.096 ms): processor performance 71.19
+- check 05:11:43 (3.109 ms): processor performance 69.37
+- check 05:24:07 (5.468 ms): processor performance 70.27
+- check 05:35:35 (3.403 ms): processor performance 71.77
+- check 05:47:04 (3.127 ms): processor performance 71.38
+- check 06:00:27 (5.316 ms): processor performance 70.66
+- check 06:11:55 (3.045 ms): processor performance 72.48
+- check 06:23:19 (2.947 ms): processor performance 71.26
+- check 06:35:57 (5.380 ms): processor performance 67.23
+- check 06:48:05 (3.186 ms): processor performance 76.66
+
+## Database CPU per command and the clock
+
+Runs with at least 95 percent of their steady intervals at one level, high or slow: database CPU in ms per command, the median processor performance over the bench, and the CPU scaled by it.
+
+- high: b1 3.860 ms at 101.44 percent, scaled 3.916; b3 3.864 ms at 101.81 percent, scaled 3.934; b4 3.916 ms at 101.96 percent, scaled 3.993
+- slow: d1 5.802 ms at 81.50 percent, scaled 4.728
+- rise from high to slow: 50.16 percent; scaled by the clock 20.20 percent; the clock's share of the rise 59.7 percent
+
+## Commands per second by level
+
+csharp-wax-rw8 at 8 workers: the runs with at least 95 percent of their steady intervals high, the runs with no steady interval high or slow (the fast level), and the runs with at least 95 percent slow; each group's median commands per second, and each faster group's median over the slow one's.
+
+- high: 3 runs (b1, b3, b4), commands/s 1111.85 to 1121.45, median 1119.41
+- fast: 15 runs (c1, c3, c6, c7, c9, c10, c13, c15, c16, c18, c19, c21, c22, c24, c25), commands/s 883.64 to 902.44, median 894.04
+- slow: 1 runs (d1), commands/s 631.01 to 631.01, median 631.01
+- high over slow: 1.774
+- fast over slow: 1.417
+
+## Reading 1 by rate
+
+Steady intervals at 200 WAL syncs per second or less, the diagnostic aside: 355, from 14 runs (a1, b2, d1, c2, c5, c8, c11, c12, c14, c17, c20, c23, c26, c27); least 4.747 ms per sync, median 5.146; median busy share 0.962; at 2.8 ms or less: 0; busy under 0.7: 0
+
+## The diagnostic and its neighbors
+
+- a1: throttled 0.1 percent (7 of 5291 periods), database 4.020 cores, 11.563 KB of WAL per sync, sampler probe median 163.8 ms, sampler 1.760 percent of a core
+- a2: throttled 0.0 percent (1 of 5660 periods), database 3.510 cores, 12.438 KB of WAL per sync, sampler probe median 171.1 ms, sampler 1.850 percent of a core
+- b1: throttled 0.1 percent (3 of 4555 periods), database 4.238 cores, 11.056 KB of WAL per sync, sampler probe median 165.8 ms, sampler 1.790 percent of a core
+- b2: throttled 0.0 percent (1 of 7246 periods), database 3.633 cores, 13.430 KB of WAL per sync, sampler probe median 168.8 ms, sampler 1.780 percent of a core
+- b3: throttled 0.2 percent (10 of 4568 periods), database 4.233 cores, 11.098 KB of WAL per sync, sampler probe median 162.5 ms, sampler 1.720 percent of a core
+- b4: throttled 0.3 percent (12 of 4598 periods), database 4.270 cores, 11.031 KB of WAL per sync, sampler probe median 166.5 ms, sampler 1.780 percent of a core
+- d1: throttled 0.0 percent (1 of 8014 periods), database 3.621 cores, 13.690 KB of WAL per sync, sampler probe median 169.0 ms, sampler 1.790 percent of a core
+- d2: throttled 97.0 percent (4835 of 4987 periods), database 5.877 cores, 81.551 KB of WAL per sync, sampler probe median 471.2 ms, sampler 3.200 percent of a core
+- d3: throttled 0.1 percent (3 of 5202 periods), database 4.010 cores, 11.694 KB of WAL per sync, sampler probe median 164.4 ms, sampler 1.740 percent of a core
+- c1: throttled 0.0 percent (2 of 5756 periods), database 3.858 cores, 12.172 KB of WAL per sync, sampler probe median 161.8 ms, sampler 1.740 percent of a core
+- c2: throttled 0.0 percent (2 of 6338 periods), database 3.801 cores, 12.527 KB of WAL per sync, sampler probe median 164.5 ms, sampler 1.750 percent of a core
+- c3: throttled 0.1 percent (3 of 5730 periods), database 3.875 cores, 12.187 KB of WAL per sync, sampler probe median 163.2 ms, sampler 1.730 percent of a core
+- c4: throttled 0.0 percent (1 of 5744 periods), database 3.851 cores, 12.200 KB of WAL per sync, sampler probe median 162.1 ms, sampler 1.730 percent of a core
+- c5: throttled 0.0 percent (2 of 7473 periods), database 3.653 cores, 13.401 KB of WAL per sync, sampler probe median 167.4 ms, sampler 1.790 percent of a core
+- c6: throttled 0.0 percent (2 of 5682 periods), database 3.837 cores, 12.153 KB of WAL per sync, sampler probe median 163.6 ms, sampler 1.750 percent of a core
+- c7: throttled 0.0 percent (1 of 5737 periods), database 3.828 cores, 12.134 KB of WAL per sync, sampler probe median 162.0 ms, sampler 1.740 percent of a core
+- c8: throttled 0.0 percent (3 of 6839 periods), database 3.673 cores, 13.161 KB of WAL per sync, sampler probe median 167.9 ms, sampler 1.800 percent of a core
+- c9: throttled 0.1 percent (5 of 5713 periods), database 3.889 cores, 12.113 KB of WAL per sync, sampler probe median 166.3 ms, sampler 1.750 percent of a core
+- c10: throttled 0.0 percent (1 of 5719 periods), database 3.860 cores, 12.153 KB of WAL per sync, sampler probe median 162.8 ms, sampler 1.720 percent of a core
+- c11: throttled 0.0 percent (2 of 6641 periods), database 3.765 cores, 12.784 KB of WAL per sync, sampler probe median 167.7 ms, sampler 1.780 percent of a core
+- c12: throttled 0.0 percent (2 of 5816 periods), database 3.835 cores, 12.245 KB of WAL per sync, sampler probe median 162.8 ms, sampler 1.720 percent of a core
+- c13: throttled 0.0 percent (1 of 5671 periods), database 3.865 cores, 12.143 KB of WAL per sync, sampler probe median 165.5 ms, sampler 1.760 percent of a core
+- c14: throttled 0.0 percent (2 of 6269 periods), database 3.787 cores, 12.562 KB of WAL per sync, sampler probe median 163.7 ms, sampler 1.770 percent of a core
+- c15: throttled 0.0 percent (1 of 5686 periods), database 3.856 cores, 12.159 KB of WAL per sync, sampler probe median 165.4 ms, sampler 1.770 percent of a core
+- c16: throttled 0.0 percent (1 of 5698 periods), database 3.866 cores, 12.128 KB of WAL per sync, sampler probe median 162.4 ms, sampler 1.720 percent of a core
+- c17: throttled 0.0 percent (2 of 6367 periods), database 3.776 cores, 12.530 KB of WAL per sync, sampler probe median 166.2 ms, sampler 1.780 percent of a core
+- c18: throttled 0.0 percent (1 of 5655 periods), database 3.876 cores, 12.128 KB of WAL per sync, sampler probe median 161.3 ms, sampler 1.720 percent of a core
+- c19: throttled 0.1 percent (3 of 5688 periods), database 3.856 cores, 12.114 KB of WAL per sync, sampler probe median 164.1 ms, sampler 1.750 percent of a core
+- c20: throttled 0.0 percent (1 of 6235 periods), database 3.771 cores, 12.522 KB of WAL per sync, sampler probe median 162.6 ms, sampler 1.720 percent of a core
+- c21: throttled 0.0 percent (2 of 5675 periods), database 3.869 cores, 12.138 KB of WAL per sync, sampler probe median 164.1 ms, sampler 1.770 percent of a core
+- c22: throttled 0.0 percent (2 of 5677 periods), database 3.866 cores, 12.157 KB of WAL per sync, sampler probe median 162.9 ms, sampler 1.750 percent of a core
+- c23: throttled 0.0 percent (3 of 6805 periods), database 3.708 cores, 12.833 KB of WAL per sync, sampler probe median 166.6 ms, sampler 1.780 percent of a core
+- c24: throttled 0.0 percent (1 of 5692 periods), database 3.860 cores, 12.188 KB of WAL per sync, sampler probe median 163.8 ms, sampler 1.730 percent of a core
+- c25: throttled 0.0 percent (1 of 5638 periods), database 3.903 cores, 12.154 KB of WAL per sync, sampler probe median 163.8 ms, sampler 1.750 percent of a core
+- c26: throttled 0.0 percent (2 of 6395 periods), database 3.758 cores, 12.569 KB of WAL per sync, sampler probe median 167.4 ms, sampler 1.780 percent of a core
+- c27: throttled 0.1 percent (6 of 6056 periods), database 3.808 cores, 12.422 KB of WAL per sync, sampler probe median 167.2 ms, sampler 1.750 percent of a core
+- every run but the diagnostic: throttled at most 0.3 percent; probe at most 171.1 ms; sampler 1.720 to 1.850 percent of a core; WAL per sync 11.031 to 13.690 KB
+- d2 over its bench: host busy median 70.53 percent, VM median 7.988 cores, processor performance median 77.29 percent
+- b1 over its bench: host busy median 60.32 percent, VM median 6.418 cores, processor performance median 101.44 percent
+- b3 over its bench: host busy median 60.33 percent, VM median 6.396 cores, processor performance median 101.81 percent
+- b4 over its bench: host busy median 61.34 percent, VM median 6.366 cores, processor performance median 101.96 percent
+- d2 against d1: +61.89 percent (1021.5 against 631.0 commands/s)
+- d2 against d3: +4.32 percent (1021.5 against 979.2 commands/s)
+- d2 against b1: -8.91 percent (1021.5 against 1121.5 commands/s)
+- d2 against b3: -8.75 percent (1021.5 against 1119.4 commands/s)
+- d2 against b4: -8.13 percent (1021.5 against 1111.9 commands/s)
+
+## Runs and onsets the text names
+
+- a1: bench intervals from 22:01:24: 2.02, 2.05, 2.15, 2.12, 2.57, 2.05 ... 5.46, 5.12, 5.24
+- b1: bench intervals from 22:48:59: 2.76, 2.07, 2.09, 2.06, 2.08, 2.16 ... 2.27, 2.27, 2.32
+- b2: bench intervals from 23:23:46: 2.06, 3.36, 4.25, 4.25, 4.36, 4.35 ... 4.75, 4.86, 4.98
+- b3: bench intervals from 00:03:03: 2.03, 2.11, 2.10, 2.29, 2.08, 2.03 ... 2.31, 2.34, 2.40
+- b4: bench intervals from 00:37:51: 2.08, 2.02, 2.10, 2.23, 2.06, 2.13 ... 2.27, 2.52, 4.90
+- d3: bench intervals from 01:13:13: 2.31, 2.33, 2.30, 2.22, 2.31, 2.42 ... 3.02, 2.95, 3.69
+- a1's high steady intervals: 2.050 to 2.623 ms, through 22:07:34, 6.18 min into its bench; its bench ended 2.65 min later
+- b2 left the high level 11.1 s into its bench
+- c11 around its onset: 03:30:39 2.906, 03:30:49 3.005, 03:30:59 4.290, 03:31:09 5.306, 03:31:19 5.416; last step 23.7 percent
+- d3 high through the interval from 01:17:03; next interval 3.401 ms from 01:17:13
+
+## The process snapshot's own cost
+
+- its own process: mean 0.1796 CPU seconds per interval over 1055 intervals
+- its query: mean 0.9375 seconds per interval over 1055 intervals
